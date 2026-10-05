@@ -123,63 +123,75 @@ func RestoreBackups(binDir string, names []string) error {
 // SwapAll moves each staged binary into binDir. The current destination is
 // kept as name.bak and the staged file is renamed over it, so a running
 // process keeps its old inode. On any failure, destinations already swapped
-// are restored from their .bak.
+// are restored only from backups this run created.
 func SwapAll(binDir, staging string, names []string) error {
 	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		return err
 	}
 	var swapped []string
+	backedUp := map[string]bool{}
 	for _, name := range names {
 		if err := safeName(name); err != nil {
-			Rollback(binDir, swapped)
+			Rollback(binDir, swapped, backedUp)
 			return err
 		}
-		if err := swapOne(binDir, staging, name); err != nil {
-			Rollback(binDir, swapped)
+		madeBak, err := swapOne(binDir, staging, name)
+		if err != nil {
+			Rollback(binDir, swapped, backedUp)
 			return err
+		}
+		if madeBak {
+			backedUp[name] = true
 		}
 		swapped = append(swapped, name)
 	}
 	return nil
 }
 
-func swapOne(binDir, staging, name string) error {
+// swapOne reports whether it wrote name.bak for a binary that was already
+// installed. A preexisting name.bak is not a backup of this run.
+func swapOne(binDir, staging, name string) (bool, error) {
 	src := filepath.Join(staging, name)
 	dst := filepath.Join(binDir, name)
 	newPath := dst + ".new"
 	if fi, err := os.Lstat(dst); err == nil && fi.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("refusing to replace symlinked binary %s", dst)
+		return false, fmt.Errorf("refusing to replace symlinked binary %s", dst)
 	}
 	if err := copyFile(src, newPath); err != nil {
-		return err
+		return false, err
 	}
+	madeBak := false
 	if _, err := os.Stat(dst); err == nil {
 		if err := copyFile(dst, dst+".bak"); err != nil {
 			os.Remove(newPath)
-			return err
+			return false, err
 		}
+		madeBak = true
 	}
 	if err := rename(newPath, dst); err != nil {
 		os.Remove(newPath)
-		return err
+		return false, err
 	}
-	return nil
+	return madeBak, nil
 }
 
-// Rollback restores each name from its .bak copy, leaving the .bak in place.
-// A name with no .bak was freshly created by this swap, so removing it is
-// the restore; leaving it would orphan an untracked binary in binDir.
-func Rollback(binDir string, names []string) error {
+// Rollback undoes names already swapped by this run. backedUp is the set of
+// names whose .bak this run wrote; those are copied back and the .bak is
+// left in place. Every other name is removed. A leftover name.bak from an
+// earlier install is not restored, because that would revive a binary this
+// run did not replace.
+func Rollback(binDir string, names []string, backedUp map[string]bool) error {
 	var firstErr error
 	for _, name := range names {
-		bak := filepath.Join(binDir, name+".bak")
-		if _, err := os.Stat(bak); err != nil {
-			if err := os.Remove(filepath.Join(binDir, name)); err != nil && !os.IsNotExist(err) && firstErr == nil {
+		dst := filepath.Join(binDir, name)
+		if !backedUp[name] {
+			if err := os.Remove(dst); err != nil && !os.IsNotExist(err) && firstErr == nil {
 				firstErr = err
 			}
 			continue
 		}
-		if err := copyFile(bak, filepath.Join(binDir, name)); err != nil && firstErr == nil {
+		bak := filepath.Join(binDir, name+".bak")
+		if err := copyFile(bak, dst); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
