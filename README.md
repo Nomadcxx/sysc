@@ -1,4 +1,4 @@
-![SYSC](assets/banner.svg)
+<p align="center"><img src="assets/banner.svg" alt="SYSC"></p>
 
 Guided installer for the SYSC desktop on [Niri](https://github.com/YaLTeR/niri), written in Go with the Bubble Tea framework.
 
