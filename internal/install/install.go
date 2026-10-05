@@ -253,7 +253,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		// can fail or the process can be interrupted, and a missing stamp
 		// makes uninstall report that nothing is installed.
 		if err := persist(); err != nil {
-			if rerr := fetch.Rollback(opts.binDir(), allNames); rerr != nil {
+			if rerr := fetch.RestoreBackups(opts.binDir(), allNames); rerr != nil {
 				return res, fmt.Errorf("recording install: %w (rollback: %v)", err, rerr)
 			}
 			return res, err
