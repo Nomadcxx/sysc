@@ -15,13 +15,14 @@ esac
 
 TMP="${TMPDIR:-/tmp}/sysc-install.$$"
 mkdir -p "$TMP"
-curl -fsSL "$BASE/$ASSET" -o "$TMP/sysc"
+BIN="$TMP/$ASSET"
+curl -fsSL "$BASE/$ASSET" -o "$BIN"
 curl -fsSL "$BASE/SHA256SUMS" -o "$TMP/SHA256SUMS"
 grep " $ASSET\$" "$TMP/SHA256SUMS" > "$TMP/check"
 (cd "$TMP" && sha256sum -c check)
-chmod +x "$TMP/sysc"
+chmod +x "$BIN"
 
 if [ -t 0 ]; then
-  exec "$TMP/sysc" "$@"
+  exec "$BIN" "$@"
 fi
-exec "$TMP/sysc" --yes "$@"
+exec "$BIN" --yes "$@"
