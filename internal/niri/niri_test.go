@@ -97,3 +97,74 @@ func TestSkipOccupiedBind(t *testing.T) {
 		t.Fatalf("sidecar bound an occupied key:\n%s", data)
 	}
 }
+
+// Included files are full config fragments. A bare Mod+Key node is rejected
+// ("unexpected node") and the include takes the user's whole config down with it.
+func TestSidecarBindsInsideBindsBlock(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, "config.kdl")
+	sidecar := filepath.Join(dir, "sysc.kdl")
+	write(t, config, "input {}\n")
+	opts := Options{ConfigPath: config, SidecarPath: sidecar, StateDir: filepath.Join(dir, "state"), Binds: DefaultBinds, Now: time.Unix(1000, 0)}
+
+	res, err := Apply(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.BindsAdded) != len(DefaultBinds) || len(res.BindsSkipped) != 0 {
+		t.Fatalf("BindsAdded=%v BindsSkipped=%v", res.BindsAdded, res.BindsSkipped)
+	}
+	data, err := os.ReadFile(sidecar)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	assertBindsNested(t, got, []string{"Mod+Space", "Mod+Comma"})
+
+	golden, err := os.ReadFile(filepath.Join("testdata", "sysc.kdl.golden"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != string(golden) {
+		t.Fatalf("sidecar mismatch:\n got:\n%s\nwant:\n%s", got, golden)
+	}
+}
+
+// assertBindsNested fails when a bind is a top-level node instead of a child of binds { }.
+func assertBindsNested(t *testing.T, text string, keys []string) {
+	t.Helper()
+	const open = "binds {"
+	start := strings.Index(text, open)
+	if start < 0 || strings.Count(text, open) != 1 {
+		t.Fatalf("sidecar binds blocks = %d; want 1:\n%s", strings.Count(text, open), text)
+	}
+	rest := text[start+len(open):]
+	closeRel := strings.Index(rest, "\n}")
+	if closeRel < 0 {
+		t.Fatalf("binds block is not closed:\n%s", text)
+	}
+	inner := rest[:closeRel]
+	after := rest[closeRel+len("\n}"):]
+	for _, key := range keys {
+		line := key + " {"
+		if !strings.Contains(inner, line) {
+			t.Fatalf("%s is not inside the binds block:\n%s", key, text)
+		}
+		if strings.Contains(text[:start], line) || strings.Contains(after, line) {
+			t.Fatalf("%s appears outside the binds block:\n%s", key, text)
+		}
+	}
+	rejectTopLevel(t, text[:start], text)
+	rejectTopLevel(t, after, text)
+}
+
+func rejectTopLevel(t *testing.T, section, full string) {
+	t.Helper()
+	for _, line := range strings.Split(section, "\n") {
+		trim := strings.TrimSpace(line)
+		if trim == "" || strings.HasPrefix(trim, "//") {
+			continue
+		}
+		t.Fatalf("unexpected top-level node %q:\n%s", trim, full)
+	}
+}
