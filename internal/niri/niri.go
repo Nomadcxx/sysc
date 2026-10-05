@@ -146,6 +146,9 @@ func occupiedKeys(opts Options, text string, binds []Bind) map[string]bool {
 func Remove(opts Options) error {
 	if data, err := os.ReadFile(opts.ConfigPath); err == nil {
 		text := includeRe.ReplaceAllString(string(data), "")
+		// ponytail: a line the user commented themselves before install is
+		// indistinguishable from ours and also returns; track per-line
+		// provenance in the stamp if that ever bites.
 		text = spawnOffRe.ReplaceAllString(text, "$1$2")
 		if text != string(data) {
 			if err := writeAtomic(opts.ConfigPath, []byte(text)); err != nil {
