@@ -8,7 +8,7 @@
 
 **Tech Stack:** Go 1.26, charmbracelet bubbletea + bubbles + lipgloss, `golang.org/x/text/language` for LANG matching. No CGO. Tests: `timeout 90s env GOMAXPROCS=2 go test -count=1 <pkg> -run <Name>` only. Never `go test ./...` or `-race`.
 
-**Design:** `/home/nomadx/sysc-shell/docs/plans/2026-10-05-sysc-suite-installer-design.md` (copy in this repo under `docs/plans/`, gitignored).
+**Design:** `/home/nomadx/sysc-shell/docs/plans/2026-10-05-sysc-suite-installer-design.md` (primary copy, gitignored). This repo commits its own copy under `docs/plans/`.
 
 **Workdir:** `/home/nomadx/sysc`. Commit there, not in sysc-shell. Commit messages: conventional, no `agent`/`cursor`/`llm`/`both`. `gofmt -w` on touched Go files before each commit.
 
@@ -27,7 +27,7 @@
 
 `internal/pin/pin_test.go`:
 
-- `TestDecodeRequiresAssetsAndSHA` loads `testdata/ok.json` (shell, clipboard, terminal, walls with amd64+arm64 URLs and SHA256; gslapper arch slot; lock `disabled`; recommended plugin ids) and asserts `Decode` returns them.
+- `TestDecodeRequiresAssetsAndSHA` loads `testdata/ok.json` (shell, clipboard, walls with amd64 URLs and SHA256; walls carries one binary, `sysc-walls-daemon`; terminal `disabled` with a reason; gslapper arch slot; lock `disabled`; recommended plugin ids) and asserts `Decode` returns them.
 - Load `missing-sha.json` and assert error.
 
 **Step 2: Run test to verify it fails**
@@ -38,7 +38,7 @@ Expected: FAIL (package or Decode missing).
 
 **Step 3: Write minimal implementation**
 
-`go mod init github.com/Nomadcxx/sysc` with `go 1.26`. `Pin` struct + `Decode([]byte) (Pin, error)` that rejects missing SHA, missing arch asset, enabled lock, or empty recommended list. `ok.json` uses placeholder URLs/hashes.
+`go mod init github.com/Nomadcxx/sysc` with `go 1.26`. `Pin` struct + `Decode([]byte) (Pin, error)` that rejects a missing SHA, a missing amd64 asset, an enabled lock, a disabled row without a reason, or an empty recommended list. `go.mod` pins bubbletea v1.3.4, bubbles v0.21.0, lipgloss v1.1.0, x/text v0.23.0 (greet-family parity; v2 betas avoided). `ok.json` uses placeholder URLs/hashes.
 
 **Step 4: Run test to verify it passes**
 
@@ -146,11 +146,11 @@ v1 keys at least: `nav.next`, `nav.back`, `nav.quit`, `nav.language`, `nav.wait`
 
 **Step 1: Failing test**
 
-`TestWriteStampOnlyWhenUnitsUp` — fake `unitsUp` false → no file; true → `installed.json` names release, component versions, `GSlapperInstalled bool`.
+`TestStampAfterEnable` — units not enabled → no file; enabled → `installed.json` names release, component versions, `GSlapperInstalled bool`, `Started bool` (false from SSH/TTY).
 
 **Step 2: Run** `... ./internal/stamp -run TestWriteStampOnlyWhenUnitsUp` — FAIL.
 
-**Step 3: Implement** `Read`/`Write` under a given state dir (tests pass a temp dir). Caller supplies “units up”.
+**Step 3: Implement** `Read`/`Write` under a given state dir (tests pass a temp dir). Caller supplies “enabled” and “started”.
 
 **Step 4: PASS.**
 
@@ -165,6 +165,8 @@ v1 keys at least: `nav.next`, `nav.back`, `nav.quit`, `nav.language`, `nav.wait`
 - Create: `internal/seed/seed_test.go`
 
 Do **not** import sysc-shell as a module in v1 unless a tiny JSON round-trip is easier; hand-built JSON must still load as the shell’s `Default()` overlay: theme preset, ThemeGen wallpaper, weather lat/lon/location, plugins.enabled, bar.items including a `weather` widget.
+
+Target path is `$XDG_CONFIG_HOME/sysc-shell/config.json` (shell `DefaultPath()`). The shell JSON is a partial overlay over `Default()`, but `wireBar` replaces a bar section wholesale — so write the full section touched (baked default right section plus the weather item), not just the new item. Weather wire fields: `latitude`, `longitude`, `city`, `unit`, `interval`, `location`.
 
 **Step 1: Failing test**
 
@@ -190,6 +192,7 @@ Do **not** import sysc-shell as a module in v1 unless a tiny JSON round-trip is 
 
 - `TestYesNeedsWeather` — `--yes` without city/lat/guess → error.
 - `TestSkipGSlapperWhenOnPATH` — fake PATH with `gslapper`; installer does not call the package hook.
+- `TestDisabledComponentSkipped` — pin row `disabled` → task list marks SKIP with the reason, no fetch.
 - `TestUninstallKeepsConfig` vs `TestUninstallPurge` — stamp present; keep leaves XDG file; purge removes it; `gslapper` binary not removed unless stamp.GSlapperInstalled.
 
 Use temp HOME, fake PATH, stub fetch.
@@ -213,6 +216,11 @@ Use temp HOME, fake PATH, stub fetch.
 - Create: `internal/backup/backup_test.go`
 - Create: `internal/units/units.go`
 - Create: `internal/units/units_test.go`
+- Create: `internal/units/templates/sysc-shell.service`
+- Create: `internal/units/templates/sysc-clipboard.service`
+- Create: `internal/units/templates/sysc-walls.service`
+
+Unit templates are embedded (`go:embed`): `WantedBy=graphical-session.target`, `ExecStart=%h/.local/bin/...`; the walls unit runs `sysc-walls-daemon` (not the repo’s `/usr/local` unit).
 
 **Step 1: Failing tests**
 
@@ -230,6 +238,27 @@ Use temp HOME, fake PATH, stub fetch.
 **Step 4: PASS.**
 
 **Step 5: Commit** `feat: niri sidecar, user units and first-run config backups`
+
+---
+
+### Task 7c: Weather guess (IP)
+
+**Files:**
+- Create: `internal/geo/geo.go`
+- Create: `internal/geo/geo_test.go`
+
+**Step 1: Failing tests**
+
+- `TestGuessResolvesStubEndpoint` — httptest returns `{latitude, longitude, city}`; `Guess(ctx, client, endpoint)` returns the place.
+- `TestGuessRejectsEmpty` — missing coordinates → error.
+
+**Step 2: Run** `... ./internal/geo -run 'TestGuessResolvesStubEndpoint|TestGuessRejectsEmpty'` — FAIL.
+
+**Step 3: Implement** one HTTPS GET to a pinned IP-geolocation endpoint (no key, no new dependency), decode lat/lon/city. GeoClue is a named follow-up, not v1. `--yes` uses the guess when no `--city`/`--lat`/`--lon`.
+
+**Step 4: PASS.**
+
+**Step 5: Commit** `feat: guess weather coordinates from the network`
 
 ---
 
@@ -292,7 +321,7 @@ Use temp HOME, fake PATH, stub fetch.
 **Step 1: Failing tests**
 
 - `TestPreflightRefusesRoot` (geteuid fake via param).
-- `TestInstallShPicksAmd64` — script test with stub uname, asserts URL suffix `sysc-linux-amd64` (see sysc-Go unmerged install_sh_test pattern: run bash with mocked curl).
+- `TestInstallShPicksAmd64` — script test with stub `uname` and `curl` on PATH, asserts URL suffix `sysc-linux-amd64` (sysc-Go has no such test; write the stub here).
 
 **Step 2: FAIL those tests.**
 
@@ -309,7 +338,7 @@ Use temp HOME, fake PATH, stub fetch.
 **Files:**
 - Create: `.github/workflows/release.yml`
 
-On tag `v*`: build `sysc` CGO_ENABLED=0 linux amd64 and arm64, `sha256sum` to `SHA256SUMS`, upload `sysc-linux-amd64`, `sysc-linux-arm64`, pin JSON if not fully embedded. Do not `CGO_ENABLED=0` any walls daemon here — SYSC only ships this installer; component releases stay in their repos.
+On tag `v*`: build `sysc` CGO_ENABLED=0 linux amd64 and arm64, `sha256sum` to `SHA256SUMS`, upload `sysc-linux-amd64`, `sysc-linux-arm64`, pin JSON if not fully embedded. Do not `CGO_ENABLED=0` any walls daemon here — SYSC only ships this installer; component releases stay in their repos and are separate gates (sysc-shell workflow+tag, sysc-clipboard workflow, sysc-walls published release, sysc-terminal code+release).
 
 No test beyond `go build`. Commit `ci: attach installer binaries on version tags`
 
@@ -324,6 +353,16 @@ Document the intended curl, `--yes`, languages, Arch-family v1, and “do not cu
 
 ---
 
+## Cross-repo gates (bd issues in sysc-shell)
+
+- sysc-shell: release workflow + first tag (no tags today).
+- sysc-clipboard: release workflow (tags v0.1.0/v0.1.1 exist, no assets).
+- sysc-walls: publish a release (workflow exists, tags v1.0.0/v1.0.1, no GitHub release, amd64-only assets).
+- sysc-terminal: code + release (docs-only today) — first pin ships it disabled.
+- First pin cut after the installer tasks and these gates.
+
+---
+
 ## Notes for the implementer
 
 - Beams source of truth: `/home/nomadx/sysc-greet/cmd/installer/animations.go` and `asciiHeaderLines` in that installer `main.go`. Copy, do not import greet.
@@ -331,3 +370,6 @@ Document the intended curl, `--yes`, languages, Arch-family v1, and “do not cu
 - gSlapper package names: fill Arch slot when cutting the first pin; other distro slots stay empty until expansion.
 - First pin URLs can be placeholders until those component repos have matching GitHub release assets; fetch tests use httptest, not the network.
 - Owner `scripts/deploy` stays out of this binary.
+- The sysc repo commits its `docs/plans` copies; the sysc-shell primary copies are gitignored. Edit both.
+- Cross-repo release gates live as bd issues in sysc-shell.
+- The first pin cannot enable a component whose release assets do not exist.

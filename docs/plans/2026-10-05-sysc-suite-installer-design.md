@@ -7,7 +7,7 @@ This is the contract for `github.com/Nomadcxx/sysc` (checkout `/home/nomadx/sysc
 
 ## Product
 
-SYSC is a guided installer for public Niri users. One GitHub release of this repo is a **tested pin set**: it ships the installer binary plus exact tags/assets for sysc-shell, sysc-clipboard, sysc-terminal, sysc-walls, and the gSlapper package used when gSlapper is missing. sysc-lock is named in the pin file as `disabled` until that product ships.
+SYSC is a guided installer for public Niri users. One GitHub release of this repo is a **tested pin set**: it ships the installer binary plus exact tags/assets for the SYSC components that pin enables, and the gSlapper package used when gSlapper is missing. A component row may be `disabled` with a reason — sysc-lock until it ships, sysc-terminal until it has release assets. The installer skips a disabled component with a named reason instead of failing.
 
 It installs a user session, not a display manager. It does not vendor those projects, does not exec each component’s existing TUI, and does not become greetd.
 
@@ -18,14 +18,15 @@ It installs a user session, not a display manager. It does not vendor those proj
 | Audience | Public Niri users; independent of owner `scripts/deploy` |
 | Shape | Dedicated repo; one static Go binary |
 | Versions | One SYSC release pins a tested combination |
-| Suite | Full set always: shell, clipboard, terminal, walls. gSlapper if missing |
+| Suite | Full set when the pin enables it: shell, clipboard, terminal, walls. Disabled rows are skipped by name. gSlapper if missing |
 | Prefix | User-local (`~/.local/bin`, systemd --user) |
 | Distro v1 | Arch family installs; other distros are detected and **named-refused** |
 | Already installed | SYSC-owned components brought to this pin; gSlapper left alone if present |
 | Wizard | Short catalog: theme, wallpaper engine, recommended plugins, weather |
-| Weather | Required. GeoClue/IP guess or Open-Meteo city search. Builtin bar widget |
+| Weather | Required. IP guess or Open-Meteo city search. Builtin bar widget. GeoClue deferred (needs a D-Bus dependency; absent on minimal Niri installs) |
 | Languages | Installer UI: `en`, `zh-Hans`, `de`, `fr`. Not session locale |
 | Fetch | Download pinned GitHub assets + SHA256. No compile-on-target in v1 |
+| Dependencies | bubbletea v1.3.4, bubbles v0.21.0, lipgloss v1.1.0, x/text v0.23.0 — greet-family parity; v2 betas avoided |
 | gSlapper later | Pin file has per-distro package slots; v1 fills Arch only |
 | Niri | Own sidecar `sysc.kdl` + `include`; never rewrite whole `config.kdl`; never touch `sysc-shell.kdl` (theming) |
 | Units | systemd --user; stop → swap → enable; start only inside an active graphical session |
@@ -54,7 +55,15 @@ Public users do **not** get owner `scripts/deploy` or `sysc-shell-guard`. SYSC�
 
 ## Pin file
 
-Shipped inside the installer (embed) and published next to the release binary. Each SYSC-owned row: id, git tag, linux-amd64 and linux-arm64 asset URLs, SHA256, user-unit template name. gSlapper: package name/version per distro family; Arch filled in v1. sysc-lock: `disabled`. Recommended plugin catalog ids for this release live here too (snapshot of `sysc-plugins` at pin time).
+Shipped inside the installer (embed) and published next to the release binary.
+
+Each SYSC-owned component row: id, git tag, user-unit template name, and either `disabled` with a reason or a `binaries` list. Each binary names its install name and a per-arch map of asset URL + SHA256. v1 requires an amd64 asset; arm64 is optional per binary, and the installer refuses an unsupported host arch by name. A component may ship more than one binary (sysc-walls ships daemon, display, client; the unit runs the daemon, so the pin installs the daemon and may omit the rest).
+
+The first pin can ship with `sysc-terminal` disabled (no release yet) and any component whose release assets are missing. The installer skips disabled rows with a named reason, and the wizard hides options that need a disabled component (the terminal-effects wallpaper engine).
+
+gSlapper: package name/version per distro family; Arch filled in v1 (`gslapper` 1.5.1, AUR). sysc-lock: `disabled`. Recommended plugin catalog ids for this release live here too (snapshot of `sysc-plugins` at pin time).
+
+Component release assets are cross-repo gates, tracked as bd issues in sysc-shell: sysc-shell needs a release workflow and first tag; sysc-clipboard needs a release workflow (it has tags but no assets); sysc-walls has a release workflow but no published release and amd64-only assets; sysc-terminal has neither code nor release.
 
 ## Wizard (collect, then execute)
 
@@ -63,7 +72,7 @@ Preflight before or as screen 0: not root, Niri session, Arch-family. Failure is
 1. **Theme** — preset `standard` / `compact` / `expressive`, dark/light. Default: `standard` + dark, `ThemeGen.Source = "wallpaper"`.
 2. **Wallpaper** — one default engine: stills, gSlapper, or terminal effects. Stills directory seeded (`~/Pictures/wallpapers` unless changed). Other engines stay installed; Settings can switch later.
 3. **Plugins** — recommended catalog ids, toggles, default **on**. Bar layout stays `config.Default()`. Not a bar editor.
-4. **Weather** — required. Guess (GeoClue, then IP) they can accept, or Open-Meteo geocode (same provider the shell already uses). Writes `weather.latitude` / `longitude` / place label (≤80 bytes) and **adds the builtin `weather` item to the default bar**. Empty location cannot finish.
+4. **Weather** — required. IP guess they can accept, or Open-Meteo geocode (same provider the shell already uses). Writes `weather.latitude` / `longitude` / place label (≤80 bytes) and **adds the builtin `weather` item to the default bar**. Empty location cannot finish. GeoClue is a named follow-up, not v1.
 5. **Confirm**, then the task list.
 
 `--yes` uses those defaults. Weather cannot be skipped: `--city`, `--lat`/`--lon`, or a successful guess. Otherwise non-interactive install refuses.
@@ -94,14 +103,15 @@ Hero path: download the pin, never `go build` on the machine.
 
 For each SYSC-owned component:
 
-1. Read stamp + on-disk `--version` if the binary speaks it.
-2. Already at this pin → skip.
-3. Present but not this pin, or missing → stop user unit if running, download **all** remaining assets first, verify SHA256, stage, atomic `dst.new` → rename into `~/.local/bin`, keep `dst.bak` until stamp, write/enable user unit with `ExecStart` at that path.
-4. Start units only after every binary is in place.
+1. `disabled` in the pin → skip with the named reason.
+2. Read stamp + on-disk `--version` if the binary speaks it (none do today; the stamp is the source of truth).
+3. Already at this pin → skip.
+4. Present but not this pin, or missing → stop user unit if running, download **all** remaining assets first, verify SHA256, stage, atomic `dst.new` → rename into `~/.local/bin`, keep `dst.bak` until stamp, write/enable user unit with `ExecStart` at that path.
+5. Start units only after every binary is in place.
 
-gSlapper: if on `PATH`, skip. Else install the pinned Arch package. Never replace an existing gSlapper.
+gSlapper: if on `PATH`, skip. Else install the pinned AUR package through an AUR helper (`yay`/`paru`); no helper → SKIP naming the package, never build from source. Never replace an existing gSlapper.
 
-Stamp last, and only after selected units are actually up. Stamp names the SYSC release, each component version, and whether *this* run installed gSlapper.
+Stamp after the selected units are installed and enabled — never before enable. The stamp records the SYSC release, each component version, whether *this* run installed gSlapper, and whether the units were started. From SSH/TTY the units are enabled but not started (`started: false`); the complete screen says to log into Niri, and the next run sees the stamp and offers Update.
 
 ## Niri config
 
@@ -119,7 +129,7 @@ Binds: add a recommended ipc bind only when that key is not already bound in `co
 
 ## systemd user units
 
-Install units from the component trees, `ExecStart=%h/.local/bin/...`, `WantedBy=graphical-session.target`. Do not copy clipboard’s `WantedBy=default.target`. Walls unit must use `~/.local/bin`, not `/usr/local`.
+Unit templates are embedded in the installer (`go:embed`), `ExecStart=%h/.local/bin/...`, `WantedBy=graphical-session.target`. Do not copy clipboard’s `WantedBy=default.target`. The walls unit runs `sysc-walls-daemon` from `~/.local/bin`, not the repo’s `/usr/local/bin` unit.
 
 Never `pkill -f`.
 
@@ -143,7 +153,7 @@ Every user file we mutate or replace is copied **before** the first SYSC write. 
 | Existing `sysc.kdl` we did not generate | Before replace | `sysc.kdl.sysc.bak` |
 | Existing systemd user unit we did not write | Before replace | `<unit>.sysc.bak` next to it |
 | Existing `sysc-shell/config.json` | **Never overwritten on update.** Seed only if absent. If a future force-seed exists, first backup as above | — |
-| `sysc-walls` `daemon.conf` | Keep-by-default (walls installer). Override → numbered `.backup`, `.backup.1` | beside the conf |
+| `sysc-walls` `daemon.conf` | **Not written in v1** — the daemon has built-in defaults when the file is absent. If a later pin writes it: keep-by-default, override → numbered `.backup`, `.backup.1` | beside the conf |
 | Binaries | `dst.bak` until stamp, as already specified | `~/.local/bin` |
 
 Timestamped copies under `~/.local/state/sysc/backups/` on every run that mutates `config.kdl`, so a later edit still has a trail. Rotate to a small cap (five), never delete `*.sysc.bak`.
@@ -176,8 +186,8 @@ chmod +x /tmp/sysc && /tmp/sysc
 
 Table tests, one package, named `-run`. Never `go test ./...` or `-race`.
 
-Pin completeness; checksum refuse; download-all-then-swap restores `.bak`; stamp only after “up”; `--yes` without weather fails; uninstall keep/purge; gSlapper removal gated on stamp; Arch proceeds / Fedora|Debian named refusal; all string ids in four catalogs; `LANG=zh_CN.UTF-8` → zh-Hans; unknown LANG → en; nav strings follow the language switch; niri include is idempotent and does not touch `sysc-shell.kdl`; spawn-at-startup of sysc-shell is commented not deleted; binds skip occupied keys; first `*.sysc.bak` is not overwritten on a second run; seed does not replace an existing shell `config.json`.
+Pin completeness (including a disabled row and a multi-binary row); checksum refuse; download-all-then-swap restores `.bak`; stamp only after enable and records `started`; disabled component is skipped by name; `--yes` without weather fails; IP guess resolves a stub endpoint; uninstall keep/purge; gSlapper removal gated on stamp; Arch proceeds / Fedora|Debian named refusal; all string ids in four catalogs; `LANG=zh_CN.UTF-8` → zh-Hans; unknown LANG → en; nav strings follow the language switch; niri include is idempotent and does not touch `sysc-shell.kdl`; spawn-at-startup of sysc-shell is commented not deleted; binds skip occupied keys; first `*.sysc.bak` is not overwritten on a second run; seed does not replace an existing shell `config.json`.
 
 ## Out of scope (v1)
 
-sysc-lock install; non-Arch package install; compile-from-source; AUR meta-package; bar editor; session locale; greetd; owner deploy-guard; replacing an existing gSlapper.
+sysc-lock install; non-Arch package install; compile-from-source; AUR meta-package; bar editor; session locale; greetd; owner deploy-guard; replacing an existing gSlapper; GeoClue guess (IP only in v1); installing walls display/client binaries.
