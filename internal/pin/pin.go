@@ -3,6 +3,7 @@
 package pin
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 )
@@ -83,4 +84,13 @@ func Decode(data []byte) (Pin, error) {
 		}
 	}
 	return p, nil
+}
+
+//go:embed pin.json
+var embedded []byte
+
+// Load decodes the pin embedded in this binary. The first pin cut replaces
+// pin.json with the tested component releases.
+func Load() (Pin, error) {
+	return Decode(embedded)
 }

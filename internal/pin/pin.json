@@ -1,0 +1,72 @@
+{
+  "release": "v0.1.0",
+  "components": [
+    {
+      "id": "sysc-shell",
+      "tag": "v0.1.0",
+      "unit": "sysc-shell.service",
+      "binaries": [
+        {
+          "name": "sysc-shell",
+          "assets": {
+            "amd64": {
+              "url": "https://github.com/Nomadcxx/sysc-shell/releases/download/v0.1.0/sysc-shell-linux-amd64",
+              "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sysc-clipboard",
+      "tag": "v0.1.1",
+      "unit": "sysc-clipboard.service",
+      "binaries": [
+        {
+          "name": "sysc-clipboard",
+          "assets": {
+            "amd64": {
+              "url": "https://github.com/Nomadcxx/sysc-clipboard/releases/download/v0.1.1/sysc-clipboard-linux-amd64",
+              "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sysc-walls",
+      "tag": "v1.0.1",
+      "unit": "sysc-walls.service",
+      "binaries": [
+        {
+          "name": "sysc-walls-daemon",
+          "assets": {
+            "amd64": {
+              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.0.1/sysc-walls-daemon",
+              "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sysc-terminal",
+      "disabled": true,
+      "reason": "no release assets yet"
+    },
+    {
+      "id": "sysc-lock",
+      "disabled": true,
+      "reason": "not shipped yet"
+    }
+  ],
+  "gslapper": {
+    "family": "arch",
+    "package": "gslapper",
+    "version": "1.5.1"
+  },
+  "recommended": [
+    "org.sysc.weather",
+    "org.sysc.media"
+  ]
+}
