@@ -21,6 +21,25 @@ weather location.
 Niri first. Arch-family distros in v1; others are detected and refused with a
 named message. sysc-lock stays out until that product is finished.
 
+## Install
+
+Once the first release exists, the intended one-liner is:
+
+```sh
+curl -fsSL https://github.com/Nomadcxx/sysc/releases/latest/download/sysc-linux-amd64 -o /tmp/sysc
+chmod +x /tmp/sysc && /tmp/sysc
+```
+
+`install.sh` in this repository is the same fetcher: it detects the
+architecture, verifies the release checksum, and runs the installer. A
+non-interactive shell runs it with `--yes`.
+
+Flags: `--yes` installs with defaults, `--city` or `--lat`/`--lon` set the
+weather location without prompts, and `--lang` picks the installer language
+(`en`, `zh-Hans`, `de`, `fr`). Without a location flag, `--yes` guesses from
+the network; if that fails it refuses and names the flags.
+
 ## Status
 
-Design in progress. Do not curl this repository yet.
+Not ready to run. Do not curl this repository until the first release exists.
+
