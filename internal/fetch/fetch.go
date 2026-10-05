@@ -25,6 +25,17 @@ type Asset struct {
 // rename is a seam so tests can inject a failure mid-swap.
 var rename = os.Rename
 
+// safeName refuses asset names that would escape staging or binDir. Names
+// come from the embedded pin, but this is the write-boundary check.
+// ponytail: basename-only; a component needing subdir layout would extend
+// this, not bypass it.
+func safeName(name string) error {
+	if name == "" || name == "." || name == ".." || name != filepath.Base(name) {
+		return fmt.Errorf("invalid asset name %q: must be a plain file name", name)
+	}
+	return nil
+}
+
 // DownloadAll fetches every asset into staging, verifying each SHA256. A
 // failed download or checksum leaves no file behind for that asset.
 func DownloadAll(ctx context.Context, client *http.Client, staging string, assets []Asset) error {
@@ -32,6 +43,9 @@ func DownloadAll(ctx context.Context, client *http.Client, staging string, asset
 		return err
 	}
 	for _, a := range assets {
+		if err := safeName(a.Name); err != nil {
+			return fmt.Errorf("download %s: %w", a.Name, err)
+		}
 		if err := download(ctx, client, staging, a); err != nil {
 			return err
 		}
@@ -86,6 +100,10 @@ func SwapAll(binDir, staging string, names []string) error {
 	}
 	var swapped []string
 	for _, name := range names {
+		if err := safeName(name); err != nil {
+			Rollback(binDir, swapped)
+			return err
+		}
 		if err := swapOne(binDir, staging, name); err != nil {
 			Rollback(binDir, swapped)
 			return err
@@ -99,6 +117,9 @@ func swapOne(binDir, staging, name string) error {
 	src := filepath.Join(staging, name)
 	dst := filepath.Join(binDir, name)
 	newPath := dst + ".new"
+	if fi, err := os.Lstat(dst); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("refusing to replace symlinked binary %s", dst)
+	}
 	if err := copyFile(src, newPath); err != nil {
 		return err
 	}
@@ -116,11 +137,16 @@ func swapOne(binDir, staging, name string) error {
 }
 
 // Rollback restores each name from its .bak copy, leaving the .bak in place.
+// A name with no .bak was freshly created by this swap, so removing it is
+// the restore; leaving it would orphan an untracked binary in binDir.
 func Rollback(binDir string, names []string) error {
 	var firstErr error
 	for _, name := range names {
 		bak := filepath.Join(binDir, name+".bak")
 		if _, err := os.Stat(bak); err != nil {
+			if err := os.Remove(filepath.Join(binDir, name)); err != nil && !os.IsNotExist(err) && firstErr == nil {
+				firstErr = err
+			}
 			continue
 		}
 		if err := copyFile(bak, filepath.Join(binDir, name)); err != nil && firstErr == nil {
