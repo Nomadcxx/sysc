@@ -97,14 +97,18 @@ func Apply(opts Options) (Result, error) {
 	var body strings.Builder
 	body.WriteString(marker + "\n")
 	body.WriteString("// SYSC owns this file; changes are overwritten on update.\n\n")
+	// Included files are full config fragments. Binds outside binds { } are
+	// rejected ("unexpected node") and the include fails the whole config.
+	body.WriteString("binds {\n")
 	for _, b := range opts.Binds {
 		if occupied[b.Key] {
 			res.BindsSkipped = append(res.BindsSkipped, b.Key)
 			continue
 		}
-		fmt.Fprintf(&body, "%s { %s; }\n", b.Key, b.Action)
+		fmt.Fprintf(&body, "    %s { %s; }\n", b.Key, b.Action)
 		res.BindsAdded = append(res.BindsAdded, b.Key)
 	}
+	body.WriteString("}\n")
 
 	if existing, err := os.ReadFile(opts.SidecarPath); err == nil && !strings.Contains(string(existing), marker) {
 		if _, err := backup.FirstBak(opts.SidecarPath); err != nil {
