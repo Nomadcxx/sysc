@@ -61,12 +61,20 @@ type Options struct {
 	Arch string
 	// Loc enables localized refusal messages when set.
 	Loc *i18n.Locale
+	// InNiriSession is true when WAYLAND_DISPLAY and NIRI_SOCKET are both
+	// set. Combined with an inactive graphical-session.target, the installer
+	// must not comment out the user's sysc-shell autostart. SSH and other
+	// no-Wayland runs leave this false and still enable units without starting.
+	InNiriSession bool
 }
 
 // Result is the task list and the stamp written.
 type Result struct {
 	Tasks []Task
 	Stamp stamp.Stamp
+	// SessionWarning is set when a live niri has no graphical-session.target.
+	// Empty for SSH/TTY enable-only installs and for a real niri-session.
+	SessionWarning string
 }
 
 // xdgConfig mirrors os.UserConfigDir; the sysc-shell binary reads its config
@@ -239,14 +247,28 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		return res, err
 	}
 
+	// A plain `niri` (not niri-session) never activates graphical-session.target.
+	// The user units Requisite= that target, so commenting out spawn-at-startup
+	// here would leave the next login with no bar. SSH has no live session and
+	// still takes the enable-only path below.
+	sessionUp := units.GraphicalSessionActive(systemctl)
+	keepSpawn := opts.InNiriSession && !sessionUp
 	if _, err := niri.Apply(niri.Options{
 		ConfigPath:  filepath.Join(opts.niriDir(), "config.kdl"),
 		SidecarPath: filepath.Join(opts.niriDir(), "sysc.kdl"),
 		StateDir:    filepath.Join(opts.stateDir(), "backups"),
 		Binds:       niri.DefaultBinds,
 		Now:         opts.Now,
+		KeepSpawn:   keepSpawn,
 	}); err != nil {
 		return res, err
+	}
+	if keepSpawn {
+		loc := i18n.EN
+		if opts.Loc != nil {
+			loc = *opts.Loc
+		}
+		res.SessionWarning = i18n.T(loc, "warn.niri_session")
 	}
 
 	st := stamp.Stamp{
@@ -259,7 +281,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	}
 
 	started := false
-	if units.GraphicalSessionActive(systemctl) {
+	if sessionUp {
 		if err := units.StartAll(systemctl); err != nil {
 			// Persist the install state even when starting fails, so
 			// Uninstall can find and roll back this installation (AUD-03).

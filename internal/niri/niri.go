@@ -33,6 +33,10 @@ type Options struct {
 	StateDir    string
 	Binds       []Bind
 	Now         time.Time
+	// KeepSpawn leaves spawn-at-startup "sysc-shell" lines unchanged.
+	// A live niri without graphical-session.target still starts the bar
+	// from that line; commenting it out removes the only autostart.
+	KeepSpawn bool
 }
 
 // Result reports what Apply changed.
@@ -50,8 +54,8 @@ var (
 	incFileRe  = regexp.MustCompile(`(?m)^\s*include\s+"([^"]+)"`)
 )
 
-// Apply comments sysc-shell spawn lines, ensures the sidecar include, and
-// writes the sidecar with every recommended bind whose key is free.
+// Apply comments sysc-shell spawn lines unless KeepSpawn is set, ensures the
+// sidecar include, and writes the sidecar with every recommended bind whose key is free.
 func Apply(opts Options) (Result, error) {
 	var res Result
 	data, err := os.ReadFile(opts.ConfigPath)
@@ -63,9 +67,11 @@ func Apply(opts Options) (Result, error) {
 	}
 	text := string(data)
 
-	commented := spawnRe.ReplaceAllString(text, "$1// spawn-at-startup \"sysc-shell\"")
-	res.SpawnCommented = len(spawnRe.FindAllString(text, -1))
-	text = commented
+	if !opts.KeepSpawn {
+		commented := spawnRe.ReplaceAllString(text, "$1// spawn-at-startup \"sysc-shell\"")
+		res.SpawnCommented = len(spawnRe.FindAllString(text, -1))
+		text = commented
+	}
 
 	if !includeRe.MatchString(text) {
 		nl := "\n"

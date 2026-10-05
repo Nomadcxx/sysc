@@ -20,5 +20,6 @@
   "refuse.distro": "SYSC v1 仅支持 Arch 系发行版。",
   "refuse.root": "请勿以 root 身份运行安装程序。",
   "refuse.niri": "请在 Niri 会话中运行安装程序。",
-  "refuse.weather": "天气组件需要位置信息。"
+  "refuse.weather": "天气组件需要位置信息。",
+  "warn.niri_session": "当前 Niri 会话不是通过 niri-session 启动的，因此 graphical-session.target 未激活。spawn-at-startup \"sysc-shell\" 会保留，用户单元已启用但未启动。请通过 niri-session 启动 Niri 并重新运行安装程序，以便 systemd 启动状态栏。"
 }
