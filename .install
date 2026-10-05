@@ -1,0 +1,27 @@
+#!/bin/sh
+# SYSC source installer. Builds the installer from source and runs it.
+# Usage: curl -fsSL https://raw.githubusercontent.com/Nomadcxx/sysc/main/.install | sh
+set -eu
+
+command -v go >/dev/null 2>&1 || { echo "Go is required: https://go.dev/doc/install" >&2; exit 1; }
+command -v git >/dev/null 2>&1 || { echo "git is required" >&2; exit 1; }
+
+TMP=$(mktemp -d)
+git clone --depth 1 https://github.com/Nomadcxx/sysc.git "$TMP/sysc"
+(cd "$TMP/sysc" && go build -o "$TMP/sysc-bin" ./cmd/sysc)
+
+if [ ! -t 0 ]; then
+  exec </dev/tty 2>/dev/null || true
+fi
+
+set +e
+if [ -t 0 ]; then
+  "$TMP/sysc-bin" "$@"
+else
+  "$TMP/sysc-bin" --yes "$@"
+fi
+status=$?
+set -e
+
+rm -rf "$TMP"
+exit "$status"

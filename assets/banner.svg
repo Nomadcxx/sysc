@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="280" viewBox="0 0 780 280" role="img" aria-label="SYSC — desktop suite for Niri">
+  <rect width="780" height="280" rx="14" fill="#0a0a0a"/>
+  <rect x="0.5" y="0.5" width="779" height="279" rx="14" fill="none" stroke="#666666"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#ffffff">
+    <text x="36" y="46">  ██████████████░████░       ████░   ██████████████░  ██████████████░</text>
+    <text x="36" y="66">████████████████░████░       ████░ ████████████████░████████████████░</text>
+    <text x="36" y="86">████░            ██████░   ██████░ ████░            ████░</text>
+    <text x="36" y="106">██████████████░    ████████████░   ██████████████░  ████░</text>
+    <text x="36" y="126">  ██████████████░    ████████░       ██████████████░████░</text>
+    <text x="36" y="146">            ████░      ████░                   ████░████░</text>
+    <text x="36" y="166">████████████████░      ████░       ████████████████░████████████████░</text>
+    <text x="36" y="186">██████████████░        ████░       ██████████████░    ██████████████░</text>
+  </g>
+  <text x="36" y="216" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#999999">           //////////////SEE YOU IN SPACE COWBOY//////////</text>
+  <text x="36" y="252" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" letter-spacing="4" fill="#cccccc">DESKTOP SUITE FOR NIRI</text>
+</svg>
