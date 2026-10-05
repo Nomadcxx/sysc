@@ -3,15 +3,19 @@ package install
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Nomadcxx/sysc/internal/fetch"
+	"github.com/Nomadcxx/sysc/internal/i18n"
 	"github.com/Nomadcxx/sysc/internal/niri"
 	"github.com/Nomadcxx/sysc/internal/pin"
 	"github.com/Nomadcxx/sysc/internal/seed"
@@ -52,6 +56,11 @@ type Options struct {
 	RemovePkg  func(pkg string) error
 	Systemctl  func(args ...string) error
 	Now        time.Time
+
+	// Arch overrides the host architecture check (empty = runtime.GOARCH).
+	Arch string
+	// Loc enables localized refusal messages when set.
+	Loc *i18n.Locale
 }
 
 // Result is the task list and the stamp written.
@@ -60,13 +69,30 @@ type Result struct {
 	Stamp stamp.Stamp
 }
 
-func (o Options) binDir() string  { return filepath.Join(o.Home, ".local", "bin") }
-func (o Options) unitDir() string { return filepath.Join(o.Home, ".config", "systemd", "user") }
-func (o Options) configPath() string {
-	return filepath.Join(o.Home, ".config", "sysc-shell", "config.json")
+// xdgConfig mirrors os.UserConfigDir; the sysc-shell binary reads its config
+// from there, so the installer must write it to the same place (AUD-05).
+func (o Options) xdgConfig() string {
+	if v := os.Getenv("XDG_CONFIG_HOME"); filepath.IsAbs(v) {
+		return v
+	}
+	return filepath.Join(o.Home, ".config")
 }
-func (o Options) stateDir() string { return filepath.Join(o.Home, ".local", "state", "sysc") }
-func (o Options) niriDir() string  { return filepath.Join(o.Home, ".config", "niri") }
+
+func (o Options) xdgState() string {
+	if v := os.Getenv("XDG_STATE_HOME"); filepath.IsAbs(v) {
+		return v
+	}
+	return filepath.Join(o.Home, ".local", "state")
+}
+
+// binDir stays on ~/.local/bin: it is on PATH by convention, not via XDG.
+func (o Options) binDir() string  { return filepath.Join(o.Home, ".local", "bin") }
+func (o Options) unitDir() string { return filepath.Join(o.xdgConfig(), "systemd", "user") }
+func (o Options) configPath() string {
+	return filepath.Join(o.xdgConfig(), "sysc-shell", "config.json")
+}
+func (o Options) stateDir() string { return filepath.Join(o.xdgState(), "sysc") }
+func (o Options) niriDir() string  { return filepath.Join(o.xdgConfig(), "niri") }
 
 func (o Options) systemctl() func(args ...string) error {
 	if o.Systemctl != nil {
@@ -91,7 +117,28 @@ func unitFor(id string) (units.Unit, bool) {
 func Run(ctx context.Context, opts Options) (Result, error) {
 	var res Result
 	if opts.Answers.Location == "" || (opts.Answers.Latitude == 0 && opts.Answers.Longitude == 0) {
+		if opts.Loc != nil {
+			return res, errors.New(i18n.T(*opts.Loc, "refuse.weather"))
+		}
 		return res, fmt.Errorf("weather coordinates are required")
+	}
+	// ponytail: sysc-shell caps weather labels at 80 bytes; truncate to the
+	// longest valid UTF-8 prefix instead of failing the install on a long name.
+	if len(opts.Answers.Location) > 80 {
+		loc := opts.Answers.Location[:80]
+		for !utf8.ValidString(loc) {
+			loc = loc[:len(loc)-1]
+		}
+		opts.Answers.Location = loc
+	}
+	// The pin only carries amd64 assets; installing them on another host
+	// architecture would swap silently broken binaries (AUD-08).
+	arch := opts.Arch
+	if arch == "" {
+		arch = runtime.GOARCH
+	}
+	if arch != "amd64" {
+		return res, fmt.Errorf("unsupported host architecture: %s (installer only has amd64 assets)", arch)
 	}
 	download := opts.Download
 	if download == nil {
@@ -112,35 +159,65 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	staging := filepath.Join(opts.stateDir(), "staging")
 	os.RemoveAll(staging)
 
+	// Fail fast before touching the system if an enabled component has no
+	// matching unit (AUD-14).
+	enabled := []pin.Component{}
 	for _, c := range opts.Pin.Components {
 		if c.Disabled {
-			res.Tasks = append(res.Tasks, Task{Name: c.ID, Status: Skipped, Reason: c.Reason})
 			continue
 		}
+		if _, ok := unitFor(c.ID); !ok {
+			return res, fmt.Errorf("%s: no matching SYSC unit", c.ID)
+		}
+		enabled = append(enabled, c)
+	}
+
+	// Download and verify everything first, then swap once: a late download
+	// failure must never leave earlier components already swapped (AUD-10).
+	// Rows keep component order; enabled rows flip to done only after swap.
+	rows := make([]Task, 0, len(opts.Pin.Components))
+	var allNames []string
+	for _, c := range opts.Pin.Components {
+		if c.Disabled {
+			rows = append(rows, Task{Name: c.ID, Status: Skipped, Reason: c.Reason})
+			continue
+		}
+		rows = append(rows, Task{Name: c.ID})
 		var assets []fetch.Asset
-		var names []string
 		for _, b := range c.Binaries {
 			a, ok := b.Assets["amd64"]
 			if !ok {
 				return res, fmt.Errorf("%s: no amd64 asset", c.ID)
 			}
 			assets = append(assets, fetch.Asset{Name: b.Name, URL: a.URL, SHA256: a.SHA256})
-			names = append(names, b.Name)
+			allNames = append(allNames, b.Name)
 		}
 		if err := download(ctx, staging, assets); err != nil {
 			return res, fmt.Errorf("%s: %w", c.ID, err)
 		}
-		if err := swap(opts.binDir(), staging, names); err != nil {
-			return res, fmt.Errorf("%s: %w", c.ID, err)
-		}
-		res.Tasks = append(res.Tasks, Task{Name: c.ID, Status: Done})
 	}
+	if len(allNames) > 0 {
+		// Stop user units before swapping so an upgrade actually loads the
+		// new binaries instead of keeping running ones (AUD-07). First
+		// installs have nothing running; errors are not fatal.
+		_ = units.StopAll(systemctl)
+		if err := swap(opts.binDir(), staging, allNames); err != nil {
+			return res, err
+		}
+		for i := range rows {
+			if rows[i].Status == "" {
+				rows[i].Status = Done
+			}
+		}
+	}
+	res.Tasks = append(res.Tasks, rows...)
 
 	gslapperInstalled := false
 	if _, err := lookPath("gslapper"); err == nil {
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: "already on PATH"})
 	} else if opts.InstallPkg == nil {
-		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: "no AUR helper found"})
+		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped,
+			Reason: fmt.Sprintf("no AUR helper found; install gSlapper with yay or paru (package %q)", opts.Pin.GSlapper.Package)})
 	} else if err := opts.InstallPkg(opts.Pin.GSlapper.Package); err != nil {
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: err.Error()})
 	} else {
@@ -148,14 +225,8 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Done})
 	}
 
-	for _, c := range opts.Pin.Components {
-		if c.Disabled {
-			continue
-		}
-		u, ok := unitFor(c.ID)
-		if !ok {
-			continue
-		}
+	for _, c := range enabled {
+		u, _ := unitFor(c.ID)
 		if err := units.Write(opts.unitDir(), u); err != nil {
 			return res, err
 		}
@@ -178,26 +249,29 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		return res, err
 	}
 
-	started := false
-	if units.GraphicalSessionActive(systemctl) {
-		if err := units.StartAll(systemctl); err != nil {
-			return res, err
-		}
-		started = true
-	}
-
 	st := stamp.Stamp{
 		Release:           opts.Pin.Release,
 		Components:        map[string]string{},
 		GSlapperInstalled: gslapperInstalled,
-		Started:           started,
 	}
-	for _, c := range opts.Pin.Components {
-		if c.Disabled {
-			continue
-		}
+	for _, c := range enabled {
 		st.Components[c.ID] = c.Tag
 	}
+
+	started := false
+	if units.GraphicalSessionActive(systemctl) {
+		if err := units.StartAll(systemctl); err != nil {
+			// Persist the install state even when starting fails, so
+			// Uninstall can find and roll back this installation (AUD-03).
+			st.Started = false
+			if werr := stamp.Write(opts.stateDir(), st, true); werr == nil {
+				res.Stamp = st
+			}
+			return res, err
+		}
+		started = true
+	}
+	st.Started = started
 	if err := stamp.Write(opts.stateDir(), st, true); err != nil {
 		return res, err
 	}
@@ -224,10 +298,14 @@ func Uninstall(opts Options) (Result, error) {
 			os.Remove(filepath.Join(opts.binDir(), b.Name))
 		}
 		if u, ok := unitFor(c.ID); ok {
+			// Disable first: removing the unit file alone leaves dangling
+			// wants symlinks under graphical-session.target.wants (AUD-09).
+			_ = systemctl("disable", u.Name)
 			os.Remove(filepath.Join(opts.unitDir(), u.Name))
 		}
 		res.Tasks = append(res.Tasks, Task{Name: c.ID, Status: Done})
 	}
+	_ = systemctl("daemon-reload")
 
 	if st.GSlapperInstalled && opts.RemoveGSlapper && opts.RemovePkg != nil {
 		if err := opts.RemovePkg(opts.Pin.GSlapper.Package); err != nil {
@@ -247,7 +325,7 @@ func Uninstall(opts Options) (Result, error) {
 	}
 
 	if opts.Purge {
-		os.RemoveAll(filepath.Join(opts.Home, ".config", "sysc-shell"))
+		os.RemoveAll(filepath.Dir(opts.configPath()))
 	}
 	os.Remove(filepath.Join(opts.stateDir(), stamp.FileName))
 	return res, nil
