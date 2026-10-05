@@ -13,7 +13,3 @@ go.work.sum
 .commandcode/
 .cursor/
 .claude/
-
-# Plans and design notes stay local until published
-docs/plans/
-docs/roadmap.md
