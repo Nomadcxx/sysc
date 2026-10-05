@@ -44,9 +44,10 @@ type Result struct {
 }
 
 var (
-	includeRe = regexp.MustCompile(`(?m)^\s*include\s+"sysc\.kdl"\s*\n?`)
-	spawnRe   = regexp.MustCompile(`(?m)^([ \t]*)spawn-at-startup[ \t]+"sysc-shell"`)
-	incFileRe = regexp.MustCompile(`(?m)^\s*include\s+"([^"]+)"`)
+	includeRe  = regexp.MustCompile(`(?m)^\s*include\s+"sysc\.kdl"[ \t]*(?://[^\n]*)?[ \t]*\r?\n?`)
+	spawnRe    = regexp.MustCompile(`(?m)^([ \t]*)spawn-at-startup[ \t]+"sysc-shell"`)
+	spawnOffRe = regexp.MustCompile(`(?m)^([ \t]*)// (spawn-at-startup[ \t]+"sysc-shell")`)
+	incFileRe  = regexp.MustCompile(`(?m)^\s*include\s+"([^"]+)"`)
 )
 
 // Apply comments sysc-shell spawn lines, ensures the sidecar include, and
@@ -67,10 +68,14 @@ func Apply(opts Options) (Result, error) {
 	text = commented
 
 	if !includeRe.MatchString(text) {
-		if !strings.HasSuffix(text, "\n") {
-			text += "\n"
+		nl := "\n"
+		if strings.Contains(text, "\r\n") {
+			nl = "\r\n"
 		}
-		text += "include \"sysc.kdl\"\n"
+		if !strings.HasSuffix(text, "\n") {
+			text += nl
+		}
+		text += "include \"sysc.kdl\"" + nl
 		res.IncludeAdded = true
 	}
 
@@ -86,7 +91,7 @@ func Apply(opts Options) (Result, error) {
 		}
 	}
 
-	occupied := occupiedKeys(opts.ConfigPath, text, opts.Binds)
+	occupied := occupiedKeys(opts, text, opts.Binds)
 	var body strings.Builder
 	body.WriteString(marker + "\n")
 	body.WriteString("// SYSC owns this file; changes are overwritten on update.\n\n")
@@ -110,14 +115,20 @@ func Apply(opts Options) (Result, error) {
 	return res, nil
 }
 
-// occupiedKeys reports every bind key already present in the config or its includes.
-func occupiedKeys(configPath, text string, binds []Bind) map[string]bool {
+// occupiedKeys reports every bind key already present in the config or its
+// live includes. The SYSC-owned sidecar is excluded: its binds are ours to
+// rewrite, and counting them as occupied would strip them on reinstall.
+func occupiedKeys(opts Options, text string, binds []Bind) map[string]bool {
 	all := text
-	dir := filepath.Dir(configPath)
+	dir := filepath.Dir(opts.ConfigPath)
+	sidecar := filepath.Clean(opts.SidecarPath)
 	for _, m := range incFileRe.FindAllStringSubmatch(text, -1) {
-		inc, err := os.ReadFile(filepath.Join(dir, m[1]))
-		if err == nil {
-			all += "\n" + string(inc)
+		inc := filepath.Join(dir, m[1])
+		if filepath.Clean(inc) == sidecar {
+			continue
+		}
+		if data, err := os.ReadFile(inc); err == nil {
+			all += "\n" + string(data)
 		}
 	}
 	occupied := map[string]bool{}
@@ -130,11 +141,12 @@ func occupiedKeys(configPath, text string, binds []Bind) map[string]bool {
 	return occupied
 }
 
-// Remove deletes the sidecar and the include line, leaving the rest of the
-// config untouched.
+// Remove deletes the sidecar and the include line, and re-enables the
+// sysc-shell autostart lines Apply commented out.
 func Remove(opts Options) error {
 	if data, err := os.ReadFile(opts.ConfigPath); err == nil {
 		text := includeRe.ReplaceAllString(string(data), "")
+		text = spawnOffRe.ReplaceAllString(text, "$1$2")
 		if text != string(data) {
 			if err := writeAtomic(opts.ConfigPath, []byte(text)); err != nil {
 				return err
