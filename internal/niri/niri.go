@@ -2,11 +2,13 @@
 package niri
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Nomadcxx/sysc/internal/backup"
@@ -164,13 +166,59 @@ func Remove(opts Options) error {
 	return nil
 }
 
+// writeAtomic replaces the contents of path by writing a sibling temp file
+// and renaming it into place. A symlink is resolved first: renaming onto the
+// link would replace it with a regular file and detach a stow, chezmoi, or
+// home-manager config. The link stays, and the edit lands on the file it
+// names. A target the user cannot write, such as a Nix store path, is a
+// named error.
 func writeAtomic(path string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	dest, viaLink, err := writeDest(path)
+	if err != nil {
 		return err
 	}
-	tmp := path + ".tmp"
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return destWriteErr(path, dest, viaLink, err)
+	}
+	tmp := dest + ".tmp"
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return err
+		os.Remove(tmp)
+		return destWriteErr(path, dest, viaLink, err)
 	}
-	return os.Rename(tmp, path)
+	if err := os.Rename(tmp, dest); err != nil {
+		os.Remove(tmp)
+		return destWriteErr(path, dest, viaLink, err)
+	}
+	return nil
+}
+
+// writeDest returns the path to replace. A missing path is returned as-is so
+// a new sidecar can be created. A symlink resolves to its final target.
+func writeDest(path string) (dest string, viaLink bool, err error) {
+	fi, err := os.Lstat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return path, false, nil
+		}
+		return "", false, err
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		return path, false, nil
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", false, fmt.Errorf("refusing to edit %s: symlink cannot be resolved: %w", path, err)
+	}
+	return resolved, true, nil
+}
+
+func destWriteErr(path, dest string, viaLink bool, err error) error {
+	if viaLink && isNotWritable(err) {
+		return fmt.Errorf("refusing to edit %s: symlink target %s is not writable: %w", path, dest, err)
+	}
+	return err
+}
+
+func isNotWritable(err error) bool {
+	return errors.Is(err, syscall.EACCES) || errors.Is(err, syscall.EPERM) || errors.Is(err, syscall.EROFS)
 }
