@@ -86,3 +86,25 @@ func TestSwapRestoresBakOnFailure(t *testing.T) {
 		}
 	}
 }
+
+// A leftover name.bak from an earlier install is not this swap's backup.
+// When the destination did not exist, a later failure must remove the new
+// binary instead of copying that stale backup back into place.
+func TestStaleBakNotRestoredOnFreshSwapFailure(t *testing.T) {
+	binDir := t.TempDir()
+	staging := t.TempDir()
+	if err := os.WriteFile(filepath.Join(binDir, "one.bak"), []byte("stale-one"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(staging, "one"), []byte("new-one"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	err := SwapAll(binDir, staging, []string{"one", "two"})
+	if err == nil {
+		t.Fatal("expected swap failure")
+	}
+	if data, err := os.ReadFile(filepath.Join(binDir, "one")); err == nil {
+		t.Fatalf("fresh swap left binary %q; want it removed", data)
+	}
+}

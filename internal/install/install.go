@@ -139,6 +139,12 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		}
 		opts.Answers.Location = loc
 	}
+	// Coordinate range (and the shell's other seed rules) must fail before any
+	// download, stop, or swap. seed.Write only reports them when no config
+	// file exists yet, which is after the binaries are already in place.
+	if _, err := seed.ConfigJSON(opts.Answers); err != nil {
+		return res, err
+	}
 	// The pin only carries amd64 assets; installing them on another host
 	// architecture would swap silently broken binaries (AUD-08).
 	arch := opts.Arch
@@ -147,6 +153,14 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	}
 	if arch != "amd64" {
 		return res, fmt.Errorf("unsupported host architecture: %s (installer only has amd64 assets)", arch)
+	}
+	// niri.Apply and seed.Write are otherwise the first time these paths are
+	// checked, which is after binaries are swapped and units are enabled.
+	if err := requireNiriConfig(filepath.Join(opts.niriDir(), "config.kdl")); err != nil {
+		return res, err
+	}
+	if err := requireSeedTarget(opts.configPath()); err != nil {
+		return res, err
 	}
 	download := opts.Download
 	if download == nil {
@@ -165,20 +179,24 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	systemctl := opts.systemctl()
 
 	staging := filepath.Join(opts.stateDir(), "staging")
-	os.RemoveAll(staging)
 
 	// Fail fast before touching the system if an enabled component has no
-	// matching unit (AUD-14).
+	// matching unit (AUD-14) or its unit template cannot be read.
 	enabled := []pin.Component{}
 	for _, c := range opts.Pin.Components {
 		if c.Disabled {
 			continue
 		}
-		if _, ok := unitFor(c.ID); !ok {
+		u, ok := unitFor(c.ID)
+		if !ok {
 			return res, fmt.Errorf("%s: no matching SYSC unit", c.ID)
+		}
+		if _, err := units.Content(u); err != nil {
+			return res, err
 		}
 		enabled = append(enabled, c)
 	}
+	os.RemoveAll(staging)
 
 	// Download and verify everything first, then swap once: a late download
 	// failure must never leave earlier components already swapped (AUD-10).
@@ -204,6 +222,27 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 			return res, fmt.Errorf("%s: %w", c.ID, err)
 		}
 	}
+	st := stamp.Stamp{
+		Release:    opts.Pin.Release,
+		Components: map[string]string{},
+	}
+	for _, c := range enabled {
+		st.Components[c.ID] = c.Tag
+	}
+	// persist records the install as soon as it can be undone, then again as
+	// later steps finish (gSlapper, units, niri, start).
+	persist := func() error {
+		if err := stamp.Write(opts.stateDir(), st, true); err != nil {
+			return err
+		}
+		res.Stamp = st
+		return nil
+	}
+
+	// The stamp has to exist from the first change uninstall is responsible
+	// for. That is the swap when there are binaries (a failed swap is rolled
+	// back inside SwapAll and does not get here). With no binaries, seed and
+	// niri are the first writes, so record those before they run.
 	if len(allNames) > 0 {
 		// Stop user units before swapping so an upgrade actually loads the
 		// new binaries instead of keeping running ones (AUD-07). First
@@ -217,10 +256,21 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 				rows[i].Status = Done
 			}
 		}
+		// Swap is the first change uninstall must be able to see. Write the
+		// stamp before gSlapper, unit enable, seed, or niri — any of those
+		// can fail or the process can be interrupted, and a missing stamp
+		// makes uninstall report that nothing is installed.
+		if err := persist(); err != nil {
+			if rerr := fetch.RestoreBackups(opts.binDir(), allNames); rerr != nil {
+				return res, fmt.Errorf("recording install: %w (rollback: %v)", err, rerr)
+			}
+			return res, err
+		}
+	} else if err := persist(); err != nil {
+		return res, err
 	}
 	res.Tasks = append(res.Tasks, rows...)
 
-	gslapperInstalled := false
 	if _, err := lookPath("gslapper"); err == nil {
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: "already on PATH"})
 	} else if opts.InstallPkg == nil {
@@ -229,7 +279,10 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	} else if err := opts.InstallPkg(opts.Pin.GSlapper.Package); err != nil {
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: err.Error()})
 	} else {
-		gslapperInstalled = true
+		st.GSlapperInstalled = true
+		if err := persist(); err != nil {
+			return res, err
+		}
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Done})
 	}
 
@@ -240,6 +293,11 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		}
 		if err := systemctl("enable", u.Name); err != nil {
 			return res, fmt.Errorf("enable %s: %w", u.Name, err)
+		}
+	}
+	if len(enabled) > 0 {
+		if err := persist(); err != nil {
+			return res, err
 		}
 	}
 
@@ -271,34 +329,63 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		res.SessionWarning = i18n.T(loc, "warn.niri_session")
 	}
 
-	st := stamp.Stamp{
-		Release:           opts.Pin.Release,
-		Components:        map[string]string{},
-		GSlapperInstalled: gslapperInstalled,
-	}
-	for _, c := range enabled {
-		st.Components[c.ID] = c.Tag
+	if err := persist(); err != nil {
+		return res, err
 	}
 
 	started := false
 	if sessionUp {
 		if err := units.StartAll(systemctl); err != nil {
-			// Persist the install state even when starting fails, so
-			// Uninstall can find and roll back this installation (AUD-03).
+			// The stamp from the swap already makes this recoverable (AUD-03).
+			// Refresh started=false; a failed rewrite leaves the earlier stamp.
 			st.Started = false
-			if werr := stamp.Write(opts.stateDir(), st, true); werr == nil {
-				res.Stamp = st
-			}
+			_ = persist()
 			return res, err
 		}
 		started = true
 	}
 	st.Started = started
-	if err := stamp.Write(opts.stateDir(), st, true); err != nil {
+	if err := persist(); err != nil {
 		return res, err
 	}
-	res.Stamp = st
 	return res, nil
+}
+
+// requireNiriConfig rejects a missing or non-regular niri config before the
+// install edits anything else. The error matches niri.Apply.
+func requireNiriConfig(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("niri config not found at %s", path)
+		}
+		return err
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if !fi.Mode().IsRegular() {
+		return fmt.Errorf("niri config not found at %s", path)
+	}
+	return nil
+}
+
+// requireSeedTarget rejects a directory sitting on the shell config path.
+// seed.Write would fail the same way, but only after the swap.
+func requireSeedTarget(path string) error {
+	fi, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if fi.IsDir() {
+		return fmt.Errorf("seed %s: path exists and is a directory", path)
+	}
+	return nil
 }
 
 // Uninstall removes what the stamp says SYSC installed, then keeps or purges
@@ -318,6 +405,8 @@ func Uninstall(opts Options) (Result, error) {
 		}
 		for _, b := range c.Binaries {
 			os.Remove(filepath.Join(opts.binDir(), b.Name))
+			// Swap keeps <name>.bak next to the binary it replaced.
+			os.Remove(filepath.Join(opts.binDir(), b.Name+".bak"))
 		}
 		if u, ok := unitFor(c.ID); ok {
 			// Disable first: removing the unit file alone leaves dangling
