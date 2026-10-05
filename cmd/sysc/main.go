@@ -24,17 +24,24 @@ import (
 )
 
 type options struct {
-	Yes  bool
-	City string
-	Lat  float64
-	Lon  float64
-	Lang string
+	Yes            bool
+	City           string
+	Lat            float64
+	Lon            float64
+	Lang           string
+	Purge          bool
+	RemoveGSlapper bool
 }
 
-func parseFlags(args []string) (options, error) {
+func parseFlags(args []string, out io.Writer) (options, error) {
 	var o options
 	fs := flag.NewFlagSet("sysc", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
+	fs.SetOutput(out)
+	fs.Usage = func() {
+		fmt.Fprintln(out, "Usage: sysc [flags]            install")
+		fmt.Fprintln(out, "       sysc uninstall [flags]  remove an installation")
+		fs.PrintDefaults()
+	}
 	fs.BoolVar(&o.Yes, "yes", false, "install with defaults, no prompts")
 	fs.StringVar(&o.City, "city", "", "weather city name")
 	fs.Float64Var(&o.Lat, "lat", 0, "weather latitude")
@@ -44,6 +51,45 @@ func parseFlags(args []string) (options, error) {
 		return o, err
 	}
 	return o, nil
+}
+
+func parseUninstall(args []string, out io.Writer) (options, error) {
+	var o options
+	fs := flag.NewFlagSet("sysc uninstall", flag.ContinueOnError)
+	fs.SetOutput(out)
+	fs.BoolVar(&o.Yes, "yes", false, "no prompts")
+	fs.BoolVar(&o.Purge, "purge", false, "also remove user config")
+	fs.BoolVar(&o.RemoveGSlapper, "remove-gslapper", false, "also remove gSlapper via the AUR helper")
+	fs.StringVar(&o.Lang, "lang", "", "installer language (en, zh-Hans, de, fr)")
+	if err := fs.Parse(args); err != nil {
+		return o, err
+	}
+	return o, nil
+}
+
+func runUninstall(args []string, out io.Writer, home string) int {
+	o, err := parseUninstall(args, out)
+	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2
+	}
+	p, err := pin.Load()
+	if err != nil {
+		fmt.Fprintln(out, err)
+		return 1
+	}
+	opts := installOptions(home, p, seed.Answers{}, true, i18n.Match(o.Lang))
+	opts.Purge = o.Purge
+	opts.RemoveGSlapper = o.RemoveGSlapper
+	res, err := install.Uninstall(opts)
+	printTasks(out, res)
+	if err != nil {
+		fmt.Fprintln(out, err)
+		return 1
+	}
+	return 0
 }
 
 func answersFor(ctx context.Context, o options, recommended []string) (seed.Answers, error) {
@@ -80,8 +126,8 @@ func aurHelper() string {
 	return ""
 }
 
-func installOptions(home string, p pin.Pin, a seed.Answers, yes bool) install.Options {
-	opts := install.Options{Home: home, Pin: p, Answers: a, Yes: yes}
+func installOptions(home string, p pin.Pin, a seed.Answers, yes bool, loc i18n.Locale) install.Options {
+	opts := install.Options{Home: home, Pin: p, Answers: a, Yes: yes, Loc: &loc}
 	if h := aurHelper(); h != "" {
 		opts.InstallPkg = func(pkg string) error {
 			return exec.Command(h, "-S", "--noconfirm", pkg).Run()
@@ -225,8 +271,6 @@ func (m *model) cycle(down bool) {
 	switch m.w.Page {
 	case ui.PageTheme:
 		m.w.Preset = cycle([]string{"standard", "compact", "expressive"}, m.w.Preset, step)
-	case ui.PageWallpaper:
-		m.w.Engine = cycle([]string{"stills", "gslapper", "terminal"}, m.w.Engine, step)
 	case ui.PagePlugins:
 		if len(m.w.Plugins) > 0 {
 			m.w.Plugins = nil
@@ -257,8 +301,14 @@ func (m model) View() string {
 }
 
 func main() {
-	o, err := parseFlags(os.Args[1:])
+	if len(os.Args) > 1 && os.Args[1] == "uninstall" {
+		os.Exit(runUninstall(os.Args[2:], os.Stdout, mustHome()))
+	}
+	o, err := parseFlags(os.Args[1:], os.Stderr)
 	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			os.Exit(0)
+		}
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
@@ -292,12 +342,12 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		res, err := install.Run(ctx, installOptions(home, p, a, true))
+		res, err := install.Run(ctx, installOptions(home, p, a, true, loc))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		printTasks(res)
+		printTasks(os.Stdout, res)
 		return
 	}
 
@@ -310,22 +360,31 @@ func main() {
 	if !ok || !fm.confirmed {
 		return
 	}
-	res, err := install.Run(ctx, installOptions(home, p, fm.w.Answers(), false))
+	res, err := install.Run(ctx, installOptions(home, p, fm.w.Answers(), false, loc))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	printTasks(res)
+	printTasks(os.Stdout, res)
 }
 
-func printTasks(res install.Result) {
+func printTasks(out io.Writer, res install.Result) {
 	for _, task := range res.Tasks {
 		line := fmt.Sprintf("%s: %s", task.Name, task.Status)
 		if task.Reason != "" {
 			line += " (" + task.Reason + ")"
 		}
-		fmt.Println(line)
+		fmt.Fprintln(out, line)
 	}
+}
+
+func mustHome() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	return home
 }
 
 func firstNonEmpty(values ...string) string {
