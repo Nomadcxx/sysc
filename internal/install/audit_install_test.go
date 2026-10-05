@@ -105,6 +105,9 @@ func TestAuditSecondComponentFailureLeavesFirstSwapped(t *testing.T) {
 	}
 }
 
+// Enable can fail after the swap. The stamp is written as soon as that swap
+// succeeds, so Uninstall can remove the partial install instead of refusing
+// with "no SYSC installation found".
 func TestAuditEnableFailureLeavesNoStamp(t *testing.T) {
 	home := setupHome(t)
 	enables := 0
@@ -127,14 +130,17 @@ func TestAuditEnableFailureLeavesNoStamp(t *testing.T) {
 	if _, err := Run(context.Background(), opts); err == nil {
 		t.Fatal("Run succeeded despite enable failure")
 	}
-	if _, err := stamp.Read(filepath.Join(home, ".local", "state", "sysc")); err == nil {
-		t.Errorf("stamp exists despite enable failure — claim 18 mechanism broken")
+	if _, err := stamp.Read(filepath.Join(home, ".local", "state", "sysc")); err != nil {
+		t.Fatalf("stamp missing after enable failure: %v", err)
+	}
+	if _, err := Uninstall(Options{Home: home, Pin: loadPin(t), Systemctl: noopSystemctl}); err != nil {
+		t.Fatalf("Uninstall could not see the partial install: %v", err)
 	}
 }
 
-// If start fails after enable, Run returns before stamping; Uninstall then
-// refuses everything ("no SYSC installation found"). Enabled units + installed
-// binaries + seeded config are orphaned with no supported cleanup.
+// If start fails after enable, the stamp from the swap is already on disk,
+// so Uninstall can roll the install back instead of reporting that nothing
+// is installed.
 func TestAuditStartFailureStateIsRecoverable(t *testing.T) {
 	home := setupHome(t)
 	opts := Options{
