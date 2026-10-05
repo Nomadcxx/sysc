@@ -20,5 +20,6 @@
   "refuse.distro": "SYSC v1 ne prend en charge que les distributions de la famille Arch.",
   "refuse.root": "Ne pas exécuter l'installateur en tant que root.",
   "refuse.niri": "Lancer l'installateur dans une session Niri.",
-  "refuse.weather": "Un lieu est requis pour le widget météo."
+  "refuse.weather": "Un lieu est requis pour le widget météo.",
+  "warn.niri_session": "Cette session Niri n'a pas été lancée avec niri-session, donc graphical-session.target est inactif. spawn-at-startup \"sysc-shell\" reste actif, et les unités utilisateur sont activées mais pas démarrées. Lancez Niri avec niri-session, puis relancez l'installateur pour que systemd démarre la barre."
 }

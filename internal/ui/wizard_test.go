@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Nomadcxx/sysc/internal/i18n"
@@ -49,6 +50,25 @@ func TestWeatherBlocksConfirm(t *testing.T) {
 	w.Longitude = 13.405
 	if w.Next().Page != PageConfirm {
 		t.Fatal("complete weather did not advance")
+	}
+}
+
+func TestConfirmWarnsPlainNiriSession(t *testing.T) {
+	w := NewWizard(i18n.EN, nil)
+	w.Page = PageConfirm
+	w.Preset = "standard"
+	w.Mode = "dark"
+	w.Location = "Berlin"
+	if strings.Contains(w.Body(), "niri-session") {
+		t.Fatal("confirm warned when the session can start user units")
+	}
+	w.PlainNiri = true
+	body := w.Body()
+	if !strings.Contains(body, "niri-session") {
+		t.Fatalf("confirm body = %q, want a niri-session warning", body)
+	}
+	if !strings.Contains(body, "spawn-at-startup") {
+		t.Fatalf("confirm body = %q, want the spawn line called out", body)
 	}
 }
 

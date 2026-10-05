@@ -28,6 +28,15 @@ func TestEveryKeyExistsInAllCatalogs(t *testing.T) {
 	}
 }
 
+func TestWarnNiriSessionNamesCommand(t *testing.T) {
+	for _, loc := range []Locale{EN, ZH, DE, FR} {
+		msg := T(loc, "warn.niri_session")
+		if !strings.Contains(msg, "niri-session") {
+			t.Errorf("%s warning %q does not name niri-session", loc, msg)
+		}
+	}
+}
+
 func TestMatchLANG(t *testing.T) {
 	cases := map[string]Locale{
 		"zh_CN.UTF-8": ZH,
