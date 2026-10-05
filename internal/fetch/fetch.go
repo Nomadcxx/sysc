@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -88,6 +89,35 @@ func download(ctx context.Context, client *http.Client, staging string, a Asset)
 		return fmt.Errorf("checksum mismatch for %s: got %s want %s", a.Name, got, a.SHA256)
 	}
 	return rename(tmp.Name(), filepath.Join(staging, a.Name))
+}
+
+// RestoreBackups returns each named binary to the state it had before this
+// run: a destination with a .bak is restored from it, one without a .bak did
+// not exist before the run and is removed. Used when a step after a
+// successful swap fails and the whole swap must be undone.
+func RestoreBackups(binDir string, names []string) error {
+	var errs []string
+	for _, name := range names {
+		if err := safeName(name); err != nil {
+			errs = append(errs, err.Error())
+			continue
+		}
+		dst := filepath.Join(binDir, name)
+		bak := dst + ".bak"
+		if _, err := os.Stat(bak); err == nil {
+			if err := os.Rename(bak, dst); err != nil {
+				errs = append(errs, err.Error())
+			}
+			continue
+		}
+		if err := os.Remove(dst); err != nil && !errors.Is(err, os.ErrNotExist) {
+			errs = append(errs, err.Error())
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("restoring %d binaries: %s", len(errs), strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 // SwapAll moves each staged binary into binDir. The current destination is
