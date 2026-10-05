@@ -296,6 +296,8 @@ func Uninstall(opts Options) (Result, error) {
 		}
 		for _, b := range c.Binaries {
 			os.Remove(filepath.Join(opts.binDir(), b.Name))
+			// Swap keeps <name>.bak next to the binary it replaced.
+			os.Remove(filepath.Join(opts.binDir(), b.Name+".bak"))
 		}
 		if u, ok := unitFor(c.ID); ok {
 			// Disable first: removing the unit file alone leaves dangling
