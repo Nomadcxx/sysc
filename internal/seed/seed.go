@@ -38,14 +38,30 @@ var defaultRight = []any{
 	map[string]any{"id": "notifications"},
 }
 
-// ConfigJSON builds the overlay. Coordinates and a place label are required:
-// a weather item without them fails the shell's own validation.
+// maxLocationBytes mirrors sysc-shell's weather place-label limit: a longer
+// label is rejected by the shell and an invalid config stops the bar.
+const maxLocationBytes = 80
+
+// ConfigJSON builds the overlay. Coordinates and a place label are required,
+// coordinates must be real, and the label must fit the shell's byte cap:
+// anything the shell's own validation rejects would stop the bar from
+// starting at all.
 func ConfigJSON(a Answers) ([]byte, error) {
 	if a.Latitude == 0 && a.Longitude == 0 {
 		return nil, errors.New("weather coordinates are required")
 	}
 	if a.Location == "" {
 		return nil, errors.New("weather location label is required")
+	}
+	if !(a.Latitude >= -90 && a.Latitude <= 90) {
+		return nil, fmt.Errorf("weather latitude %g is outside -90 through 90", a.Latitude)
+	}
+	if !(a.Longitude >= -180 && a.Longitude <= 180) {
+		return nil, fmt.Errorf("weather longitude %g is outside -180 through 180", a.Longitude)
+	}
+	if len(a.Location) > maxLocationBytes {
+		return nil, fmt.Errorf("weather location %q is %d bytes, over the %d-byte limit",
+			a.Location, len(a.Location), maxLocationBytes)
 	}
 	if a.Preset == "" {
 		a.Preset = "standard"
@@ -77,7 +93,10 @@ func ConfigJSON(a Answers) ([]byte, error) {
 // Write seeds the shell configuration at path. An existing file is never
 // overwritten: the user's shell configuration outlives installer updates.
 func Write(path string, a Answers) error {
-	if _, err := os.Stat(path); err == nil {
+	if fi, err := os.Stat(path); err == nil {
+		if fi.IsDir() {
+			return fmt.Errorf("seed %s: path exists and is a directory", path)
+		}
 		return nil
 	} else if !os.IsNotExist(err) {
 		return err
