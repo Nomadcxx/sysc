@@ -124,6 +124,7 @@ func Apply(opts Options) (Result, error) {
 // occupiedKeys reports every bind key already present in the config or its
 // live includes. The SYSC-owned sidecar is excluded: its binds are ours to
 // rewrite, and counting them as occupied would strip them on reinstall.
+// Comparison uses niri's key identity, so Mod+space occupies Mod+Space.
 func occupiedKeys(opts Options, text string, binds []Bind) map[string]bool {
 	all := text
 	dir := filepath.Dir(opts.ConfigPath)
@@ -137,10 +138,20 @@ func occupiedKeys(opts Options, text string, binds []Bind) map[string]bool {
 			all += "\n" + string(data)
 		}
 	}
+	found := map[string]bool{}
+	for _, line := range strings.Split(all, "\n") {
+		name := leadingNodeName(line)
+		if name == "" {
+			continue
+		}
+		if key, ok := canonicalBind(name); ok {
+			found[key] = true
+		}
+	}
 	occupied := map[string]bool{}
 	for _, b := range binds {
-		re := regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(b.Key) + `\b`)
-		if re.MatchString(all) {
+		key, ok := canonicalBind(b.Key)
+		if ok && found[key] {
 			occupied[b.Key] = true
 		}
 	}
