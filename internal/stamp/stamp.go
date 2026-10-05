@@ -1,6 +1,7 @@
-// Package stamp records what a SYSC install put on disk. It is written only
-// after the selected user units are enabled, so a stamp always means the
-// suite is installed even when the session was not running to start it.
+// Package stamp records what a SYSC install put on disk so uninstall can undo
+// it. Callers write a stamp as soon as the first durable change lands and
+// update it as later steps finish. Started stays false when the graphical
+// session was not running to start the units.
 package stamp
 
 import (
@@ -35,9 +36,8 @@ func Read(stateDir string) (Stamp, error) {
 	return s, nil
 }
 
-// Write stores the stamp. When the units were not enabled it writes nothing:
-// a stamp before enable would make the next run skip an install that never
-// completed.
+// Write stores the stamp when enabled is true. A false value writes nothing,
+// so a caller that has not yet changed the system does not publish a record.
 func Write(stateDir string, s Stamp, enabled bool) error {
 	if !enabled {
 		return nil
@@ -62,5 +62,9 @@ func Write(stateDir string, s Stamp, enabled bool) error {
 		os.Remove(tmp.Name())
 		return err
 	}
-	return os.Rename(tmp.Name(), filepath.Join(stateDir, FileName))
+	if err := os.Rename(tmp.Name(), filepath.Join(stateDir, FileName)); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+	return nil
 }
