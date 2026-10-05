@@ -2,12 +2,15 @@ package install
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/Nomadcxx/sysc/internal/fetch"
+	"github.com/Nomadcxx/sysc/internal/i18n"
 	"github.com/Nomadcxx/sysc/internal/pin"
 	"github.com/Nomadcxx/sysc/internal/seed"
 	"github.com/Nomadcxx/sysc/internal/stamp"
@@ -202,6 +205,190 @@ func TestUninstallPurge(t *testing.T) {
 	}
 	if exists(filepath.Join(home, ".config", "sysc-shell", "config.json")) {
 		t.Fatal("purge left the shell config")
+	}
+}
+
+// A live niri (WAYLAND_DISPLAY + NIRI_SOCKET) whose graphical-session.target
+// is inactive was started as plain `niri`, not niri-session. Commenting the
+// user's spawn line there removes the only autostart; the units cannot start.
+func TestNiriSessionInactiveGraphicalTargetKeepsSpawn(t *testing.T) {
+	home := setupHome(t)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("XDG_STATE_HOME", "")
+	config := filepath.Join(home, ".config", "niri", "config.kdl")
+	const original = "spawn-at-startup \"sysc-shell\"\ninput {}\n"
+	if err := os.WriteFile(config, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var calls []string
+	loc := i18n.EN
+	res, err := Run(context.Background(), Options{
+		Home:          home,
+		Pin:           loadPin(t),
+		Answers:       weatherAnswers(),
+		Yes:           true,
+		InNiriSession: true,
+		Loc:           &loc,
+		Download:      func(context.Context, string, []fetch.Asset) error { return nil },
+		Swap:          func(string, string, []string) error { return nil },
+		LookPath:      func(string) (string, error) { return "", os.ErrNotExist },
+		Systemctl: func(args ...string) error {
+			calls = append(calls, strings.Join(args, " "))
+			if len(args) > 0 && args[0] == "is-active" {
+				return fmt.Errorf("inactive")
+			}
+			return nil
+		},
+		Now: time.Unix(1000, 0),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(data)
+	if strings.Contains(text, `// spawn-at-startup "sysc-shell"`) {
+		t.Fatalf("autostart commented while graphical-session.target is inactive:\n%s", text)
+	}
+	if !strings.Contains(text, `spawn-at-startup "sysc-shell"`) {
+		t.Fatalf("spawn line missing:\n%s", text)
+	}
+	if !strings.Contains(text, `include "sysc.kdl"`) {
+		t.Fatalf("sidecar include missing:\n%s", text)
+	}
+	if res.Stamp.Started {
+		t.Fatal("stamp claims units started")
+	}
+	sawInactiveCheck := false
+	enabled, started := false, false
+	for _, call := range calls {
+		switch {
+		case strings.HasPrefix(call, "is-active"):
+			if !strings.Contains(call, "graphical-session.target") {
+				t.Fatalf("is-active checked %q, want graphical-session.target", call)
+			}
+			sawInactiveCheck = true
+		case strings.HasPrefix(call, "enable "):
+			enabled = true
+		case strings.HasPrefix(call, "start "):
+			started = true
+		}
+	}
+	if !sawInactiveCheck {
+		t.Fatal("systemctl is-active graphical-session.target was not called")
+	}
+	if !enabled {
+		t.Fatal("units were not enabled")
+	}
+	if started {
+		t.Fatal("units were started despite inactive graphical-session.target")
+	}
+	if !strings.Contains(res.SessionWarning, "niri-session") {
+		t.Fatalf("session warning = %q, want a niri-session message", res.SessionWarning)
+	}
+}
+
+// SSH / no-Wayland installs stay enable-only: the spawn line is still commented
+// so a later niri-session does not start the shell twice, and nothing is started.
+func TestNoWaylandInstallEnablesWithoutStarting(t *testing.T) {
+	home := setupHome(t)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("XDG_STATE_HOME", "")
+	config := filepath.Join(home, ".config", "niri", "config.kdl")
+	if err := os.WriteFile(config, []byte("spawn-at-startup \"sysc-shell\"\ninput {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var calls []string
+	res, err := Run(context.Background(), Options{
+		Home:     home,
+		Pin:      loadPin(t),
+		Answers:  weatherAnswers(),
+		Yes:      true,
+		Download: func(context.Context, string, []fetch.Asset) error { return nil },
+		Swap:     func(string, string, []string) error { return nil },
+		LookPath: func(string) (string, error) { return "", os.ErrNotExist },
+		Systemctl: func(args ...string) error {
+			calls = append(calls, strings.Join(args, " "))
+			if len(args) > 0 && args[0] == "is-active" {
+				return fmt.Errorf("inactive")
+			}
+			return nil
+		},
+		Now: time.Unix(1000, 0),
+	})
+	if err != nil {
+		t.Fatalf("SSH install failed: %v", err)
+	}
+	if res.Stamp.Started {
+		t.Fatal("SSH install started units")
+	}
+	if res.SessionWarning != "" {
+		t.Fatalf("SSH install warned about a live niri session: %q", res.SessionWarning)
+	}
+	data, err := os.ReadFile(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `// spawn-at-startup "sysc-shell"`) {
+		t.Fatalf("SSH install left the shell spawn live:\n%s", data)
+	}
+	enabled, started := false, false
+	for _, call := range calls {
+		if strings.HasPrefix(call, "enable ") {
+			enabled = true
+		}
+		if strings.HasPrefix(call, "start ") {
+			started = true
+		}
+	}
+	if !enabled || started {
+		t.Fatalf("enable=%v start=%v, want enable only; calls=%v", enabled, started, calls)
+	}
+}
+
+func TestLiveNiriSessionStartsAndCommentsSpawn(t *testing.T) {
+	home := setupHome(t)
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("XDG_STATE_HOME", "")
+	config := filepath.Join(home, ".config", "niri", "config.kdl")
+	if err := os.WriteFile(config, []byte("spawn-at-startup \"sysc-shell\"\ninput {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	started := false
+	res, err := Run(context.Background(), Options{
+		Home:          home,
+		Pin:           loadPin(t),
+		Answers:       weatherAnswers(),
+		Yes:           true,
+		InNiriSession: true,
+		Download:      func(context.Context, string, []fetch.Asset) error { return nil },
+		Swap:          func(string, string, []string) error { return nil },
+		LookPath:      func(string) (string, error) { return "", os.ErrNotExist },
+		Systemctl: func(args ...string) error {
+			if len(args) > 0 && args[0] == "start" {
+				started = true
+			}
+			return nil
+		},
+		Now: time.Unix(1000, 0),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Stamp.Started || !started {
+		t.Fatalf("stamp.Started=%v systemctl start=%v", res.Stamp.Started, started)
+	}
+	if res.SessionWarning != "" {
+		t.Fatalf("active niri-session warned: %q", res.SessionWarning)
+	}
+	data, err := os.ReadFile(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `// spawn-at-startup "sysc-shell"`) {
+		t.Fatalf("spawn not commented under an active graphical session:\n%s", data)
 	}
 }
 

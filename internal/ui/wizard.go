@@ -31,6 +31,10 @@ type Wizard struct {
 	Latitude  float64
 	Longitude float64
 	Location  string
+
+	// PlainNiri is a live niri whose graphical-session.target is inactive.
+	// The confirm page warns and the install leaves the shell spawn line.
+	PlainNiri bool
 }
 
 // NewWizard starts on the theme page with the guided defaults.
@@ -119,7 +123,11 @@ func (w Wizard) Body() string {
 		}
 		return i18n.T(w.Locale, "weather.blurb") + "\n\n" + place
 	default:
-		return i18n.T(w.Locale, "confirm.blurb") + "\n\n" +
+		body := i18n.T(w.Locale, "confirm.blurb") + "\n\n" +
 			w.Preset + " • " + w.Mode + " • " + w.Location
+		if w.PlainNiri {
+			body += "\n\n" + i18n.T(w.Locale, "warn.niri_session")
+		}
+		return body
 	}
 }

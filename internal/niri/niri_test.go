@@ -75,6 +75,41 @@ func TestCommentShellSpawnOnly(t *testing.T) {
 	}
 }
 
+func TestKeepSpawnLeavesAutostart(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, "config.kdl")
+	write(t, config, "spawn-at-startup \"sysc-shell\"\ninput {}\n")
+	opts := Options{
+		ConfigPath:  config,
+		SidecarPath: filepath.Join(dir, "sysc.kdl"),
+		StateDir:    filepath.Join(dir, "state"),
+		Binds:       DefaultBinds,
+		Now:         time.Unix(1000, 0),
+		KeepSpawn:   true,
+	}
+	res, err := Apply(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.SpawnCommented != 0 {
+		t.Fatalf("SpawnCommented = %d; want 0", res.SpawnCommented)
+	}
+	data, err := os.ReadFile(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(data)
+	if strings.Contains(text, `// spawn-at-startup "sysc-shell"`) {
+		t.Fatalf("spawn commented despite KeepSpawn:\n%s", text)
+	}
+	if !strings.Contains(text, "spawn-at-startup \"sysc-shell\"\n") {
+		t.Fatalf("spawn line changed:\n%s", text)
+	}
+	if !strings.Contains(text, `include "sysc.kdl"`) {
+		t.Fatalf("include not added:\n%s", text)
+	}
+}
+
 func TestSkipOccupiedBind(t *testing.T) {
 	dir := t.TempDir()
 	config := filepath.Join(dir, "config.kdl")

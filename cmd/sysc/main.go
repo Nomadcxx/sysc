@@ -21,6 +21,7 @@ import (
 	"github.com/Nomadcxx/sysc/internal/preflight"
 	"github.com/Nomadcxx/sysc/internal/seed"
 	"github.com/Nomadcxx/sysc/internal/ui"
+	"github.com/Nomadcxx/sysc/internal/units"
 )
 
 type options struct {
@@ -157,12 +158,14 @@ type model struct {
 	note        string
 }
 
-func newModel(loc i18n.Locale, recommended []string) model {
+func newModel(loc i18n.Locale, recommended []string, plainNiri bool) model {
 	in := textinput.New()
 	in.Placeholder = i18n.T(loc, "weather.place")
 	in.CharLimit = 80
+	w := ui.NewWizard(loc, recommended)
+	w.PlainNiri = plainNiri
 	m := model{
-		w:           ui.NewWizard(loc, recommended),
+		w:           w,
 		recommended: recommended,
 		input:       in,
 		width:       ui.MinWidth,
@@ -314,16 +317,18 @@ func main() {
 	}
 	loc := i18n.Match(firstNonEmpty(o.Lang, os.Getenv("LANG")))
 	osr, _ := os.ReadFile("/etc/os-release")
+	wayland, niriSocket := os.Getenv("WAYLAND_DISPLAY"), os.Getenv("NIRI_SOCKET")
 	if err := preflight.Check(preflight.Env{
 		EUID:           os.Geteuid(),
 		OSRelease:      osr,
-		WaylandDisplay: os.Getenv("WAYLAND_DISPLAY"),
-		NiriSocket:     os.Getenv("NIRI_SOCKET"),
+		WaylandDisplay: wayland,
+		NiriSocket:     niriSocket,
 		Locale:         loc,
 	}); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	inNiri := liveNiriSession(wayland, niriSocket)
 	p, err := pin.Load()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -342,7 +347,9 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		res, err := install.Run(ctx, installOptions(home, p, a, true, loc))
+		opts := installOptions(home, p, a, true, loc)
+		opts.InNiriSession = inNiri
+		res, err := install.Run(ctx, opts)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -351,7 +358,8 @@ func main() {
 		return
 	}
 
-	final, err := tea.NewProgram(newModel(loc, p.Recommended), tea.WithAltScreen()).Run()
+	plainNiri := inNiri && !graphicalSessionActive()
+	final, err := tea.NewProgram(newModel(loc, p.Recommended, plainNiri), tea.WithAltScreen()).Run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -360,7 +368,9 @@ func main() {
 	if !ok || !fm.confirmed {
 		return
 	}
-	res, err := install.Run(ctx, installOptions(home, p, fm.w.Answers(), false, loc))
+	opts := installOptions(home, p, fm.w.Answers(), false, loc)
+	opts.InNiriSession = inNiri
+	res, err := install.Run(ctx, opts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -376,6 +386,20 @@ func printTasks(out io.Writer, res install.Result) {
 		}
 		fmt.Fprintln(out, line)
 	}
+	// The stamp is written only after enable. Started stays false when the
+	// units were enabled and not started (SSH, TTY, or plain niri).
+	if res.Stamp.Release != "" && !res.Stamp.Started {
+		fmt.Fprintln(out, "units: enabled but not started")
+	}
+	if res.SessionWarning != "" {
+		fmt.Fprintln(out, res.SessionWarning)
+	}
+}
+
+func graphicalSessionActive() bool {
+	return units.GraphicalSessionActive(func(args ...string) error {
+		return exec.Command("systemctl", append([]string{"--user"}, args...)...).Run()
+	})
 }
 
 func mustHome() string {
@@ -385,6 +409,12 @@ func mustHome() string {
 		os.Exit(1)
 	}
 	return home
+}
+
+// liveNiriSession reports a compositor the user is inside right now.
+// A missing WAYLAND_DISPLAY (SSH, TTY) is not a live session.
+func liveNiriSession(wayland, socket string) bool {
+	return wayland != "" && socket != ""
 }
 
 func firstNonEmpty(values ...string) string {
