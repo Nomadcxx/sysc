@@ -233,3 +233,86 @@ func TestUninstallGSlapperGatedOnStamp(t *testing.T) {
 		t.Fatalf("gslapper removed %d times; want 1", removed)
 	}
 }
+
+func versionedDownload(version string) func(context.Context, string, []fetch.Asset) error {
+	return func(_ context.Context, staging string, assets []fetch.Asset) error {
+		if err := os.MkdirAll(staging, 0o755); err != nil {
+			return err
+		}
+		for _, a := range assets {
+			if err := os.WriteFile(filepath.Join(staging, a.Name), []byte(version+"-"+a.Name), 0o755); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func installOpts(t *testing.T, home, version string) Options {
+	t.Helper()
+	return Options{
+		Home:      home,
+		Pin:       loadPin(t),
+		Answers:   weatherAnswers(),
+		Yes:       true,
+		Download:  versionedDownload(version),
+		LookPath:  func(string) (string, error) { return "", os.ErrNotExist },
+		Systemctl: noopSystemctl,
+		Now:       time.Unix(1000, 0),
+	}
+}
+
+func TestUpgradeThenUninstallRemovesBaks(t *testing.T) {
+	home := setupHome(t)
+	if _, err := Run(context.Background(), installOpts(t, home, "v1")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Run(context.Background(), installOpts(t, home, "v2")); err != nil {
+		t.Fatal(err)
+	}
+	binDir := filepath.Join(home, ".local", "bin")
+	names := []string{"sysc-shell", "sysc-clipboard", "sysc-walls-daemon"}
+	for _, name := range names {
+		data, err := os.ReadFile(filepath.Join(binDir, name+".bak"))
+		if err != nil {
+			t.Fatalf("upgrade did not leave %s.bak: %v", name, err)
+		}
+		if string(data) != "v1-"+name {
+			t.Fatalf("%s.bak = %q, want v1 backup", name, data)
+		}
+	}
+	if _, err := Uninstall(Options{Home: home, Pin: loadPin(t), Systemctl: noopSystemctl}); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range names {
+		if exists(filepath.Join(binDir, name)) {
+			t.Errorf("uninstall left %s", name)
+		}
+		if exists(filepath.Join(binDir, name+".bak")) {
+			t.Errorf("uninstall left %s.bak", name)
+		}
+	}
+}
+
+func TestFailedFreshInstallIgnoresStaleBak(t *testing.T) {
+	home := setupHome(t)
+	binDir := filepath.Join(home, ".local", "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const stale = "v1-sysc-shell"
+	if err := os.WriteFile(filepath.Join(binDir, "sysc-shell.bak"), []byte(stale), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("/nonexistent", filepath.Join(binDir, "sysc-clipboard")); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Run(context.Background(), installOpts(t, home, "v3"))
+	if err == nil {
+		t.Fatal("expected swap to refuse the symlinked binary")
+	}
+	shell := filepath.Join(binDir, "sysc-shell")
+	if data, readErr := os.ReadFile(shell); readErr == nil {
+		t.Fatalf("failed fresh install left %s = %q; want the new binary removed", shell, data)
+	}
+}
