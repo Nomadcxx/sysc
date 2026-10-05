@@ -2,11 +2,13 @@
 package niri
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Nomadcxx/sysc/internal/backup"
@@ -95,14 +97,18 @@ func Apply(opts Options) (Result, error) {
 	var body strings.Builder
 	body.WriteString(marker + "\n")
 	body.WriteString("// SYSC owns this file; changes are overwritten on update.\n\n")
+	// Included files are full config fragments. Binds outside binds { } are
+	// rejected ("unexpected node") and the include fails the whole config.
+	body.WriteString("binds {\n")
 	for _, b := range opts.Binds {
 		if occupied[b.Key] {
 			res.BindsSkipped = append(res.BindsSkipped, b.Key)
 			continue
 		}
-		fmt.Fprintf(&body, "%s { %s; }\n", b.Key, b.Action)
+		fmt.Fprintf(&body, "    %s { %s; }\n", b.Key, b.Action)
 		res.BindsAdded = append(res.BindsAdded, b.Key)
 	}
+	body.WriteString("}\n")
 
 	if existing, err := os.ReadFile(opts.SidecarPath); err == nil && !strings.Contains(string(existing), marker) {
 		if _, err := backup.FirstBak(opts.SidecarPath); err != nil {
@@ -118,6 +124,7 @@ func Apply(opts Options) (Result, error) {
 // occupiedKeys reports every bind key already present in the config or its
 // live includes. The SYSC-owned sidecar is excluded: its binds are ours to
 // rewrite, and counting them as occupied would strip them on reinstall.
+// Comparison uses niri's key identity, so Mod+space occupies Mod+Space.
 func occupiedKeys(opts Options, text string, binds []Bind) map[string]bool {
 	all := text
 	dir := filepath.Dir(opts.ConfigPath)
@@ -131,10 +138,20 @@ func occupiedKeys(opts Options, text string, binds []Bind) map[string]bool {
 			all += "\n" + string(data)
 		}
 	}
+	found := map[string]bool{}
+	for _, line := range strings.Split(all, "\n") {
+		name := leadingNodeName(line)
+		if name == "" {
+			continue
+		}
+		if key, ok := canonicalBind(name); ok {
+			found[key] = true
+		}
+	}
 	occupied := map[string]bool{}
 	for _, b := range binds {
-		re := regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(b.Key) + `\b`)
-		if re.MatchString(all) {
+		key, ok := canonicalBind(b.Key)
+		if ok && found[key] {
 			occupied[b.Key] = true
 		}
 	}
@@ -164,13 +181,59 @@ func Remove(opts Options) error {
 	return nil
 }
 
+// writeAtomic replaces the contents of path by writing a sibling temp file
+// and renaming it into place. A symlink is resolved first: renaming onto the
+// link would replace it with a regular file and detach a stow, chezmoi, or
+// home-manager config. The link stays, and the edit lands on the file it
+// names. A target the user cannot write, such as a Nix store path, is a
+// named error.
 func writeAtomic(path string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	dest, viaLink, err := writeDest(path)
+	if err != nil {
 		return err
 	}
-	tmp := path + ".tmp"
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return destWriteErr(path, dest, viaLink, err)
+	}
+	tmp := dest + ".tmp"
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return err
+		os.Remove(tmp)
+		return destWriteErr(path, dest, viaLink, err)
 	}
-	return os.Rename(tmp, path)
+	if err := os.Rename(tmp, dest); err != nil {
+		os.Remove(tmp)
+		return destWriteErr(path, dest, viaLink, err)
+	}
+	return nil
+}
+
+// writeDest returns the path to replace. A missing path is returned as-is so
+// a new sidecar can be created. A symlink resolves to its final target.
+func writeDest(path string) (dest string, viaLink bool, err error) {
+	fi, err := os.Lstat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return path, false, nil
+		}
+		return "", false, err
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		return path, false, nil
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", false, fmt.Errorf("refusing to edit %s: symlink cannot be resolved: %w", path, err)
+	}
+	return resolved, true, nil
+}
+
+func destWriteErr(path, dest string, viaLink bool, err error) error {
+	if viaLink && isNotWritable(err) {
+		return fmt.Errorf("refusing to edit %s: symlink target %s is not writable: %w", path, dest, err)
+	}
+	return err
+}
+
+func isNotWritable(err error) bool {
+	return errors.Is(err, syscall.EACCES) || errors.Is(err, syscall.EPERM) || errors.Is(err, syscall.EROFS)
 }
