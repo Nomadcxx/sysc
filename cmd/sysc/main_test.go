@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,21 +10,21 @@ import (
 )
 
 func TestParseFlags(t *testing.T) {
-	o, err := parseFlags([]string{"--yes", "--city", "Berlin", "--lang", "de"})
+	o, err := parseFlags([]string{"--yes", "--city", "Berlin", "--lang", "de"}, io.Discard)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !o.Yes || o.City != "Berlin" || o.Lang != "de" {
 		t.Fatalf("options = %+v", o)
 	}
-	o, err = parseFlags([]string{"--lat", "52.52", "--lon", "13.405"})
+	o, err = parseFlags([]string{"--lat", "52.52", "--lon", "13.405"}, io.Discard)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if o.Lat != 52.52 || o.Lon != 13.405 {
 		t.Fatalf("options = %+v", o)
 	}
-	if _, err := parseFlags([]string{"--nope"}); err == nil {
+	if _, err := parseFlags([]string{"--nope"}, io.Discard); err == nil {
 		t.Fatal("unknown flag accepted")
 	}
 }

@@ -25,7 +25,6 @@ type Wizard struct {
 
 	Preset       string
 	Mode         string
-	Engine       string
 	WallpaperDir string
 	Plugins      []string
 
@@ -41,7 +40,6 @@ func NewWizard(loc i18n.Locale, recommended []string) Wizard {
 		Page:         PageTheme,
 		Preset:       "standard",
 		Mode:         "dark",
-		Engine:       "stills",
 		WallpaperDir: "~/Pictures/wallpapers",
 		Plugins:      append([]string(nil), recommended...),
 	}
@@ -111,7 +109,7 @@ func (w Wizard) Body() string {
 	case PageTheme:
 		return i18n.T(w.Locale, "theme.blurb") + "\n\n" + w.Preset + " • " + w.Mode
 	case PageWallpaper:
-		return i18n.T(w.Locale, "wallpaper.blurb") + "\n\n" + w.Engine + " • " + w.WallpaperDir
+		return i18n.T(w.Locale, "wallpaper.blurb") + "\n\n" + w.WallpaperDir
 	case PagePlugins:
 		return i18n.T(w.Locale, "plugins.blurb") + "\n\n" + strings.Join(w.Plugins, ", ")
 	case PageWeather:
@@ -122,6 +120,6 @@ func (w Wizard) Body() string {
 		return i18n.T(w.Locale, "weather.blurb") + "\n\n" + place
 	default:
 		return i18n.T(w.Locale, "confirm.blurb") + "\n\n" +
-			w.Preset + " • " + w.Mode + " • " + w.Engine + " • " + w.Location
+			w.Preset + " • " + w.Mode + " • " + w.Location
 	}
 }
