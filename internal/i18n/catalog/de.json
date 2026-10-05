@@ -1,0 +1,16 @@
+{
+  "nav.next": "Weiter",
+  "nav.back": "Zurück",
+  "nav.quit": "Beenden",
+  "nav.language": "Sprache",
+  "nav.wait": "Bitte warten",
+  "weather.title": "Wetter",
+  "weather.blurb": "SYSC benötigt einen Ort für das Wetter-Widget.",
+  "theme.title": "Design",
+  "wallpaper.title": "Hintergrund",
+  "plugins.title": "Plugins",
+  "refuse.distro": "SYSC v1 unterstützt nur Arch-basierte Distributionen.",
+  "refuse.root": "Das Installationsprogramm nicht als root ausführen.",
+  "refuse.niri": "Das Installationsprogramm in einer Niri-Sitzung starten.",
+  "refuse.weather": "Für das Wetter-Widget ist ein Ort erforderlich."
+}

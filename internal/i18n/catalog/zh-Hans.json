@@ -1,0 +1,16 @@
+{
+  "nav.next": "下一步",
+  "nav.back": "返回",
+  "nav.quit": "退出",
+  "nav.language": "语言",
+  "nav.wait": "请稍候",
+  "weather.title": "天气",
+  "weather.blurb": "SYSC 的天气组件需要一个位置。",
+  "theme.title": "主题",
+  "wallpaper.title": "壁纸",
+  "plugins.title": "插件",
+  "refuse.distro": "SYSC v1 仅支持 Arch 系发行版。",
+  "refuse.root": "请勿以 root 身份运行安装程序。",
+  "refuse.niri": "请在 Niri 会话中运行安装程序。",
+  "refuse.weather": "天气组件需要位置信息。"
+}

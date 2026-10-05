@@ -1,0 +1,16 @@
+{
+  "nav.next": "Suivant",
+  "nav.back": "Retour",
+  "nav.quit": "Quitter",
+  "nav.language": "Langue",
+  "nav.wait": "Veuillez patienter",
+  "weather.title": "Météo",
+  "weather.blurb": "SYSC a besoin d'un lieu pour le widget météo.",
+  "theme.title": "Thème",
+  "wallpaper.title": "Fond d'écran",
+  "plugins.title": "Extensions",
+  "refuse.distro": "SYSC v1 ne prend en charge que les distributions de la famille Arch.",
+  "refuse.root": "Ne pas exécuter l'installateur en tant que root.",
+  "refuse.niri": "Lancer l'installateur dans une session Niri.",
+  "refuse.weather": "Un lieu est requis pour le widget météo."
+}
