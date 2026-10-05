@@ -6,7 +6,14 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"github.com/Nomadcxx/sysc/internal/units"
 )
+
+var shaRE = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
 
 // Asset is one downloadable file for a component binary.
 type Asset struct {
@@ -47,8 +54,10 @@ type Pin struct {
 }
 
 // Decode parses and validates a pin file. It rejects a missing SHA, a missing
-// amd64 asset, an enabled sysc-lock, a disabled row without a reason, and an
-// empty recommended plugin list.
+// amd64 asset, a malformed or non-https asset, a binary name that is not a
+// plain file name, an unknown or duplicate unit, an empty tag, an enabled
+// sysc-lock, a disabled row without a reason, an empty recommended plugin
+// list, and a gslapper row without a package name.
 func Decode(data []byte) (Pin, error) {
 	var p Pin
 	if err := json.Unmarshal(data, &p); err != nil {
@@ -60,7 +69,17 @@ func Decode(data []byte) (Pin, error) {
 	if len(p.Recommended) == 0 {
 		return Pin{}, fmt.Errorf("pin: recommended plugin list is empty")
 	}
+	// A gslapper row that declares a family or version must name a package;
+	// pins with no AUR slot at all are valid (non-arch distros).
+	if (p.GSlapper.Family != "" || p.GSlapper.Version != "") && strings.TrimSpace(p.GSlapper.Package) == "" {
+		return Pin{}, fmt.Errorf("pin: gslapper package name is empty")
+	}
+	seen := map[string]bool{}
 	for _, c := range p.Components {
+		if seen[c.ID] {
+			return Pin{}, fmt.Errorf("pin: duplicate component id %q", c.ID)
+		}
+		seen[c.ID] = true
 		if c.Disabled {
 			if c.Reason == "" {
 				return Pin{}, fmt.Errorf("pin: component %q is disabled without a reason", c.ID)
@@ -74,6 +93,9 @@ func Decode(data []byte) (Pin, error) {
 			return Pin{}, fmt.Errorf("pin: component %q has no binaries", c.ID)
 		}
 		for _, b := range c.Binaries {
+			if b.Name == "" || b.Name == "." || b.Name == ".." || b.Name != filepath.Base(b.Name) {
+				return Pin{}, fmt.Errorf("pin: component %q binary name %q is not a plain file name", c.ID, b.Name)
+			}
 			a, ok := b.Assets["amd64"]
 			if !ok {
 				return Pin{}, fmt.Errorf("pin: component %q binary %q has no amd64 asset", c.ID, b.Name)
@@ -81,9 +103,30 @@ func Decode(data []byte) (Pin, error) {
 			if a.URL == "" || a.SHA256 == "" {
 				return Pin{}, fmt.Errorf("pin: component %q binary %q amd64 asset needs url and sha256", c.ID, b.Name)
 			}
+			if !strings.HasPrefix(a.URL, "https://") {
+				return Pin{}, fmt.Errorf("pin: component %q binary %q url %q is not https", c.ID, b.Name, a.URL)
+			}
+			if !shaRE.MatchString(a.SHA256) {
+				return Pin{}, fmt.Errorf("pin: component %q binary %q sha256 %q is not 64 hex chars", c.ID, b.Name, a.SHA256)
+			}
+		}
+		if c.Unit != "" && !knownUnit(c.Unit) {
+			return Pin{}, fmt.Errorf("pin: component %q unit %q is not a known SYSC unit", c.ID, c.Unit)
+		}
+		if c.Tag == "" {
+			return Pin{}, fmt.Errorf("pin: component %q tag is empty", c.ID)
 		}
 	}
 	return p, nil
+}
+
+func knownUnit(name string) bool {
+	for _, u := range units.All {
+		if u.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 //go:embed pin.json
