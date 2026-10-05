@@ -1,5 +1,7 @@
 {
   "nav.next": "下一步",
+  "nav.navigate": "导航",
+  "ui.enlarge": "请将终端放大到至少 80×24。",
   "nav.back": "返回",
   "nav.quit": "退出",
   "nav.language": "语言",

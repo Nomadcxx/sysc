@@ -1,5 +1,7 @@
 {
   "nav.next": "Suivant",
+  "nav.navigate": "Naviguer",
+  "ui.enlarge": "Agrandissez le terminal à au moins 80×24.",
   "nav.back": "Retour",
   "nav.quit": "Quitter",
   "nav.language": "Langue",

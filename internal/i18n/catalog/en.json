@@ -1,5 +1,7 @@
 {
   "nav.next": "Next",
+  "nav.navigate": "Navigate",
+  "ui.enlarge": "Enlarge the terminal to at least 80×24.",
   "nav.back": "Back",
   "nav.quit": "Quit",
   "nav.language": "Language",
