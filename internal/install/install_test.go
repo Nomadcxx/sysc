@@ -503,3 +503,13 @@ func TestFailedFreshInstallIgnoresStaleBak(t *testing.T) {
 		t.Fatalf("failed fresh install left %s = %q; want the new binary removed", shell, data)
 	}
 }
+
+// TestMain makes Options.Home authoritative for the whole package.
+// xdgConfig and xdgState prefer $XDG_CONFIG_HOME/$XDG_STATE_HOME, and a CI
+// runner exports both, so without this every test reads the runner's real
+// config instead of its own temp home.
+func TestMain(m *testing.M) {
+	os.Unsetenv("XDG_CONFIG_HOME")
+	os.Unsetenv("XDG_STATE_HOME")
+	os.Exit(m.Run())
+}

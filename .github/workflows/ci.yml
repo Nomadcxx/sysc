@@ -21,6 +21,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # The dot-install test drives install.sh through bash, dash, script and
+      # setsid; ubuntu runners ship without dash.
+      - name: install test deps
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dash
       - name: gofmt
         run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
       - name: vet
