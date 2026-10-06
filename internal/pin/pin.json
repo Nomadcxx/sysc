@@ -10,8 +10,8 @@
           "name": "sysc-shell",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-shell/releases/download/v0.1.0/sysc-shell-linux-amd64",
-              "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+              "url": "https://github.com/Nomadcxx/sysc-shell/releases/download/v0.1.0/sysc-shell",
+              "sha256": "d8279b8d3d4bc6e8b1bac222fe43ffee4eb4626b590e13332ff2d7ecf6e250a1"
             }
           }
         }
@@ -19,15 +19,15 @@
     },
     {
       "id": "sysc-clipboard",
-      "tag": "v0.1.1",
+      "tag": "v0.1.2",
       "unit": "sysc-clipboard.service",
       "binaries": [
         {
           "name": "sysc-clipboard",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-clipboard/releases/download/v0.1.1/sysc-clipboard-linux-amd64",
-              "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+              "url": "https://github.com/Nomadcxx/sysc-clipboard/releases/download/v0.1.2/sysc-clipboard",
+              "sha256": "472d95daae0a13e4f69653a98d38bfdefc945f73f686f247e412c151ca1f0204"
             }
           }
         }
@@ -35,15 +35,15 @@
     },
     {
       "id": "sysc-walls",
-      "tag": "v1.0.1",
+      "tag": "v1.0.2",
       "unit": "sysc-walls.service",
       "binaries": [
         {
           "name": "sysc-walls-daemon",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.0.1/sysc-walls-daemon",
-              "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.0.2/sysc-walls-daemon",
+              "sha256": "a5c90ea248599d44acf64d3eccf6db3e215e6d232f550ab14e72739881eb92b4"
             }
           }
         }
@@ -52,7 +52,7 @@
     {
       "id": "sysc-terminal",
       "disabled": true,
-      "reason": "no release assets yet"
+      "reason": "not wired: no user unit template yet"
     },
     {
       "id": "sysc-lock",
