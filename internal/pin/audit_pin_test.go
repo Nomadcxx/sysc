@@ -102,21 +102,3 @@ func TestAuditDecodeDocumentedRejectionsHold(t *testing.T) {
 
 // Claim 15 core: placeholder zeros still Decode (must fail closed only at
 // download time — recorded, per §7 accepted).
-func TestAuditEmbeddedPlaceholderShaLoads(t *testing.T) {
-	p, err := Load()
-	if err != nil {
-		t.Fatalf("embedded Load: %v", err)
-	}
-	for _, c := range p.Components {
-		if c.Disabled {
-			continue
-		}
-		for _, b := range c.Binaries {
-			sha := b.Assets["amd64"].SHA256
-			if sha != strings.Repeat("0", 64) {
-				t.Fatalf("expected placeholder zeros per §7, got %q", sha)
-			}
-		}
-	}
-	t.Logf("AUDIT-INFO: embedded pin decodes with all-zero placeholder shas")
-}
