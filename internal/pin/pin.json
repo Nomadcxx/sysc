@@ -72,15 +72,15 @@
     },
     {
       "id": "sysc-tray",
-      "tag": "v0.1.0",
+      "tag": "v0.1.1",
       "unit": "sysc-tray.service",
       "binaries": [
         {
           "name": "sysc-tray",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-tray/releases/download/v0.1.0/sysc-tray",
-              "sha256": "0e951693e5f586e67dff469361e1fe0ed6064e91b77b6fad06fc0fbaefa6ecd7"
+              "url": "https://github.com/Nomadcxx/sysc-tray/releases/download/v0.1.1/sysc-tray",
+              "sha256": "baee68bfe89e912a74059b0a7a5de40b728489e122787b277861d2a7158e2b85"
             }
           }
         }
