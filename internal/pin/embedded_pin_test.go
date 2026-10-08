@@ -47,8 +47,8 @@ func TestEmbeddedPinIsPublishable(t *testing.T) {
 			}
 		}
 	}
-	if enabled != 3 {
-		t.Errorf("enabled components = %d, want 3", enabled)
+	if enabled != 5 {
+		t.Errorf("enabled components = %d, want 5", enabled)
 	}
 }
 
