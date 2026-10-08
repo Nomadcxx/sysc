@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -22,7 +23,8 @@ func TestConfirmStartsInstallInTUI(t *testing.T) {
 		<-blocked
 		return install.Result{}, nil
 	}
-	m.send = func(tea.Msg) {}
+	sends := make(chan tea.Msg, 16)
+	m.send = func(msg tea.Msg) { sends <- msg }
 	next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	got, ok := next.(model)
 	if !ok {
@@ -35,6 +37,19 @@ func TestConfirmStartsInstallInTUI(t *testing.T) {
 		t.Fatalf("confirm returned cmd, want nil (install runs in the background)")
 	}
 	close(blocked)
+	// Wait for runInstall to finish before the test returns so t.TempDir
+	// cleanup never races the goroutine writing its log file.
+	deadline := time.After(5 * time.Second)
+	for {
+		select {
+		case msg := <-sends:
+			if _, ok := msg.(installDoneMsg); ok {
+				return
+			}
+		case <-deadline:
+			t.Fatal("install did not finish")
+		}
+	}
 }
 
 func TestTaskLines(t *testing.T) {
