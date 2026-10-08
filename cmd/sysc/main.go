@@ -171,7 +171,7 @@ func newModel(loc i18n.Locale, recommended []string, plainNiri bool) model {
 		width:       ui.MinWidth,
 		height:      ui.MinHeight,
 	}
-	m.beams = ui.NewBeamsTextEffect(m.width, m.height, ui.Banner())
+	m.beams = ui.NewBeamsTextEffect(m.width, ui.BannerHeight(), ui.Banner())
 	return m
 }
 
@@ -200,7 +200,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		if m.beams != nil {
-			m.beams.Resize(msg.Width, msg.Height)
+			m.beams.Resize(msg.Width, ui.BannerHeight())
 		}
 	case tickMsg:
 		if m.beams != nil {
