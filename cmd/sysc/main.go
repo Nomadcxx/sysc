@@ -297,6 +297,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
+		case "left", "right":
+			if m.w.Page == ui.PageTheme {
+				m.w = m.w.CycleMode()
+			}
 		case "up", "down":
 			m.cycle(msg.String() == "down")
 		default:

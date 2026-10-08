@@ -48,7 +48,7 @@ func Nav(loc i18n.Locale, page Page, step Step) string {
 	parts := make([]string, 0, 6)
 	switch page {
 	case PageTheme:
-		parts = append(parts, "↑↓ "+i18n.T(loc, "nav.preset"))
+		parts = append(parts, "↑↓ "+i18n.T(loc, "nav.preset"), "←→ "+i18n.T(loc, "nav.mode"))
 	case PagePlugins:
 		parts = append(parts, "↑↓ "+i18n.T(loc, "nav.toggle"))
 	case PageWeather:

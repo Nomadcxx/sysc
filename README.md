@@ -6,7 +6,7 @@ Guided installer for the SYSC desktop on [Niri](https://github.com/YaLTeR/niri),
 
 One binary installs a tested set of components into the user session
 (`~/.local/bin`, systemd --user) and walks first-run defaults: theme, wallpaper
-engine, recommended bar plugins, and weather location.
+directory, recommended bar plugins, and weather location.
 
 ## Installation
 

@@ -74,6 +74,16 @@ func (w Wizard) CycleLocale() Wizard {
 	return w
 }
 
+// CycleMode toggles the theme mode between dark and light.
+func (w Wizard) CycleMode() Wizard {
+	if w.Mode == "dark" {
+		w.Mode = "light"
+	} else {
+		w.Mode = "dark"
+	}
+	return w
+}
+
 // Answers converts the collected state for the installer.
 func (w Wizard) Answers() seed.Answers {
 	return seed.Answers{

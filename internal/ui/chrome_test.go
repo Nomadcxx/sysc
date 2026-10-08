@@ -42,6 +42,9 @@ func TestNavPageAccurate(t *testing.T) {
 	if !strings.Contains(theme, "Preset") {
 		t.Fatalf("theme nav = %q", theme)
 	}
+	if !strings.Contains(theme, i18n.T(i18n.EN, "nav.mode")) {
+		t.Fatalf("theme nav missing the mode hint: %q", theme)
+	}
 	wall := Nav(i18n.EN, PageWallpaper, StepWizard)
 	if strings.Contains(wall, "↑↓") {
 		t.Fatalf("wallpaper nav advertises dead arrows: %q", wall)

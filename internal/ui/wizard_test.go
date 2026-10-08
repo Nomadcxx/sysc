@@ -102,3 +102,28 @@ func TestF9CyclesLocale(t *testing.T) {
 		t.Fatal("back moved past the first page")
 	}
 }
+
+func TestCycleModeToggles(t *testing.T) {
+	w := NewWizard(i18n.EN, nil)
+	if w.Mode != "dark" {
+		t.Fatalf("default mode = %q", w.Mode)
+	}
+	if w = w.CycleMode(); w.Mode != "light" {
+		t.Fatalf("after one toggle = %q", w.Mode)
+	}
+	if w = w.CycleMode(); w.Mode != "dark" {
+		t.Fatalf("after two toggles = %q", w.Mode)
+	}
+}
+
+func TestWallpaperCopyMentionsDirectory(t *testing.T) {
+	w := NewWizard(i18n.EN, nil)
+	w.Page = PageWallpaper
+	body := w.Body()
+	if !strings.Contains(body, w.WallpaperDir) {
+		t.Fatalf("wallpaper body = %q, want the directory", body)
+	}
+	if strings.Contains(strings.ToLower(body), "engine") {
+		t.Fatalf("wallpaper body still promises an engine: %q", body)
+	}
+}

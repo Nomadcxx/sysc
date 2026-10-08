@@ -80,3 +80,20 @@ func TestInstallingIgnoresKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestThemeArrowsChangeMode(t *testing.T) {
+	m := newModel(i18n.EN, nil, false)
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	got := next.(model)
+	if got.w.Mode != "light" {
+		t.Fatalf("left: mode = %q, want light", got.w.Mode)
+	}
+	next, _ = got.Update(tea.KeyMsg{Type: tea.KeyRight})
+	got = next.(model)
+	if got.w.Mode != "dark" {
+		t.Fatalf("right: mode = %q, want dark", got.w.Mode)
+	}
+	if got.w.Page != ui.PageTheme {
+		t.Fatalf("arrows changed the page to %v", got.w.Page)
+	}
+}
