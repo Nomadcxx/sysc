@@ -80,7 +80,20 @@ func View(loc i18n.Locale, title, body string, page Page, step Step, width, heig
 		parts = append(parts, beams.Render())
 	}
 	parts = append(parts, titleStyle.Render(title))
-	parts = append(parts, boxStyle.Width(width-8).Render(body))
+	// Cap the body so the box border survives on one screen: height minus the
+	// footer, title and the box's own border+padding, minus the banner rows.
+	budget := height - 2 - 4
+	if beams != nil {
+		budget -= BannerHeight()
+	}
+	if budget < 1 {
+		budget = 1
+	}
+	bodyLines := strings.Split(body, "\n")
+	if len(bodyLines) > budget {
+		bodyLines = append(bodyLines[:budget-1:budget-1], "…")
+	}
+	parts = append(parts, boxStyle.Width(width-8).Render(strings.Join(bodyLines, "\n")))
 	lines := strings.Split(lipgloss.JoinVertical(lipgloss.Center, parts...), "\n")
 	for len(lines) < height-1 {
 		lines = append(lines, "")

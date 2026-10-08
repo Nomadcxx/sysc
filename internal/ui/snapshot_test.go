@@ -58,3 +58,23 @@ func TestChromeFitsOneScreen(t *testing.T) {
 		}
 	}
 }
+
+// TestChromeTallBodyKeepsBoxOnOneScreen covers the real install screen, whose
+// task list can overflow the shortest supported terminal: the body must be
+// truncated with a marker instead of clipping the box border off screen.
+func TestChromeTallBodyKeepsBoxOnOneScreen(t *testing.T) {
+	width, height := 80, 24
+	beams := NewBeamsTextEffect(width, BannerHeight(), Banner())
+	body := strings.Repeat("task\n", 40) + "task"
+	out := View(i18n.EN, "T", body, PageConfirm, StepInstalling, width, height, beams)
+	lines := strings.Split(out, "\n")
+	if len(lines) != height {
+		t.Fatalf("rendered %d lines, want exactly %d", len(lines), height)
+	}
+	if !strings.Contains(out, "╰") {
+		t.Fatalf("bottom border clipped on a tall body:\n%s", stripANSI(out))
+	}
+	if !strings.Contains(out, "…") {
+		t.Fatalf("tall body was not truncated")
+	}
+}
