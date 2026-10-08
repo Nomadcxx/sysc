@@ -59,5 +59,6 @@
   "conflicts.state.found": "détecté",
   "conflicts.failed": "reprise échouée",
   "conflicts.dbus_failed": "impossible d'écrire %s ; un autre démon peut encore prendre le nom du bus",
-  "warn.conflict_kept": "%s reste actif ; les notifications peuvent s'afficher en double"
+  "warn.conflict_kept": "%s reste actif ; les notifications peuvent s'afficher en double",
+  "warn.conflict_failed": "la prise en main de %s a échoué ; elle est peut-être encore active"
 }

@@ -59,5 +59,6 @@
   "conflicts.state.found": "已检测到",
   "conflicts.failed": "接管失败",
   "conflicts.dbus_failed": "无法写入 %s；其他通知守护进程可能仍占据总线名称",
-  "warn.conflict_kept": "%s 仍在运行；通知可能重复显示"
+  "warn.conflict_kept": "%s 仍在运行；通知可能重复显示",
+  "warn.conflict_failed": "%s 接管失败；它可能仍在运行"
 }

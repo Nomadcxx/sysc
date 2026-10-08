@@ -154,16 +154,36 @@ func componentEnabled(enabled []pin.Component, id string) bool {
 	return false
 }
 
-// handoversExcept drops any earlier record with the same name so a re-applied
-// handover replaces it instead of stacking.
-func handoversExcept(hs []stamp.Handover, name string) []stamp.Handover {
-	out := hs[:0]
-	for _, h := range hs {
-		if h.Name != name {
-			out = append(out, h)
+// mergeHandover replaces the record kept for a component so re-applying a
+// handover does not stack, without forgetting what only the earlier record
+// knew: a commented spawn line is no longer detected, so dropping it would
+// leave the marker in the config forever, and a provider whose unit is now
+// off was still enabled when we first took it over.
+func mergeHandover(hs []stamp.Handover, h stamp.Handover) []stamp.Handover {
+	var out []stamp.Handover
+	for _, prev := range hs {
+		if prev.Name != h.Name {
+			out = append(out, prev)
+			continue
 		}
+		if h.Unit == "" && prev.Unit != "" {
+			h.Unit, h.UnitWasEnabled = prev.Unit, prev.UnitWasEnabled
+		}
+		for _, old := range prev.Lines {
+			found := false
+			for _, line := range h.Lines {
+				if line.Commented == old.Commented {
+					found = true
+					break
+				}
+			}
+			if !found {
+				h.Lines = append(h.Lines, old)
+			}
+		}
+		continue
 	}
-	return out
+	return append(out, h)
 }
 
 // Run installs the pin: fetch and swap binaries, gSlapper, units, seed, niri,
@@ -448,12 +468,12 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		switch opts.Conflicts[f.Name] {
 		case conflict.HandOver:
 			_, err := conflict.Apply(opts.ConflictEnv, f, conflict.HandOver, func(h stamp.Handover) error {
-				st.HandedOver = append(handoversExcept(st.HandedOver, h.Name), h)
+				st.HandedOver = mergeHandover(st.HandedOver, h)
 				return persist()
 			})
 			if err != nil {
 				row.Status, row.Reason = Failed, err.Error()
-				res.Warnings = append(res.Warnings, fmt.Sprintf(i18n.T(loc, "warn.conflict_kept"), f.Name))
+				res.Warnings = append(res.Warnings, fmt.Sprintf(i18n.T(loc, "warn.conflict_failed"), f.Name))
 			} else {
 				row.Status = Done
 			}
@@ -555,7 +575,9 @@ func Uninstall(opts Options) (Result, error) {
 		row := Task{Name: "conflict:" + h.Name}
 		var errs []error
 		if h.Unit != "" && h.UnitWasEnabled {
-			if err := systemctl("enable", h.Unit); err != nil {
+			// enable --now: the handover stopped a running provider, so
+			// restoring it means running again, not only enabled.
+			if err := systemctl("enable", "--now", h.Unit); err != nil {
 				errs = append(errs, err)
 			}
 		}

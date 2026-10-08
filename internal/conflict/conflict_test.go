@@ -269,3 +269,91 @@ func TestApplyChangedLineFails(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+// The bus dump names the systemd user manager in Unit= and the owner's own
+// unit in UserUnit=. A handover must never target the manager.
+func TestParseBusStatusUsesOwnerUnit(t *testing.T) {
+	b := parseBusStatus("PID=316\nComm=mako\nCGroup=/user.slice/user-1000.slice/user@1000.service/app.slice/mako.service\nUnit=user@1000.service\nSlice=user-1000.slice\nUserUnit=mako.service\nUniqueName=:1.24\n")
+	if b.Unit != "user@1000.service" || b.UserUnit != "mako.service" {
+		t.Fatalf("parsed %+v", b)
+	}
+	if got := busUnit(b); got != "mako.service" {
+		t.Fatalf("busUnit = %q, want mako.service", got)
+	}
+	if got := busUnit(parseBusStatus("PID=316\nComm=mako\nUnit=user@1000.service\n")); got != "" {
+		t.Fatalf("manager-only dump = %q, want no unit", got)
+	}
+}
+
+// SYSC's own companions holding the bus names is the goal, not a conflict.
+func TestDetectSkipsOwnCompanions(t *testing.T) {
+	findings, err := Detect(Env{
+		ProcRoot: t.TempDir(),
+		Busctl: func(args ...string) (string, error) {
+			switch args[1] {
+			case "org.freedesktop.Notifications":
+				return "PID=632\nComm=sysc-notify\nUnit=user@1000.service\nUserUnit=sysc-notify.service\n", nil
+			case "org.kde.StatusNotifierWatcher":
+				return "PID=633\nComm=sysc-tray\nUnit=user@1000.service\nUserUnit=sysc-tray.service\n", nil
+			}
+			return "", os.ErrNotExist
+		},
+		Systemctl: func(...string) (string, error) { return "", os.ErrNotExist },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("findings = %+v, want none", findings)
+	}
+}
+
+// A provider started by niri owns the name with no unit of its own: the
+// handover must fall back to the PID and the commented line.
+func TestHandoverOfUnitlessBusOwnerNeverStopsAManager(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "config.kdl")
+	writeFile(t, cfg, "input {}\nspawn-at-startup \"mako\"\n")
+	env := testClockEnv()
+	env.ProcRoot = t.TempDir()
+	env.NiriConfig = cfg
+	env.Busctl = func(args ...string) (string, error) {
+		if args[1] == "org.freedesktop.Notifications" {
+			return "PID=316\nComm=mako\nUnit=user@1000.service\nSlice=user-1000.slice\n", nil
+		}
+		return "", os.ErrNotExist
+	}
+	var calls []string
+	env.Systemctl = func(args ...string) (string, error) {
+		calls = append(calls, strings.Join(args, " "))
+		return "", os.ErrNotExist
+	}
+	env.Signal = func(int, syscall.Signal) error { return syscall.ESRCH }
+
+	findings, err := Detect(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 || findings[0].Name != "mako" || findings[0].Unit != "" || len(findings[0].NiriLines) != 1 {
+		t.Fatalf("findings = %+v", findings)
+	}
+	if Defaults(findings, false, false)["mako"] != HandOver {
+		t.Fatalf("notifications should default to handover: %+v", findings)
+	}
+	calls = nil
+	if _, err := Apply(env, findings[0], HandOver, nil); err != nil {
+		t.Fatal(err)
+	}
+	for _, call := range calls {
+		if strings.Contains(call, "user@") {
+			t.Fatalf("handover targeted the session manager: %v", calls)
+		}
+	}
+	data, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "// sysc-handover: spawn-at-startup \"mako\"") {
+		t.Fatalf("spawn line not commented: %q", data)
+	}
+}

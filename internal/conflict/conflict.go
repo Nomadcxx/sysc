@@ -213,9 +213,10 @@ func baseName(s string) string {
 var mainPIDRe = regexp.MustCompile(`Main PID:\s*(\d+)\s*\(([^)]+)\)`)
 
 type busStatus struct {
-	PID  int
-	Comm string
-	Unit string
+	PID      int
+	Comm     string
+	Unit     string
+	UserUnit string
 }
 
 func atoi(s string) int {
@@ -223,8 +224,9 @@ func atoi(s string) int {
 	return n
 }
 
-// parseBusStatus tolerates both the transaction-status key=value form
-// (PID=, Comm=, Unit=) and the human status form (● unit - desc, Main PID:).
+// parseBusStatus tolerates the transaction-status key=value form (PID=,
+// Comm=, Unit=, UserUnit=) and the human status form (● unit - desc,
+// Main PID:).
 func parseBusStatus(out string) busStatus {
 	var b busStatus
 	if m := mainPIDRe.FindStringSubmatch(out); m != nil {
@@ -235,6 +237,9 @@ func parseBusStatus(out string) busStatus {
 		line = strings.TrimSpace(line)
 		if v, ok := strings.CutPrefix(line, "Unit="); ok && b.Unit == "" {
 			b.Unit = strings.TrimSpace(v)
+		}
+		if v, ok := strings.CutPrefix(line, "UserUnit="); ok && b.UserUnit == "" {
+			b.UserUnit = strings.TrimSpace(v)
 		}
 		if v, ok := strings.CutPrefix(line, "Comm="); ok && b.Comm == "" {
 			b.Comm = strings.TrimSpace(v)
@@ -257,6 +262,27 @@ func parseBusStatus(out string) busStatus {
 		}
 	}
 	return b
+}
+
+// busUnit is the owning process's own service unit. The transaction dump
+// reports the systemd user manager in Unit= and the owner's unit in UserUnit=,
+// so a process spawned straight by niri has no unit at all here. Stopping
+// user@<uid>.service would tear down the whole session, and init.scope is not
+// a service: either way the answer is empty, and the handover relies on
+// SIGTERM plus the commented spawn line instead.
+func busUnit(st busStatus) string {
+	for _, unit := range []string{st.UserUnit, st.Unit} {
+		if unit != "" && !strings.HasPrefix(unit, "user@") && unit != "init.scope" {
+			return unit
+		}
+	}
+	return ""
+}
+
+// isSelf reports a component SYSC itself ships. Its daemons owning a bus name
+// is the goal, not a conflict.
+func isSelf(name string) bool {
+	return strings.HasPrefix(name, "sysc-")
 }
 
 // Detect reports components that would fight the companions. It never
@@ -299,13 +325,17 @@ func Detect(env Env) ([]Finding, error) {
 			return
 		}
 		st := parseBusStatus(out)
+		unit := busUnit(st)
+		if isSelf(st.Comm) {
+			return
+		}
 		fname := st.Comm
 		if _, ok := known[fname]; !ok {
-			if st.Unit != "" {
-				fname = strings.TrimSuffix(st.Unit, ".service")
+			if unit != "" {
+				fname = strings.TrimSuffix(unit, ".service")
 			}
 		}
-		if fname == "" {
+		if fname == "" || isSelf(fname) {
 			return
 		}
 		fkind, ok := known[fname]
@@ -317,9 +347,9 @@ func Detect(env Env) ([]Finding, error) {
 		if st.PID > 0 && !containsInt(f.PIDs, st.PID) {
 			f.PIDs = append(f.PIDs, st.PID)
 		}
-		if st.Unit != "" {
-			f.Unit = st.Unit
-			if out2, err := env.systemctl()("is-enabled", st.Unit); err == nil && strings.HasPrefix(strings.TrimSpace(out2), "enabled") {
+		if unit != "" {
+			f.Unit = unit
+			if out2, err := env.systemctl()("is-enabled", unit); err == nil && strings.HasPrefix(strings.TrimSpace(out2), "enabled") {
 				f.UnitEnabled = true
 			}
 		}

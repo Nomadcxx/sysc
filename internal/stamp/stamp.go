@@ -19,6 +19,7 @@ type HandoverLine struct {
 	Path      string `json:"path"`
 	Commented string `json:"commented"`
 	Original  string `json:"original"`
+	Index     int    `json:"index"`
 }
 
 // Handover records a conflicting component SYSC took over: the unit it used
