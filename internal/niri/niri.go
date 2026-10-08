@@ -53,7 +53,6 @@ var (
 	includeRe  = regexp.MustCompile(`(?m)^\s*include\s+"sysc\.kdl"[ \t]*(?://[^\n]*)?[ \t]*\r?\n?`)
 	spawnRe    = regexp.MustCompile(`(?m)^([ \t]*)spawn-at-startup[ \t]+"sysc-shell"`)
 	spawnOffRe = regexp.MustCompile(`(?m)^([ \t]*)// (spawn-at-startup[ \t]+"sysc-shell")`)
-	incFileRe  = regexp.MustCompile(`(?m)^\s*include\s+"([^"]+)"`)
 )
 
 // Apply comments sysc-shell spawn lines unless KeepSpawn is set, ensures the
@@ -132,20 +131,52 @@ func Apply(opts Options) (Result, error) {
 }
 
 // occupiedKeys reports every bind key already present in the config or its
-// live includes. The SYSC-owned sidecar is excluded: its binds are ours to
-// rewrite, and counting them as occupied would strip them on reinstall.
+// live include tree. The SYSC-owned sidecar is excluded: its binds are ours
+// to rewrite, and counting them as occupied would strip them on reinstall.
 // Comparison uses niri's key identity, so Mod+space occupies Mod+Space.
 func occupiedKeys(opts Options, text string, binds []Bind) map[string]bool {
 	all := text
-	dir := filepath.Dir(opts.ConfigPath)
 	sidecar := filepath.Clean(opts.SidecarPath)
-	for _, m := range incFileRe.FindAllStringSubmatch(text, -1) {
-		inc := filepath.Join(dir, m[1])
-		if filepath.Clean(inc) == sidecar {
-			continue
-		}
-		if data, err := os.ReadFile(inc); err == nil {
+	sidecarResolved := sidecar
+	if r, err := filepath.EvalSymlinks(sidecar); err == nil {
+		sidecarResolved = r
+	}
+	// ponytail: 32-file cap; raise it if a real config nests deeper.
+	const maxIncludeFiles = 32
+	type includeFile struct{ text, dir string }
+	queue := []includeFile{{text: text, dir: filepath.Dir(opts.ConfigPath)}}
+	visited := map[string]bool{}
+	if p, err := filepath.EvalSymlinks(opts.ConfigPath); err == nil {
+		visited[p] = true
+	}
+	seen := 1
+	for len(queue) > 0 && seen < maxIncludeFiles {
+		f := queue[0]
+		queue = queue[1:]
+		for _, target := range includeTargets(f.text) {
+			inc := resolveInclude(f.dir, target)
+			if inc == "" {
+				continue
+			}
+			clean := filepath.Clean(inc)
+			if clean == sidecar {
+				continue
+			}
+			resolved := clean
+			if r, err := filepath.EvalSymlinks(clean); err == nil {
+				resolved = r
+			}
+			if resolved == sidecarResolved || visited[resolved] {
+				continue
+			}
+			visited[resolved] = true
+			data, err := os.ReadFile(clean)
+			if err != nil {
+				continue
+			}
+			seen++
 			all += "\n" + string(data)
+			queue = append(queue, includeFile{text: string(data), dir: filepath.Dir(clean)})
 		}
 	}
 	found := map[string]bool{}
@@ -166,6 +197,81 @@ func occupiedKeys(opts Options, text string, binds []Bind) map[string]bool {
 		}
 	}
 	return occupied
+}
+
+// includeTargets returns the path argument of every live include line.
+// Parsing the line instead of matching a regexp handles properties such as
+// optional=true that sit between the keyword and the quoted path.
+func includeTargets(text string) []string {
+	var targets []string
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimRight(line, "\r")
+		line = strings.TrimLeft(line, " \t")
+		if line == "" || strings.HasPrefix(line, "//") || strings.HasPrefix(line, "/-") {
+			continue
+		}
+		rest, ok := strings.CutPrefix(line, "include")
+		if !ok || (rest != "" && rest[0] != ' ' && rest[0] != '\t') {
+			continue
+		}
+		afterEquals := false
+		for i := 0; i < len(rest); {
+			switch rest[i] {
+			case ' ', '\t':
+				i++
+			case '=':
+				afterEquals = true
+				i++
+			case '"':
+				end := strings.IndexByte(rest[i+1:], '"')
+				if end < 0 {
+					i = len(rest)
+					continue
+				}
+				if !afterEquals {
+					targets = append(targets, unescapeKDL(rest[i+1:i+1+end]))
+				}
+				afterEquals = false
+				i += end + 2
+			default:
+				afterEquals = false
+				i++
+			}
+		}
+	}
+	return targets
+}
+
+// resolveInclude expands an include target the way niri does: ~/ against
+// $HOME, absolute paths as-is, everything else against the including file's
+// directory. An unresolvable ~ returns "" so the include is skipped.
+func resolveInclude(baseDir, p string) string {
+	switch {
+	case p == "~" || strings.HasPrefix(p, "~/"):
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, strings.TrimPrefix(p, "~"))
+		}
+		return ""
+	case filepath.IsAbs(p):
+		return filepath.Clean(p)
+	default:
+		return filepath.Join(baseDir, p)
+	}
+}
+
+// unescapeKDL drops the escape backslashes of a quoted KDL string.
+func unescapeKDL(s string) string {
+	if !strings.Contains(s, "\\") {
+		return s
+	}
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			i++
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
 }
 
 // Remove deletes the sidecar and the include line, and re-enables the
