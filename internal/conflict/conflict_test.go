@@ -389,10 +389,12 @@ func TestBusOwnerWithoutAServiceUnitIsNotAUnitOwner(t *testing.T) {
 // different session bus, so it must not be offered as a conflict for ours.
 func TestDetectIgnoresOtherUsersProcesses(t *testing.T) {
 	mine := strconv.Itoa(os.Getuid())
+	foreign := strconv.Itoa(os.Getuid() + 1)
+	other := strconv.Itoa(os.Getuid() + 2)
 	root := fakeProc(t, map[string]string{
 		"100": "swaync|/usr/bin/swaync|" + mine,
-		"200": "swaync|/usr/bin/swaync|65534",
-		"300": "mako|/usr/bin/mako|1001",
+		"200": "swaync|/usr/bin/swaync|" + foreign,
+		"300": "mako|/usr/bin/mako|" + other,
 	})
 	findings, err := Detect(Env{
 		ProcRoot:  root,
