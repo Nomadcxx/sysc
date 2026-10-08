@@ -224,6 +224,17 @@ func atoi(s string) int {
 	return n
 }
 
+// busValue drops busctl's placeholder for a key it has no value for. Left
+// as read it becomes a unit named "n/a" or a process named "n/a", and the
+// handover then runs "systemctl --user stop n/a".
+func busValue(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "n/a" {
+		return ""
+	}
+	return v
+}
+
 // parseBusStatus tolerates the transaction-status key=value form (PID=,
 // Comm=, Unit=, UserUnit=) and the human status form (● unit - desc,
 // Main PID:).
@@ -236,13 +247,13 @@ func parseBusStatus(out string) busStatus {
 	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
 		if v, ok := strings.CutPrefix(line, "Unit="); ok && b.Unit == "" {
-			b.Unit = strings.TrimSpace(v)
+			b.Unit = busValue(v)
 		}
 		if v, ok := strings.CutPrefix(line, "UserUnit="); ok && b.UserUnit == "" {
-			b.UserUnit = strings.TrimSpace(v)
+			b.UserUnit = busValue(v)
 		}
 		if v, ok := strings.CutPrefix(line, "Comm="); ok && b.Comm == "" {
-			b.Comm = strings.TrimSpace(v)
+			b.Comm = busValue(v)
 		}
 		if v, ok := strings.CutPrefix(line, "PID="); ok && b.PID == 0 {
 			b.PID = atoi(v)
@@ -266,13 +277,14 @@ func parseBusStatus(out string) busStatus {
 
 // busUnit is the owning process's own service unit. The transaction dump
 // reports the systemd user manager in Unit= and the owner's unit in UserUnit=,
-// so a process spawned straight by niri has no unit at all here. Stopping
-// user@<uid>.service would tear down the whole session, and init.scope is not
-// a service: either way the answer is empty, and the handover relies on
-// SIGTERM plus the commented spawn line instead.
+// so a process spawned straight by niri has no unit here at all: it sits in a
+// session scope. Stopping user@<uid>.service would tear down the whole session
+// and a scope is not a service, so anything that is not a plain service unit
+// answers empty and the handover relies on SIGTERM plus the commented spawn
+// line instead.
 func busUnit(st busStatus) string {
 	for _, unit := range []string{st.UserUnit, st.Unit} {
-		if unit != "" && !strings.HasPrefix(unit, "user@") && unit != "init.scope" {
+		if strings.HasSuffix(unit, ".service") && !strings.HasPrefix(unit, "user@") {
 			return unit
 		}
 	}

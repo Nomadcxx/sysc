@@ -319,7 +319,7 @@ func TestHandoverOfUnitlessBusOwnerNeverStopsAManager(t *testing.T) {
 	env.NiriConfig = cfg
 	env.Busctl = func(args ...string) (string, error) {
 		if args[1] == "org.freedesktop.Notifications" {
-			return "PID=316\nComm=mako\nUnit=user@1000.service\nSlice=user-1000.slice\n", nil
+			return "PID=4104796\nComm=mako\nUnit=session-421.scope\nUserUnit=n/a\nUniqueName=:1.31\n", nil
 		}
 		return "", os.ErrNotExist
 	}
@@ -345,8 +345,9 @@ func TestHandoverOfUnitlessBusOwnerNeverStopsAManager(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, call := range calls {
-		if strings.Contains(call, "user@") {
-			t.Fatalf("handover targeted the session manager: %v", calls)
+		if strings.Contains(call, "user@") || strings.Contains(call, "n/a") ||
+			strings.HasPrefix(call, "stop") || strings.HasPrefix(call, "disable") {
+			t.Fatalf("handover touched a unit it does not own: %v", calls)
 		}
 	}
 	data, err := os.ReadFile(cfg)
@@ -355,5 +356,24 @@ func TestHandoverOfUnitlessBusOwnerNeverStopsAManager(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "// sysc-handover: spawn-at-startup \"mako\"") {
 		t.Fatalf("spawn line not commented: %q", data)
+	}
+}
+
+// busctl answers "n/a" for a key with no value and puts the owner's session
+// scope in Unit= when a provider was started straight by niri. Neither is a
+// provider unit: a handover must not run "systemctl --user stop n/a".
+func TestBusOwnerWithoutAServiceUnitIsNotAUnitOwner(t *testing.T) {
+	b := parseBusStatus("PID=4104796\nComm=mako\nUnit=session-421.scope\nUserUnit=n/a\nUniqueName=:1.31\n")
+	if b.Unit != "session-421.scope" || b.UserUnit != "" {
+		t.Fatalf("parsed %+v", b)
+	}
+	if got := busUnit(b); got != "" {
+		t.Fatalf("busUnit = %q, want no unit", got)
+	}
+	if got := busUnit(parseBusStatus("PID=1\nComm=n/a\nUnit=n/a\n")); got != "" {
+		t.Fatalf("placeholder dump = %q, want no unit", got)
+	}
+	if got := busUnit(parseBusStatus("Comm=n/a\nUserUnit=dunst.service\n")); got != "dunst.service" {
+		t.Fatalf("named service = %q", got)
 	}
 }
