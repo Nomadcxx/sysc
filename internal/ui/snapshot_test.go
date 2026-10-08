@@ -20,7 +20,7 @@ func stripANSI(s string) string { return ansiPattern.ReplaceAllString(s, "") }
 // above the title stays BannerHeight() rows (deterministic before the first
 // animation tick).
 func TestChromeFitsOneScreen(t *testing.T) {
-	pages := []Page{PageTheme, PageWallpaper, PagePlugins, PageWeather, PageConfirm}
+	pages := []Page{PageTheme, PageWallpaper, PagePlugins, PageWeather, PageConflicts, PageConfirm}
 	steps := []Step{StepWizard, StepInstalling, StepDone, StepFailed}
 	sizes := [][2]int{{80, 24}, {120, 40}}
 

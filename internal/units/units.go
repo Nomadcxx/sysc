@@ -26,13 +26,29 @@ var All = []Unit{
 	{Name: "sysc-shell.service", Template: "templates/sysc-shell.service"},
 	{Name: "sysc-clipboard.service", Template: "templates/sysc-clipboard.service"},
 	{Name: "sysc-walls.service", Template: "templates/sysc-walls.service"},
+	{Name: "sysc-notify.service", Template: "templates/sysc-notify.service"},
+	{Name: "sysc-tray.service", Template: "templates/sysc-tray.service"},
 }
 
-// StopOrder stops the shell first: it owns the wallpaper children.
-var StopOrder = []string{"sysc-shell.service", "sysc-walls.service", "sysc-clipboard.service"}
+// StopOrder stops the shell first: it owns the wallpaper children, and the
+// companions last so notifications and tray icons stay up while the rest goes.
+var StopOrder = []string{
+	"sysc-shell.service",
+	"sysc-walls.service",
+	"sysc-clipboard.service",
+	"sysc-tray.service",
+	"sysc-notify.service",
+}
 
-// StartOrder starts dependencies before the shell.
-var StartOrder = []string{"sysc-clipboard.service", "sysc-walls.service", "sysc-shell.service"}
+// StartOrder starts dependencies before the shell; the notification daemon
+// comes first so it owns the bus name before any client needs it.
+var StartOrder = []string{
+	"sysc-notify.service",
+	"sysc-tray.service",
+	"sysc-clipboard.service",
+	"sysc-walls.service",
+	"sysc-shell.service",
+}
 
 // Content returns the embedded unit file.
 func Content(u Unit) ([]byte, error) {

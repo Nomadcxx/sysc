@@ -16,6 +16,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/Nomadcxx/sysc/internal/conflict"
 	"github.com/Nomadcxx/sysc/internal/fetch"
 	"github.com/Nomadcxx/sysc/internal/geo"
 	"github.com/Nomadcxx/sysc/internal/i18n"
@@ -35,6 +36,8 @@ type options struct {
 	Lang           string
 	Purge          bool
 	RemoveGSlapper bool
+	KeepConflicts  bool
+	Handover       string
 }
 
 func parseFlags(args []string, out io.Writer) (options, error) {
@@ -51,8 +54,16 @@ func parseFlags(args []string, out io.Writer) (options, error) {
 	fs.Float64Var(&o.Lat, "lat", 0, "weather latitude")
 	fs.Float64Var(&o.Lon, "lon", 0, "weather longitude")
 	fs.StringVar(&o.Lang, "lang", "", "installer language (en, zh-Hans, de, fr)")
+	fs.BoolVar(&o.KeepConflicts, "keep-conflicts", false, "keep every detected notification daemon and bar running")
+	fs.StringVar(&o.Handover, "handover", "", "hand over conflicts: --handover=all")
 	if err := fs.Parse(args); err != nil {
 		return o, err
+	}
+	if o.KeepConflicts && o.Handover != "" {
+		return o, errors.New("--keep-conflicts and --handover are mutually exclusive")
+	}
+	if o.Handover != "" && o.Handover != "all" {
+		return o, errors.New(`--handover only accepts "all"`)
 	}
 	return o, nil
 }
@@ -348,6 +359,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "left", "right":
 			if m.w.Page == ui.PageTheme {
 				m.w = m.w.CycleMode()
+			} else if m.w.Page == ui.PageConflicts {
+				m.w = m.w.CycleChoice(msg.String() == "right")
 			} else if m.w.Page == ui.PageWeather {
 				var cmd tea.Cmd
 				m.input, cmd = m.input.Update(msg)
@@ -380,7 +393,16 @@ func (m *model) cycle(down bool) {
 		} else {
 			m.w.Plugins = append([]string(nil), m.recommended...)
 		}
+	case ui.PageConflicts:
+		m.w = m.w.MoveConflict(boolToDelta(down))
 	}
+}
+
+func boolToDelta(down bool) int {
+	if down {
+		return 1
+	}
+	return -1
 }
 
 func cycle(values []string, current string, step int) string {
@@ -482,6 +504,9 @@ func (m model) View() string {
 		title = i18n.T(m.w.Locale, "done.title")
 		body = i18n.T(m.w.Locale, "done.blurb") + "\n\n" + taskLines(m.installRes.Tasks, 0) +
 			"\n\n" + i18n.T(m.w.Locale, "install.log") + ": " + m.logPath
+		if len(m.installRes.Warnings) > 0 {
+			body += "\n\n" + strings.Join(m.installRes.Warnings, "\n")
+		}
 	case ui.StepFailed:
 		title = i18n.T(m.w.Locale, "failed.title")
 		body = i18n.T(m.w.Locale, "failed.blurb")
@@ -550,6 +575,8 @@ func main() {
 		os.Exit(1)
 	}
 	ctx := context.Background()
+	findings, _ := conflict.Detect(conflict.Env{NiriConfig: niriConfigPath(home)})
+	choices := conflict.Defaults(findings, o.KeepConflicts, o.Handover == "all")
 
 	if o.Yes {
 		a, err := answersFor(ctx, o, p.Recommended)
@@ -559,6 +586,8 @@ func main() {
 		}
 		opts := installOptions(home, p, a, true, loc)
 		opts.InNiriSession = inNiri
+		opts.Findings = findings
+		opts.Conflicts = choices
 		res, err := install.Run(ctx, opts)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -573,9 +602,14 @@ func main() {
 		opts := installOptions(home, p, a, false, loc)
 		opts.InNiriSession = inNiri
 		opts.Progress = progress
+		opts.Findings = findings
+		opts.Conflicts = choices
 		return install.Run(ctx, opts)
 	}
-	prog := newInstallProgram(newModel(loc, p.Recommended, plainNiri), installer, tea.WithAltScreen())
+	m := newModel(loc, p.Recommended, plainNiri)
+	m.w.Findings = findings
+	m.w.Choices = choices
+	prog := newInstallProgram(m, installer, tea.WithAltScreen())
 	final, err := prog.Run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -607,6 +641,19 @@ func printTasks(out io.Writer, res install.Result) {
 	if res.SessionWarning != "" {
 		fmt.Fprintln(out, res.SessionWarning)
 	}
+	for _, w := range res.Warnings {
+		fmt.Fprintln(out, w)
+	}
+}
+
+// niriConfigPath is the compositor config conflicts are detected against,
+// following the same XDG rule as the installer.
+func niriConfigPath(home string) string {
+	base := os.Getenv("XDG_CONFIG_HOME")
+	if !filepath.IsAbs(base) {
+		base = filepath.Join(home, ".config")
+	}
+	return filepath.Join(base, "niri", "config.kdl")
 }
 
 func graphicalSessionActive() bool {

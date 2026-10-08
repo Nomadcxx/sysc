@@ -65,3 +65,40 @@ func TestDecodeRequiresAssetsAndSHA(t *testing.T) {
 		})
 	}
 }
+
+// The companion rows ship disabled until their repos tag a release. This
+// fixture is the switch: when the pin rows flip to enabled, they must decode
+// and name the units the installer ships.
+func TestEnabledCompanionFixtureValidates(t *testing.T) {
+	data, err := os.ReadFile("testdata/companions-enabled.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Decode(data)
+	if err != nil {
+		t.Fatalf("Decode(companions-enabled.json): %v", err)
+	}
+	want := map[string]string{
+		"sysc-notify": "sysc-notify.service",
+		"sysc-tray":   "sysc-tray.service",
+	}
+	for _, c := range p.Components {
+		unit, ok := want[c.ID]
+		if !ok {
+			continue
+		}
+		if c.Disabled {
+			t.Errorf("%s: fixture row is disabled", c.ID)
+		}
+		if c.Unit != unit {
+			t.Errorf("%s: unit = %q, want %q", c.ID, c.Unit, unit)
+		}
+		if _, ok := unitForID(c.ID); !ok {
+			t.Errorf("%s: no matching unit template", c.ID)
+		}
+		delete(want, c.ID)
+	}
+	for id := range want {
+		t.Errorf("%s: missing from fixture", id)
+	}
+}

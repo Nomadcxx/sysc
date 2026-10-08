@@ -102,7 +102,7 @@ func Apply(opts Options) (Result, error) {
 		}
 	}
 
-	occupied := occupiedKeys(opts, text, opts.Binds)
+	occupied := occupiedKeys(opts, opts.Binds)
 	var body strings.Builder
 	body.WriteString(marker + "\n")
 	body.WriteString("// SYSC owns this file; changes are overwritten on update.\n\n")
@@ -134,53 +134,18 @@ func Apply(opts Options) (Result, error) {
 // live include tree. The SYSC-owned sidecar is excluded: its binds are ours
 // to rewrite, and counting them as occupied would strip them on reinstall.
 // Comparison uses niri's key identity, so Mod+space occupies Mod+Space.
-func occupiedKeys(opts Options, text string, binds []Bind) map[string]bool {
-	all := text
-	sidecar := filepath.Clean(opts.SidecarPath)
-	sidecarResolved := sidecar
-	if r, err := filepath.EvalSymlinks(sidecar); err == nil {
-		sidecarResolved = r
+func occupiedKeys(opts Options, binds []Bind) map[string]bool {
+	files, err := IncludeTree(opts)
+	if err != nil {
+		return map[string]bool{}
 	}
-	// ponytail: 32-file cap; raise it if a real config nests deeper.
-	const maxIncludeFiles = 32
-	type includeFile struct{ text, dir string }
-	queue := []includeFile{{text: text, dir: filepath.Dir(opts.ConfigPath)}}
-	visited := map[string]bool{}
-	if p, err := filepath.EvalSymlinks(opts.ConfigPath); err == nil {
-		visited[p] = true
-	}
-	seen := 1
-	for len(queue) > 0 && seen < maxIncludeFiles {
-		f := queue[0]
-		queue = queue[1:]
-		for _, target := range includeTargets(f.text) {
-			inc := resolveInclude(f.dir, target)
-			if inc == "" {
-				continue
-			}
-			clean := filepath.Clean(inc)
-			if clean == sidecar {
-				continue
-			}
-			resolved := clean
-			if r, err := filepath.EvalSymlinks(clean); err == nil {
-				resolved = r
-			}
-			if resolved == sidecarResolved || visited[resolved] {
-				continue
-			}
-			visited[resolved] = true
-			data, err := os.ReadFile(clean)
-			if err != nil {
-				continue
-			}
-			seen++
-			all += "\n" + string(data)
-			queue = append(queue, includeFile{text: string(data), dir: filepath.Dir(clean)})
-		}
+	var all strings.Builder
+	for _, f := range files {
+		all.WriteString(f.Text)
+		all.WriteString("\n")
 	}
 	found := map[string]bool{}
-	for _, line := range strings.Split(all, "\n") {
+	for _, line := range strings.Split(all.String(), "\n") {
 		name := leadingNodeName(line)
 		if name == "" {
 			continue

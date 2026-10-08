@@ -11,7 +11,7 @@ func TestAuditGapRecordedOrders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "clipboard walls shell"
+	want := "notify tray clipboard walls shell"
 	have := orderNames(got, "start")
 	if have != want {
 		t.Errorf("start order: got %q want %q", have, want)
@@ -21,7 +21,7 @@ func TestAuditGapRecordedOrders(t *testing.T) {
 		t.Fatal(err)
 	}
 	have = orderNames(got, "stop")
-	want = "shell walls clipboard"
+	want = "shell walls clipboard tray notify"
 	if have != want {
 		t.Errorf("stop order: got %q want %q", have, want)
 	}

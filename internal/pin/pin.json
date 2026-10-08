@@ -55,6 +55,16 @@
       "reason": "not wired: no user unit template yet"
     },
     {
+      "id": "sysc-notify",
+      "disabled": true,
+      "reason": "awaiting first tagged release"
+    },
+    {
+      "id": "sysc-tray",
+      "disabled": true,
+      "reason": "awaiting first tagged release"
+    },
+    {
       "id": "sysc-lock",
       "disabled": true,
       "reason": "not shipped yet"

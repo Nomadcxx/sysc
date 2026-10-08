@@ -53,6 +53,8 @@ func Nav(loc i18n.Locale, page Page, step Step) string {
 		parts = append(parts, "↑↓ "+i18n.T(loc, "nav.toggle"))
 	case PageWeather:
 		parts = append(parts, i18n.T(loc, "nav.type"), "Enter "+i18n.T(loc, "nav.search"))
+	case PageConflicts:
+		parts = append(parts, "↑↓ "+i18n.T(loc, "nav.move"), "←→ "+i18n.T(loc, "nav.choose"))
 	case PageConfirm:
 		parts = append(parts, "Enter "+i18n.T(loc, "nav.install"))
 	default:

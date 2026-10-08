@@ -1,0 +1,104 @@
+{
+  "release": "v0.1.0",
+  "components": [
+    {
+      "id": "sysc-shell",
+      "tag": "v0.1.0",
+      "unit": "sysc-shell.service",
+      "binaries": [
+        {
+          "name": "sysc-shell",
+          "assets": {
+            "amd64": {
+              "url": "https://example.invalid/sysc-shell-linux-amd64",
+              "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sysc-clipboard",
+      "tag": "v0.1.1",
+      "unit": "sysc-clipboard.service",
+      "binaries": [
+        {
+          "name": "sysc-clipboard",
+          "assets": {
+            "amd64": {
+              "url": "https://example.invalid/sysc-clipboard-linux-amd64",
+              "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sysc-walls",
+      "tag": "v1.0.1",
+      "unit": "sysc-walls.service",
+      "binaries": [
+        {
+          "name": "sysc-walls-daemon",
+          "assets": {
+            "amd64": {
+              "url": "https://example.invalid/sysc-walls-daemon-linux-amd64",
+              "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sysc-notify",
+      "tag": "v0.1.0",
+      "unit": "sysc-notify.service",
+      "binaries": [
+        {
+          "name": "sysc-notify",
+          "assets": {
+            "amd64": {
+              "url": "https://example.invalid/sysc-notify-linux-amd64",
+              "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sysc-tray",
+      "tag": "v0.1.0",
+      "unit": "sysc-tray.service",
+      "binaries": [
+        {
+          "name": "sysc-tray",
+          "assets": {
+            "amd64": {
+              "url": "https://example.invalid/sysc-tray-linux-amd64",
+              "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sysc-terminal",
+      "disabled": true,
+      "reason": "no release assets yet"
+    },
+    {
+      "id": "sysc-lock",
+      "disabled": true,
+      "reason": "not shipped yet"
+    }
+  ],
+  "gslapper": {
+    "family": "arch",
+    "package": "gslapper",
+    "version": "1.5.1"
+  },
+  "recommended": [
+    "org.sysc.weather",
+    "org.sysc.media"
+  ]
+}

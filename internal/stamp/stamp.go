@@ -13,14 +13,43 @@ import (
 // FileName is the stamp file inside the state directory.
 const FileName = "installed.json"
 
+// HandoverLine records one niri spawn-at-startup line that a conflict
+// handover commented out, so uninstall can restore it byte-for-byte.
+type HandoverLine struct {
+	Path      string `json:"path"`
+	Commented string `json:"commented"`
+	Original  string `json:"original"`
+	Index     int    `json:"index"`
+}
+
+// Handover records a conflicting component SYSC took over: the unit it used
+// to stop and disable, and every niri config line it commented out.
+type Handover struct {
+	Name           string         `json:"name"`
+	Unit           string         `json:"unit,omitempty"`
+	UnitWasEnabled bool           `json:"unit_was_enabled,omitempty"`
+	Marker         string         `json:"marker,omitempty"`
+	Lines          []HandoverLine `json:"lines,omitempty"`
+}
+
+// Activation records the user-level D-Bus activation file SYSC wrote and the
+// foreign file it displaced, if any.
+type Activation struct {
+	Path   string `json:"path"`
+	Backup string `json:"backup,omitempty"`
+}
+
 // Stamp names the release and component versions an install placed, whether
-// this run installed gSlapper, and whether the units were started (false for
-// an SSH or TTY install that could only enable them).
+// this run installed gSlapper, whether the units were started (false for an
+// SSH or TTY install that could only enable them), which conflicting
+// components it handed over, and the D-Bus activation file it wrote.
 type Stamp struct {
 	Release           string            `json:"release"`
 	Components        map[string]string `json:"components"`
 	GSlapperInstalled bool              `json:"gslapper_installed"`
 	Started           bool              `json:"started"`
+	HandedOver        []Handover        `json:"handed_over,omitempty"`
+	Activation        *Activation       `json:"dbus_activation,omitempty"`
 }
 
 // Read loads the stamp from stateDir.

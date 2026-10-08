@@ -84,3 +84,116 @@ func TestOccupiedKeysExcludesSidecarByAbsolutePath(t *testing.T) {
 		t.Fatalf("Mod+Space not written; skipped=%v added=%v", res.BindsSkipped, res.BindsAdded)
 	}
 }
+
+func TestSpawnsAcrossIncludeTree(t *testing.T) {
+	dir := t.TempDir()
+	write(t, filepath.Join(dir, "config.kdl"), "include \"extra.kdl\"\nspawn-at-startup \"/usr/bin/mako\"\n")
+	write(t, filepath.Join(dir, "extra.kdl"), "// spawn-at-startup \"dunst\"\nspawn-at-startup \"quickshell\" \"-c\" \"noctalia\"\n")
+
+	opts := Options{ConfigPath: filepath.Join(dir, "config.kdl"), SidecarPath: filepath.Join(dir, "sysc.kdl")}
+	got, err := Spawns(opts, []string{"mako", "dunst", "quickshell", "waybar"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("spawns = %+v; want mako and quickshell", got)
+	}
+	if got[0].Name != "mako" || got[0].Path != filepath.Join(dir, "config.kdl") || got[0].LineNo != 1 {
+		t.Errorf("mako spawn = %+v", got[0])
+	}
+	if got[1].Name != "quickshell" || got[1].Path != filepath.Join(dir, "extra.kdl") || got[1].LineNo != 1 {
+		t.Errorf("quickshell spawn = %+v", got[1])
+	}
+}
+
+func TestCommentAndRestoreLineByteForByte(t *testing.T) {
+	for _, tc := range []struct{ name, nl string }{
+		{"lf", "\n"},
+		{"crlf", "\r\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			config := filepath.Join(dir, "config.kdl")
+			original := "input {}\r\nspawn-at-startup \"mako\"\r\noutput \"eDP-1\" {}\r\n"
+			original = strings.ReplaceAll(original, "\r\n", tc.nl)
+			write(t, config, original)
+
+			hl, err := CommentLine(config, 1, `spawn-at-startup "mako"`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if hl.Commented != `// sysc-handover: spawn-at-startup "mako"` || hl.Original != `spawn-at-startup "mako"` {
+				t.Fatalf("record = %+v", hl)
+			}
+			commentedText := readFile(t, config)
+			if !strings.Contains(commentedText, hl.Commented) {
+				t.Fatalf("commented line missing:\n%s", commentedText)
+			}
+			if bak := readFile(t, config+".sysc.bak"); bak != original {
+				t.Fatalf("first backup changed: %q", bak)
+			}
+
+			if err := RestoreLine(hl); err != nil {
+				t.Fatal(err)
+			}
+			if got := readFile(t, config); got != original {
+				t.Fatalf("restore not byte-for-byte:\n got %q\nwant %q", got, original)
+			}
+		})
+	}
+}
+
+func TestCommentLineRefusesChangedLine(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, "config.kdl")
+	write(t, config, "spawn-at-startup \"waybar\"\n")
+	if _, err := CommentLine(config, 0, `spawn-at-startup "mako"`); err == nil {
+		t.Fatal("CommentLine accepted a line that no longer matches")
+	}
+	if _, err := CommentLine(config, 5, `spawn-at-startup "waybar"`); err == nil {
+		t.Fatal("CommentLine accepted an out-of-range line")
+	}
+}
+
+func TestRestoreLineLeavesEditedLineAlone(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, "config.kdl")
+	write(t, config, "spawn-at-startup \"mako\"\n")
+	hl, err := CommentLine(config, 0, `spawn-at-startup "mako"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, config, "// user replaced the line\n")
+	if err := RestoreLine(hl); err == nil {
+		t.Fatal("RestoreLine succeeded after the line changed")
+	}
+	if got := readFile(t, config); got != "// user replaced the line\n" {
+		t.Fatalf("RestoreLine edited the file: %q", got)
+	}
+}
+
+// Identical commented text twice: the stamped position decides which line
+// comes back.
+func TestRestoreLineUsesStampedIndex(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, "config.kdl")
+	write(t, config, "input {}\nspawn-at-startup \"mako\"\nspawn-at-startup \"mako\"\n")
+	first, err := CommentLine(config, 1, `spawn-at-startup "mako"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := CommentLine(config, 2, `spawn-at-startup "mako"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Commented != second.Commented {
+		t.Fatalf("expected identical commented text: %q %q", first.Commented, second.Commented)
+	}
+	if err := RestoreLine(second); err != nil {
+		t.Fatal(err)
+	}
+	want := "input {}\n" + first.Commented + "\nspawn-at-startup \"mako\"\n"
+	if got := readFile(t, config); got != want {
+		t.Fatalf("restored the wrong line:\n got %q\nwant %q", got, want)
+	}
+}
