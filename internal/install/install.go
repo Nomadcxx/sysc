@@ -169,8 +169,12 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	}
 	download := opts.Download
 	if download == nil {
+		client := opts.Client
+		if client == nil {
+			client = fetch.NewClient()
+		}
 		download = func(ctx context.Context, staging string, assets []fetch.Asset) error {
-			return fetch.DownloadAll(ctx, opts.Client, staging, assets)
+			return fetch.DownloadAll(ctx, client, staging, assets)
 		}
 	}
 	swap := opts.Swap

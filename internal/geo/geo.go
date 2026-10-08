@@ -7,7 +7,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 )
+
+// orDefault returns client or a shared default with a bounded timeout; these
+// are tiny JSON endpoints and should never hold the wizard open.
+func orDefault(client *http.Client) *http.Client {
+	if client != nil {
+		return client
+	}
+	return &http.Client{Timeout: 15 * time.Second}
+}
 
 // DefaultEndpoint is a keyless HTTPS IP-geolocation service.
 const DefaultEndpoint = "https://ipapi.co/json/"
@@ -24,6 +34,7 @@ type Place struct {
 
 // Guess asks endpoint where this machine is. GeoClue is a named follow-up.
 func Guess(ctx context.Context, client *http.Client, endpoint string) (Place, error) {
+	client = orDefault(client)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return Place{}, err
@@ -48,6 +59,7 @@ func Guess(ctx context.Context, client *http.Client, endpoint string) (Place, er
 
 // Search resolves a city name through the Open-Meteo geocoder.
 func Search(ctx context.Context, client *http.Client, endpoint, name string) (Place, error) {
+	client = orDefault(client)
 	u := endpoint + "?name=" + url.QueryEscape(name) + "&count=1&language=en&format=json"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
