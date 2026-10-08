@@ -59,16 +59,33 @@ func TestConfirmWarnsPlainNiriSession(t *testing.T) {
 	w.Preset = "standard"
 	w.Mode = "dark"
 	w.Location = "Berlin"
-	if strings.Contains(w.Body(), "niri-session") {
+	body := w.Body()
+	for _, label := range []string{"confirm.preset", "confirm.mode", "confirm.wallpaper", "confirm.plugins", "confirm.location"} {
+		if !strings.Contains(body, i18n.T(i18n.EN, label)) {
+			t.Fatalf("confirm body missing %s: %q", label, body)
+		}
+	}
+	if !strings.Contains(body, "~/.local/bin") {
+		t.Fatalf("confirm body missing the footprint: %q", body)
+	}
+	if strings.Contains(body, "niri-session") {
 		t.Fatal("confirm warned when the session can start user units")
 	}
 	w.PlainNiri = true
-	body := w.Body()
+	body = w.Body()
 	if !strings.Contains(body, "niri-session") {
 		t.Fatalf("confirm body = %q, want a niri-session warning", body)
 	}
 	if !strings.Contains(body, "spawn-at-startup") {
 		t.Fatalf("confirm body = %q, want the spawn line called out", body)
+	}
+}
+
+func TestPluginsNoneState(t *testing.T) {
+	w := NewWizard(i18n.EN, nil)
+	w.Page = PagePlugins
+	if !strings.Contains(w.Body(), i18n.T(i18n.EN, "plugin.none")) {
+		t.Fatalf("plugins body = %q, want the none label", w.Body())
 	}
 }
 

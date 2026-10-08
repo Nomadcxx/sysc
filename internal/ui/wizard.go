@@ -115,7 +115,7 @@ func (w Wizard) Body() string {
 	case PageWallpaper:
 		return i18n.T(w.Locale, "wallpaper.blurb") + "\n\n" + w.WallpaperDir
 	case PagePlugins:
-		return i18n.T(w.Locale, "plugins.blurb") + "\n\n" + strings.Join(w.Plugins, ", ")
+		return i18n.T(w.Locale, "plugins.blurb") + "\n\n" + w.pluginsLabel()
 	case PageWeather:
 		place := w.Location
 		if place == "" {
@@ -123,11 +123,24 @@ func (w Wizard) Body() string {
 		}
 		return i18n.T(w.Locale, "weather.blurb") + "\n\n" + place
 	default:
-		body := i18n.T(w.Locale, "confirm.blurb") + "\n\n" +
-			w.Preset + " • " + w.Mode + " • " + w.Location
+		body := i18n.T(w.Locale, "confirm.blurb") + "\n" +
+			i18n.T(w.Locale, "confirm.preset") + ": " + w.Preset + "\n" +
+			i18n.T(w.Locale, "confirm.mode") + ": " + w.Mode + "\n" +
+			i18n.T(w.Locale, "confirm.wallpaper") + ": " + w.WallpaperDir + "\n" +
+			i18n.T(w.Locale, "confirm.plugins") + ": " + w.pluginsLabel() + "\n" +
+			i18n.T(w.Locale, "confirm.location") + ": " + w.Location + "\n" +
+			i18n.T(w.Locale, "confirm.files") + ": ~/.local/bin, ~/.config/systemd/user"
 		if w.PlainNiri {
 			body += "\n\n" + i18n.T(w.Locale, "warn.niri_session")
 		}
 		return body
 	}
+}
+
+// pluginsLabel names the chosen plugins, or the localized none label.
+func (w Wizard) pluginsLabel() string {
+	if len(w.Plugins) == 0 {
+		return i18n.T(w.Locale, "plugin.none")
+	}
+	return strings.Join(w.Plugins, ", ")
 }

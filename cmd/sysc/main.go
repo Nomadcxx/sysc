@@ -300,7 +300,7 @@ func (m model) View() string {
 			body += "\n" + m.note
 		}
 	}
-	return ui.View(m.w.Locale, m.w.Title(), body, ui.StepWizard, m.width, m.height, m.beams)
+	return ui.View(m.w.Locale, m.w.Title(), body, m.w.Page, ui.StepWizard, m.width, m.height, m.beams)
 }
 
 func main() {
