@@ -4,7 +4,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/Nomadcxx/sysc/internal/conflict"
 	"github.com/Nomadcxx/sysc/internal/i18n"
+	"github.com/Nomadcxx/sysc/internal/niri"
 )
 
 func TestWizardOrder(t *testing.T) {
@@ -125,5 +129,107 @@ func TestWallpaperCopyMentionsDirectory(t *testing.T) {
 	}
 	if strings.Contains(strings.ToLower(body), "engine") {
 		t.Fatalf("wallpaper body still promises an engine: %q", body)
+	}
+}
+
+func TestWizardOrderWithConflicts(t *testing.T) {
+	w := NewWizard(i18n.EN, nil)
+	w.Findings = []conflict.Finding{{Name: "mako", Kind: conflict.KindNotifications}}
+	w.Page = PageWeather
+	w.Location = "Berlin"
+	w.Latitude = 52.52
+	w.Longitude = 13.405
+	if w = w.Next(); w.Page != PageConflicts {
+		t.Fatalf("after weather with findings = %v", w.Page)
+	}
+	if w = w.Next(); w.Page != PageConfirm {
+		t.Fatalf("after conflicts = %v", w.Page)
+	}
+	if w.Back().Page != PageConflicts {
+		t.Fatal("back from confirm skipped the conflicts page")
+	}
+}
+
+func TestConflictsPageSkippedWhenEmpty(t *testing.T) {
+	w := NewWizard(i18n.EN, nil)
+	w.Page = PageWeather
+	w.Location = "Berlin"
+	w.Latitude = 52.52
+	w.Longitude = 13.405
+	if w = w.Next(); w.Page != PageConfirm {
+		t.Fatalf("empty conflicts page was not skipped: %v", w.Page)
+	}
+	if w.Back().Page != PageWeather {
+		t.Fatalf("back landed on the empty conflicts page: %v", w.Back().Page)
+	}
+}
+
+func TestConflictCycleAndBody(t *testing.T) {
+	w := NewWizard(i18n.EN, nil)
+	w.Findings = []conflict.Finding{{
+		Name:        "mako",
+		Kind:        conflict.KindNotifications,
+		PIDs:        []int{100},
+		UnitEnabled: true,
+		NiriLines:   []niri.Spawn{{Name: "mako"}},
+	}}
+	w.Choices = map[string]conflict.Choice{"mako": conflict.HandOver}
+	w.Page = PageConflicts
+
+	w = w.CycleChoice(true)
+	if w.Choices["mako"] != conflict.KeepBoth {
+		t.Fatalf("after one cycle = %v", w.Choices["mako"])
+	}
+	w = w.CycleChoice(true)
+	if w.Choices["mako"] != conflict.SkipSYSC {
+		t.Fatalf("after two cycles = %v", w.Choices["mako"])
+	}
+	w = w.CycleChoice(true)
+	if w.Choices["mako"] != conflict.HandOver {
+		t.Fatalf("after three cycles = %v", w.Choices["mako"])
+	}
+	w = w.CycleChoice(false)
+	if w.Choices["mako"] != conflict.SkipSYSC {
+		t.Fatalf("after backwards cycle = %v", w.Choices["mako"])
+	}
+
+	for _, want := range []string{"mako", i18n.T(i18n.EN, "conflicts.choice.skip"), i18n.T(i18n.EN, "conflicts.state.running")} {
+		if !strings.Contains(w.Body(), want) {
+			t.Fatalf("conflicts body missing %q: %q", want, w.Body())
+		}
+	}
+	if w.MoveConflict(1).ConflictRow != 0 {
+		t.Fatal("row moved past the end")
+	}
+	if w.MoveConflict(-1).ConflictRow != 0 {
+		t.Fatal("row moved before the start")
+	}
+}
+
+func TestConflictBodyFits80x24(t *testing.T) {
+	w := NewWizard(i18n.EN, nil)
+	w.Findings = []conflict.Finding{
+		{Name: "mako", Kind: conflict.KindNotifications, PIDs: []int{1}, UnitEnabled: true, NiriLines: []niri.Spawn{{Name: "mako"}}},
+		{Name: "dunst", Kind: conflict.KindNotifications, PIDs: []int{2}, BusOwner: true},
+		{Name: "waybar", Kind: conflict.KindTray, PIDs: []int{3}, UnitEnabled: true},
+		{Name: "quickshell", Kind: conflict.KindShell, PIDs: []int{4}, Cmdline: "quickshell -c noctalia", NiriLines: []niri.Spawn{{Name: "quickshell"}}},
+	}
+	w.Choices = map[string]conflict.Choice{
+		"mako":       conflict.HandOver,
+		"dunst":      conflict.HandOver,
+		"waybar":     conflict.KeepBoth,
+		"quickshell": conflict.KeepBoth,
+	}
+	w.Page = PageConflicts
+	width, height := 80, 24
+	out := View(i18n.EN, w.Title(), w.Body(), w.Page, StepWizard, width, height, NewBeamsTextEffect(width, BannerHeight(), Banner()))
+	lines := strings.Split(out, "\n")
+	if len(lines) != height {
+		t.Fatalf("rendered %d lines, want exactly %d", len(lines), height)
+	}
+	for i, l := range lines {
+		if got := lipgloss.Width(l); got > width {
+			t.Fatalf("line %d is %d cells wide: %q", i, got, stripANSI(l))
+		}
 	}
 }

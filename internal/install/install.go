@@ -14,6 +14,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/Nomadcxx/sysc/internal/conflict"
+	"github.com/Nomadcxx/sysc/internal/dbusact"
 	"github.com/Nomadcxx/sysc/internal/fetch"
 	"github.com/Nomadcxx/sysc/internal/i18n"
 	"github.com/Nomadcxx/sysc/internal/niri"
@@ -66,6 +68,12 @@ type Options struct {
 	Arch string
 	// Loc enables localized refusal messages when set.
 	Loc *i18n.Locale
+	// Findings and Conflicts are the detected competing providers and the
+	// user's choice for each; empty means nothing to hand over.
+	Findings  []conflict.Finding
+	Conflicts map[string]conflict.Choice
+	// ConflictEnv overrides conflict.Apply's system seams (tests).
+	ConflictEnv conflict.Env
 	// InNiriSession is true when WAYLAND_DISPLAY and NIRI_SOCKET are both
 	// set. Combined with an inactive graphical-session.target, the installer
 	// must not comment out the user's sysc-shell autostart. SSH and other
@@ -80,6 +88,9 @@ type Result struct {
 	// SessionWarning is set when a live niri has no graphical-session.target.
 	// Empty for SSH/TTY enable-only installs and for a real niri-session.
 	SessionWarning string
+	// Warnings are non-fatal conflict notices (kept providers, failed
+	// handovers, activation file problems) for the final summary.
+	Warnings []string
 }
 
 // xdgConfig mirrors os.UserConfigDir; the sysc-shell binary reads its config
@@ -96,6 +107,15 @@ func (o Options) xdgState() string {
 		return v
 	}
 	return filepath.Join(o.Home, ".local", "state")
+}
+
+// xdgData is where the D-Bus activation file lives. The D-Bus spec gives this
+// directory priority over /usr/share, so a packaged mako cannot win the name.
+func (o Options) xdgData() string {
+	if v := os.Getenv("XDG_DATA_HOME"); filepath.IsAbs(v) {
+		return v
+	}
+	return filepath.Join(o.Home, ".local", "share")
 }
 
 // binDir stays on ~/.local/bin: it is on PATH by convention, not via XDG.
@@ -123,6 +143,27 @@ func unitFor(id string) (units.Unit, bool) {
 		}
 	}
 	return units.Unit{}, false
+}
+
+func componentEnabled(enabled []pin.Component, id string) bool {
+	for _, c := range enabled {
+		if c.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// handoversExcept drops any earlier record with the same name so a re-applied
+// handover replaces it instead of stacking.
+func handoversExcept(hs []stamp.Handover, name string) []stamp.Handover {
+	out := hs[:0]
+	for _, h := range hs {
+		if h.Name != name {
+			out = append(out, h)
+		}
+	}
+	return out
 }
 
 // Run installs the pin: fetch and swap binaries, gSlapper, units, seed, niri,
@@ -214,6 +255,18 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		}
 		enabled = append(enabled, c)
 	}
+	// A SkipSYSC conflict choice leaves the competing SYSC component neither
+	// enabled nor started; its binary still installs like any other.
+	loc := i18n.EN
+	if opts.Loc != nil {
+		loc = *opts.Loc
+	}
+	skipComponent := map[string]bool{}
+	for _, f := range opts.Findings {
+		if opts.Conflicts[f.Name] == conflict.SkipSYSC {
+			skipComponent[f.Kind.Component()] = true
+		}
+	}
 	os.RemoveAll(staging)
 
 	// Download and verify everything first, then swap once: a late download
@@ -250,6 +303,12 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		Release:           opts.Pin.Release,
 		Components:        map[string]string{},
 		GSlapperInstalled: prevErr == nil && prev.GSlapperInstalled && gslapperOnPath,
+	}
+	if prevErr == nil {
+		// Re-runs keep what earlier runs handed over or wrote, so uninstall
+		// can still reverse it.
+		st.HandedOver = prev.HandedOver
+		st.Activation = prev.Activation
 	}
 	for _, c := range enabled {
 		st.Components[c.ID] = c.Tag
@@ -332,7 +391,11 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 	}
 	emit(res.Tasks)
 
+	startNames := []string{}
 	for _, c := range enabled {
+		if skipComponent[c.ID] {
+			continue
+		}
 		u, _ := unitFor(c.ID)
 		if err := units.Write(opts.unitDir(), u); err != nil {
 			return res, err
@@ -340,6 +403,7 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		if err := systemctl("enable", u.Name); err != nil {
 			return res, fmt.Errorf("enable %s: %w", u.Name, err)
 		}
+		startNames = append(startNames, u.Name)
 	}
 	if len(enabled) > 0 {
 		if err := persist(); err != nil {
@@ -379,10 +443,49 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		return res, err
 	}
 
+	for _, f := range opts.Findings {
+		row := Task{Name: "conflict:" + f.Name}
+		switch opts.Conflicts[f.Name] {
+		case conflict.HandOver:
+			_, err := conflict.Apply(opts.ConflictEnv, f, conflict.HandOver, func(h stamp.Handover) error {
+				st.HandedOver = append(handoversExcept(st.HandedOver, h.Name), h)
+				return persist()
+			})
+			if err != nil {
+				row.Status, row.Reason = Failed, err.Error()
+				res.Warnings = append(res.Warnings, fmt.Sprintf(i18n.T(loc, "warn.conflict_kept"), f.Name))
+			} else {
+				row.Status = Done
+			}
+		case conflict.SkipSYSC:
+			row.Status, row.Reason = Skipped, "SYSC component not enabled"
+		default:
+			row.Status, row.Reason = Skipped, "kept both"
+			if opts.Yes {
+				res.Warnings = append(res.Warnings, fmt.Sprintf(i18n.T(loc, "warn.conflict_kept"), f.Name))
+			}
+		}
+		res.Tasks = append(res.Tasks, row)
+	}
+	emit(res.Tasks)
+
+	if !skipComponent[conflict.KindNotifications.Component()] &&
+		componentEnabled(enabled, conflict.KindNotifications.Component()) {
+		act, aerr := dbusact.Install(opts.xdgData())
+		if aerr != nil {
+			res.Warnings = append(res.Warnings, fmt.Sprintf(i18n.T(loc, "conflicts.dbus_failed"), dbusact.Path(opts.xdgData())))
+		} else {
+			st.Activation = &act
+			if err := persist(); err != nil {
+				return res, err
+			}
+		}
+	}
+
 	started := false
 	restarted = true
 	if sessionUp {
-		if err := units.StartAll(systemctl); err != nil {
+		if err := units.StartUnits(systemctl, startNames); err != nil {
 			// The stamp from the swap already makes this recoverable (AUD-03).
 			// Refresh started=false; a failed rewrite leaves the earlier stamp.
 			st.Started = false
@@ -446,6 +549,37 @@ func Uninstall(opts Options) (Result, error) {
 	}
 	systemctl := opts.systemctl()
 	units.StopAll(systemctl)
+
+	for i := len(st.HandedOver) - 1; i >= 0; i-- {
+		h := st.HandedOver[i]
+		row := Task{Name: "conflict:" + h.Name}
+		var errs []error
+		if h.Unit != "" && h.UnitWasEnabled {
+			if err := systemctl("enable", h.Unit); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		for _, hl := range h.Lines {
+			if err := niri.RestoreLine(hl); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if err := errors.Join(errs...); err != nil {
+			row.Status, row.Reason = Failed, err.Error()
+		} else {
+			row.Status = Done
+		}
+		res.Tasks = append(res.Tasks, row)
+	}
+	if st.Activation != nil {
+		row := Task{Name: "dbus-activation"}
+		if err := dbusact.Remove(*st.Activation); err != nil {
+			row.Status, row.Reason = Failed, err.Error()
+		} else {
+			row.Status = Done
+		}
+		res.Tasks = append(res.Tasks, row)
+	}
 
 	for _, c := range opts.Pin.Components {
 		if _, ok := st.Components[c.ID]; !ok {

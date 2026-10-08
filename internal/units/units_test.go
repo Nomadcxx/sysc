@@ -17,7 +17,13 @@ func TestStopOrderShellFirst(t *testing.T) {
 	if err := StopAll(run); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"stop sysc-shell.service", "stop sysc-walls.service", "stop sysc-clipboard.service"}
+	want := []string{
+		"stop sysc-shell.service",
+		"stop sysc-walls.service",
+		"stop sysc-clipboard.service",
+		"stop sysc-tray.service",
+		"stop sysc-notify.service",
+	}
 	if strings.Join(calls, ",") != strings.Join(want, ",") {
 		t.Fatalf("stop order = %v; want %v", calls, want)
 	}
@@ -26,7 +32,13 @@ func TestStopOrderShellFirst(t *testing.T) {
 	if err := StartAll(run); err != nil {
 		t.Fatal(err)
 	}
-	want = []string{"start sysc-clipboard.service", "start sysc-walls.service", "start sysc-shell.service"}
+	want = []string{
+		"start sysc-notify.service",
+		"start sysc-tray.service",
+		"start sysc-clipboard.service",
+		"start sysc-walls.service",
+		"start sysc-shell.service",
+	}
 	if strings.Join(calls, ",") != strings.Join(want, ",") {
 		t.Fatalf("start order = %v; want %v", calls, want)
 	}
@@ -65,7 +77,13 @@ func TestActiveUnitsAndStartUnits(t *testing.T) {
 		return nil
 	}
 	active := ActiveUnits(run)
-	wantActive := []string{"sysc-shell.service", "sysc-walls.service", "sysc-clipboard.service"}
+	wantActive := []string{
+		"sysc-shell.service",
+		"sysc-walls.service",
+		"sysc-clipboard.service",
+		"sysc-tray.service",
+		"sysc-notify.service",
+	}
 	if strings.Join(active, ",") != strings.Join(wantActive, ",") {
 		t.Fatalf("ActiveUnits = %v; want %v", active, wantActive)
 	}

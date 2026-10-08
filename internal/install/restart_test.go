@@ -136,7 +136,13 @@ func TestStartAllFailureNotRetried(t *testing.T) {
 	if _, err := Run(context.Background(), opts); err == nil {
 		t.Fatal("Run succeeded despite start failure")
 	}
-	if starts != 1 {
-		t.Fatalf("start attempted %d times; want exactly 1 (no retry after StartAll)", starts)
+	want := 0
+	for _, c := range opts.Pin.Components {
+		if !c.Disabled {
+			want++
+		}
+	}
+	if starts != want {
+		t.Fatalf("start attempted %d times; want exactly %d (one per unit, no retry)", starts, want)
 	}
 }
