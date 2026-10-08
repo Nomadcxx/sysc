@@ -56,13 +56,35 @@
     },
     {
       "id": "sysc-notify",
-      "disabled": true,
-      "reason": "awaiting first tagged release"
+      "tag": "v0.1.0",
+      "unit": "sysc-notify.service",
+      "binaries": [
+        {
+          "name": "sysc-notify",
+          "assets": {
+            "amd64": {
+              "url": "https://github.com/Nomadcxx/sysc-notify/releases/download/v0.1.0/sysc-notify",
+              "sha256": "11d1e0f18c621d95f660aa42b47311a059513484490de80c0f3ec0612bb899f0"
+            }
+          }
+        }
+      ]
     },
     {
       "id": "sysc-tray",
-      "disabled": true,
-      "reason": "awaiting first tagged release"
+      "tag": "v0.1.0",
+      "unit": "sysc-tray.service",
+      "binaries": [
+        {
+          "name": "sysc-tray",
+          "assets": {
+            "amd64": {
+              "url": "https://github.com/Nomadcxx/sysc-tray/releases/download/v0.1.0/sysc-tray",
+              "sha256": "0e951693e5f586e67dff469361e1fe0ed6064e91b77b6fad06fc0fbaefa6ecd7"
+            }
+          }
+        }
+      ]
     },
     {
       "id": "sysc-lock",
