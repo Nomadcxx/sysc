@@ -3,6 +3,7 @@ package conflict
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -26,7 +27,7 @@ func fakeProc(t *testing.T, procs map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
 	for pid, spec := range procs {
-		parts := strings.SplitN(spec, "|", 2)
+		parts := strings.SplitN(spec, "|", 3)
 		dir := filepath.Join(root, pid)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -40,6 +41,12 @@ func fakeProc(t *testing.T, procs map[string]string) string {
 		}
 		if err := os.WriteFile(filepath.Join(dir, "cmdline"), []byte(cmdline), 0o644); err != nil {
 			t.Fatal(err)
+		}
+		if len(parts) > 2 {
+			status := "Name:\t" + parts[0] + "\nUid:\t" + parts[2] + "\t" + parts[2] + "\t" + parts[2] + "\t" + parts[2] + "\n"
+			if err := os.WriteFile(filepath.Join(dir, "status"), []byte(status), 0o644); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	return root
@@ -319,7 +326,7 @@ func TestHandoverOfUnitlessBusOwnerNeverStopsAManager(t *testing.T) {
 	env.NiriConfig = cfg
 	env.Busctl = func(args ...string) (string, error) {
 		if args[1] == "org.freedesktop.Notifications" {
-			return "PID=316\nComm=mako\nUnit=user@1000.service\nSlice=user-1000.slice\n", nil
+			return "PID=4104796\nComm=mako\nUnit=session-421.scope\nUserUnit=n/a\nUniqueName=:1.31\n", nil
 		}
 		return "", os.ErrNotExist
 	}
@@ -345,8 +352,9 @@ func TestHandoverOfUnitlessBusOwnerNeverStopsAManager(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, call := range calls {
-		if strings.Contains(call, "user@") {
-			t.Fatalf("handover targeted the session manager: %v", calls)
+		if strings.Contains(call, "user@") || strings.Contains(call, "n/a") ||
+			strings.HasPrefix(call, "stop") || strings.HasPrefix(call, "disable") {
+			t.Fatalf("handover touched a unit it does not own: %v", calls)
 		}
 	}
 	data, err := os.ReadFile(cfg)
@@ -355,5 +363,48 @@ func TestHandoverOfUnitlessBusOwnerNeverStopsAManager(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "// sysc-handover: spawn-at-startup \"mako\"") {
 		t.Fatalf("spawn line not commented: %q", data)
+	}
+}
+
+// busctl answers "n/a" for a key with no value and puts the owner's session
+// scope in Unit= when a provider was started straight by niri. Neither is a
+// provider unit: a handover must not run "systemctl --user stop n/a".
+func TestBusOwnerWithoutAServiceUnitIsNotAUnitOwner(t *testing.T) {
+	b := parseBusStatus("PID=4104796\nComm=mako\nUnit=session-421.scope\nUserUnit=n/a\nUniqueName=:1.31\n")
+	if b.Unit != "session-421.scope" || b.UserUnit != "" {
+		t.Fatalf("parsed %+v", b)
+	}
+	if got := busUnit(b); got != "" {
+		t.Fatalf("busUnit = %q, want no unit", got)
+	}
+	if got := busUnit(parseBusStatus("PID=1\nComm=n/a\nUnit=n/a\n")); got != "" {
+		t.Fatalf("placeholder dump = %q, want no unit", got)
+	}
+	if got := busUnit(parseBusStatus("Comm=n/a\nUserUnit=dunst.service\n")); got != "dunst.service" {
+		t.Fatalf("named service = %q", got)
+	}
+}
+
+// A display manager's greeter runs its own swaync. It is a different user on a
+// different session bus, so it must not be offered as a conflict for ours.
+func TestDetectIgnoresOtherUsersProcesses(t *testing.T) {
+	mine := strconv.Itoa(os.Getuid())
+	foreign := strconv.Itoa(os.Getuid() + 1)
+	other := strconv.Itoa(os.Getuid() + 2)
+	root := fakeProc(t, map[string]string{
+		"100": "swaync|/usr/bin/swaync|" + mine,
+		"200": "swaync|/usr/bin/swaync|" + foreign,
+		"300": "mako|/usr/bin/mako|" + other,
+	})
+	findings, err := Detect(Env{
+		ProcRoot:  root,
+		Busctl:    func(...string) (string, error) { return "", os.ErrNotExist },
+		Systemctl: func(...string) (string, error) { return "", os.ErrNotExist },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 || findings[0].Name != "swaync" || len(findings[0].PIDs) != 1 || findings[0].PIDs[0] != 100 {
+		t.Fatalf("findings = %+v, want only our own swaync on pid 100", findings)
 	}
 }
