@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -69,7 +70,7 @@ func parseUninstall(args []string, out io.Writer) (options, error) {
 	return o, nil
 }
 
-func runUninstall(args []string, out io.Writer, home string) int {
+func runUninstall(args []string, in io.Reader, out io.Writer, home string) int {
 	o, err := parseUninstall(args, out)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -82,6 +83,20 @@ func runUninstall(args []string, out io.Writer, home string) int {
 		fmt.Fprintln(out, err)
 		return 1
 	}
+	if !o.Yes {
+		fmt.Fprintln(out, "This removes the SYSC suite binaries and user units.")
+		if o.Purge {
+			fmt.Fprintln(out, "The user config under ~/.config/sysc-shell is removed too (--purge).")
+		}
+		if o.RemoveGSlapper {
+			fmt.Fprintln(out, "gSlapper is removed with the AUR helper (--remove-gslapper).")
+		}
+		fmt.Fprint(out, "Proceed? [y/N] ")
+		if !confirm(in) {
+			fmt.Fprintln(out, "Aborted.")
+			return 1
+		}
+	}
 	opts := installOptions(home, p, seed.Answers{}, true, i18n.Match(o.Lang))
 	opts.Purge = o.Purge
 	opts.RemoveGSlapper = o.RemoveGSlapper
@@ -91,7 +106,32 @@ func runUninstall(args []string, out io.Writer, home string) int {
 		fmt.Fprintln(out, err)
 		return 1
 	}
+	if anyFailed(res.Tasks) {
+		fmt.Fprintln(out, "uninstall finished with failed tasks")
+		return 1
+	}
 	return 0
+}
+
+func confirm(in io.Reader) bool {
+	sc := bufio.NewScanner(in)
+	if !sc.Scan() {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(sc.Text())) {
+	case "y", "yes":
+		return true
+	}
+	return false
+}
+
+func anyFailed(tasks []install.Task) bool {
+	for _, t := range tasks {
+		if t.Status == install.Failed {
+			return true
+		}
+	}
+	return false
 }
 
 func answersFor(ctx context.Context, o options, recommended []string) (seed.Answers, error) {
@@ -444,7 +484,7 @@ func (m model) View() string {
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "uninstall" {
-		os.Exit(runUninstall(os.Args[2:], os.Stdout, mustHome()))
+		os.Exit(runUninstall(os.Args[2:], os.Stdin, os.Stdout, mustHome()))
 	}
 	o, err := parseFlags(os.Args[1:], os.Stderr)
 	if err != nil {
