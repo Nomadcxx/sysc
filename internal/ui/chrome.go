@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strings"
+
 	"github.com/Nomadcxx/sysc/internal/i18n"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -21,33 +23,55 @@ const (
 	MinHeight = 24
 )
 
+// greet-parity monochrome palette: base #1a1a1a, primary white, muted #666666.
 var (
-	baseStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")).Background(lipgloss.Color("#0a0a0a"))
-	mutedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")).Background(lipgloss.Color("#0a0a0a"))
+	baseStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")).Background(lipgloss.Color("#1a1a1a"))
+	mutedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).Background(lipgloss.Color("#1a1a1a"))
 	titleStyle = baseStyle.Bold(true)
 	boxStyle   = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#666666")).
+			BorderForeground(lipgloss.Color("#ffffff")).
 			Foreground(lipgloss.Color("#ffffff")).
-			Background(lipgloss.Color("#0a0a0a")).
+			Background(lipgloss.Color("#1a1a1a")).
 			Padding(1, 2)
 )
 
-// Nav returns the always-visible bottom help bar for the current step.
-func Nav(loc i18n.Locale, step Step) string {
-	if step == StepInstalling {
+// Nav returns the always-visible bottom help bar for the current page and step.
+// It advertises only keys that work on that page (#26, #27).
+func Nav(loc i18n.Locale, page Page, step Step) string {
+	switch step {
+	case StepInstalling:
 		return mutedStyle.Render(i18n.T(loc, "nav.wait"))
+	case StepDone, StepFailed:
+		return mutedStyle.Render("Enter " + i18n.T(loc, "nav.close"))
 	}
-	line := "↑↓ " + i18n.T(loc, "nav.navigate") +
-		" • Enter " + i18n.T(loc, "nav.next") +
-		" • Esc " + i18n.T(loc, "nav.back") +
-		" • F9 " + i18n.T(loc, "nav.language") +
-		" • q " + i18n.T(loc, "nav.quit")
-	return mutedStyle.Render(line)
+	parts := make([]string, 0, 6)
+	switch page {
+	case PageTheme:
+		parts = append(parts, "↑↓ "+i18n.T(loc, "nav.preset"))
+	case PagePlugins:
+		parts = append(parts, "↑↓ "+i18n.T(loc, "nav.toggle"))
+	case PageWeather:
+		parts = append(parts, i18n.T(loc, "nav.type"), "Enter "+i18n.T(loc, "nav.search"))
+	case PageConfirm:
+		parts = append(parts, "Enter "+i18n.T(loc, "nav.install"))
+	default:
+		parts = append(parts, "Enter "+i18n.T(loc, "nav.next"))
+	}
+	parts = append(parts,
+		"Esc "+i18n.T(loc, "nav.back"),
+		"F9 "+i18n.T(loc, "nav.language"),
+	)
+	if page == PageWeather {
+		parts = append(parts, "Ctrl+C "+i18n.T(loc, "nav.quit"))
+	} else {
+		parts = append(parts, "q "+i18n.T(loc, "nav.quit"))
+	}
+	return mutedStyle.Render(strings.Join(parts, " • "))
 }
 
 // View renders the full-screen chrome: beams, title, body, bottom nav.
-func View(loc i18n.Locale, title, body string, step Step, width, height int, beams *BeamsTextEffect) string {
+func View(loc i18n.Locale, title, body string, page Page, step Step, width, height int, beams *BeamsTextEffect) string {
 	if width < MinWidth || height < MinHeight {
 		return baseStyle.Render(i18n.T(loc, "ui.enlarge"))
 	}
@@ -56,7 +80,28 @@ func View(loc i18n.Locale, title, body string, step Step, width, height int, bea
 		parts = append(parts, beams.Render())
 	}
 	parts = append(parts, titleStyle.Render(title))
-	parts = append(parts, boxStyle.Width(width-8).Render(body))
-	parts = append(parts, Nav(loc, step))
-	return baseStyle.Render(lipgloss.JoinVertical(lipgloss.Center, parts...))
+	// Cap the body so the box border survives on one screen: height minus the
+	// footer, title and the box's own border+padding, minus the banner rows.
+	budget := height - 2 - 4
+	if beams != nil {
+		budget -= BannerHeight()
+	}
+	if budget < 1 {
+		budget = 1
+	}
+	bodyLines := strings.Split(body, "\n")
+	if len(bodyLines) > budget {
+		bodyLines = append(bodyLines[:budget-1:budget-1], "…")
+	}
+	parts = append(parts, boxStyle.Width(width-8).Render(strings.Join(bodyLines, "\n")))
+	lines := strings.Split(lipgloss.JoinVertical(lipgloss.Center, parts...), "\n")
+	for len(lines) < height-1 {
+		lines = append(lines, "")
+	}
+	// ponytail: clip unusually tall bodies so the chrome always fits one screen.
+	if len(lines) > height-1 {
+		lines = lines[:height-1]
+	}
+	lines = append(lines, Nav(loc, page, step))
+	return baseStyle.Render(strings.Join(lines, "\n"))
 }

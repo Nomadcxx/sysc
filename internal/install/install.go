@@ -57,6 +57,11 @@ type Options struct {
 	Systemctl  func(args ...string) error
 	Now        time.Time
 
+	// Progress receives a detached snapshot of the task list every time it
+	// changes: pending/skipped rows after download, done after swap, the
+	// gSlapper row, and the final list. Nil disables progress reporting.
+	Progress func(tasks []Task)
+
 	// Arch overrides the host architecture check (empty = runtime.GOARCH).
 	Arch string
 	// Loc enables localized refusal messages when set.
@@ -222,6 +227,12 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 			return res, fmt.Errorf("%s: %w", c.ID, err)
 		}
 	}
+	emit := func(tasks []Task) {
+		if opts.Progress != nil {
+			opts.Progress(append([]Task(nil), tasks...))
+		}
+	}
+	emit(rows)
 	st := stamp.Stamp{
 		Release:    opts.Pin.Release,
 		Components: map[string]string{},
@@ -270,6 +281,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		return res, err
 	}
 	res.Tasks = append(res.Tasks, rows...)
+	emit(res.Tasks)
 
 	if _, err := lookPath("gslapper"); err == nil {
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: "already on PATH"})
@@ -285,6 +297,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		}
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Done})
 	}
+	emit(res.Tasks)
 
 	for _, c := range enabled {
 		u, _ := unitFor(c.ID)
@@ -348,6 +361,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	if err := persist(); err != nil {
 		return res, err
 	}
+	emit(res.Tasks)
 	return res, nil
 }
 

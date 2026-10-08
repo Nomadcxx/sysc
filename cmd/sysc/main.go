@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -147,6 +148,13 @@ type guessMsg struct {
 	err   error
 }
 
+type progressMsg struct{ tasks []install.Task }
+
+type installDoneMsg struct {
+	res install.Result
+	err error
+}
+
 type model struct {
 	w           ui.Wizard
 	recommended []string
@@ -154,8 +162,18 @@ type model struct {
 	input       textinput.Model
 	width       int
 	height      int
-	confirmed   bool
+	step        ui.Step
+	tasks       []install.Task
+	installRes  install.Result
+	installErr  error
+	logPath     string
+	frame       int
 	note        string
+
+	// send is wired to the running tea program in main; installer is the
+	// injectable seam for tests (never call the real install.Run in tests).
+	send      func(tea.Msg)
+	installer func(seed.Answers, func([]install.Task)) (install.Result, error)
 }
 
 func newModel(loc i18n.Locale, recommended []string, plainNiri bool) model {
@@ -170,8 +188,10 @@ func newModel(loc i18n.Locale, recommended []string, plainNiri bool) model {
 		input:       in,
 		width:       ui.MinWidth,
 		height:      ui.MinHeight,
+		step:        ui.StepWizard,
+		logPath:     "/tmp/sysc-installer.log",
 	}
-	m.beams = ui.NewBeamsTextEffect(m.width, m.height, ui.Banner())
+	m.beams = ui.NewBeamsTextEffect(m.width, ui.BannerHeight(), ui.Banner())
 	return m
 }
 
@@ -200,9 +220,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		if m.beams != nil {
-			m.beams.Resize(msg.Width, msg.Height)
+			m.beams.Resize(msg.Width, ui.BannerHeight())
 		}
 	case tickMsg:
+		m.frame++
 		if m.beams != nil {
 			m.beams.Update()
 		}
@@ -215,7 +236,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.input.SetValue("")
 			m.note = ""
 		}
+	case progressMsg:
+		if m.step == ui.StepInstalling {
+			m.tasks = msg.tasks
+		}
+	case installDoneMsg:
+		m.installRes = msg.res
+		m.installErr = msg.err
+		if msg.err != nil {
+			m.step = ui.StepFailed
+		} else {
+			m.step = ui.StepDone
+		}
 	case tea.KeyMsg:
+		if m.step == ui.StepInstalling {
+			return m, nil
+		}
+		if m.step == ui.StepDone || m.step == ui.StepFailed {
+			switch msg.String() {
+			case "enter", "q", "ctrl+c":
+				return m, tea.Quit
+			}
+			return m, nil
+		}
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
@@ -242,8 +285,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.w = m.w.Next()
 			case ui.PageConfirm:
-				m.confirmed = true
-				return m, tea.Quit
+				m.step = ui.StepInstalling
+				go m.runInstall()
+				return m, nil
 			default:
 				m.w = m.w.Next()
 				if m.w.Page == ui.PageWeather {
@@ -292,15 +336,102 @@ func cycle(values []string, current string, step int) string {
 	return values[0]
 }
 
-func (m model) View() string {
-	body := m.w.Body()
-	if m.w.Page == ui.PageWeather {
-		body += "\n\n" + m.input.View()
-		if m.note != "" {
-			body += "\n" + m.note
+// runInstall executes the injected installer in the background, teeing every
+// task snapshot to the log file and the tea program.
+func (m model) runInstall() {
+	logFile, err := os.Create(m.logPath)
+	if err != nil {
+		m.notify(installDoneMsg{err: err})
+		return
+	}
+	defer logFile.Close()
+	progress := func(tasks []install.Task) {
+		for _, task := range tasks {
+			status := string(task.Status)
+			if status == "" {
+				status = "pending"
+			}
+			line := task.Name + ": " + status
+			if task.Reason != "" {
+				line += " (" + task.Reason + ")"
+			}
+			fmt.Fprintln(logFile, line)
+		}
+		m.notify(progressMsg{tasks: append([]install.Task(nil), tasks...)})
+	}
+	res, err := m.installer(m.w.Answers(), progress)
+	if err != nil {
+		fmt.Fprintf(logFile, "error: %v\n", err)
+	}
+	m.notify(installDoneMsg{res: res, err: err})
+}
+
+func (m model) notify(msg tea.Msg) {
+	if m.send != nil {
+		m.send(msg)
+	}
+}
+
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+// taskLines renders one line per task: spinner while pending, then a status
+// glyph with the reason when there is one.
+func taskLines(tasks []install.Task, frame int) string {
+	lines := make([]string, 0, len(tasks))
+	for _, task := range tasks {
+		switch task.Status {
+		case install.Done:
+			lines = append(lines, "✓ "+task.Name)
+		case install.Skipped:
+			lines = append(lines, "- "+task.Name+reason(task.Reason))
+		case install.Failed:
+			lines = append(lines, "✗ "+task.Name+reason(task.Reason))
+		default:
+			lines = append(lines, spinnerFrames[frame%len(spinnerFrames)]+" "+task.Name)
 		}
 	}
-	return ui.View(m.w.Locale, m.w.Title(), body, ui.StepWizard, m.width, m.height, m.beams)
+	return strings.Join(lines, "\n")
+}
+
+func reason(r string) string {
+	if r == "" {
+		return ""
+	}
+	return " (" + r + ")"
+}
+
+func (m model) View() string {
+	title, body := m.w.Title(), m.w.Body()
+	switch m.step {
+	case ui.StepInstalling:
+		title = i18n.T(m.w.Locale, "install.title")
+		body = i18n.T(m.w.Locale, "install.blurb")
+		if len(m.tasks) > 0 {
+			body += "\n\n" + taskLines(m.tasks, m.frame)
+		}
+	case ui.StepDone:
+		title = i18n.T(m.w.Locale, "done.title")
+		body = i18n.T(m.w.Locale, "done.blurb") + "\n\n" + taskLines(m.installRes.Tasks, 0) +
+			"\n\n" + i18n.T(m.w.Locale, "install.log") + ": " + m.logPath
+	case ui.StepFailed:
+		title = i18n.T(m.w.Locale, "failed.title")
+		body = i18n.T(m.w.Locale, "failed.blurb")
+		if lines := taskLines(m.installRes.Tasks, 0); lines != "" {
+			body += "\n\n" + lines
+		}
+		if m.installErr != nil {
+			body += "\n\n" + m.installErr.Error()
+		}
+		body += "\n\n" + i18n.T(m.w.Locale, "install.log") + ": " + m.logPath
+	default:
+		if m.w.Page == ui.PageWeather {
+			body += "\n\n" + m.input.View()
+			if m.note != "" {
+				body += "\n" + m.note
+			}
+		}
+	}
+	return ui.View(m.w.Locale, title, body, m.w.Page, m.step, m.width, m.height, m.beams)
 }
 
 func main() {
@@ -359,23 +490,28 @@ func main() {
 	}
 
 	plainNiri := inNiri && !graphicalSessionActive()
-	final, err := tea.NewProgram(newModel(loc, p.Recommended, plainNiri), tea.WithAltScreen()).Run()
+	m := newModel(loc, p.Recommended, plainNiri)
+	prog := tea.NewProgram(m, tea.WithAltScreen())
+	m.send = prog.Send
+	m.installer = func(a seed.Answers, progress func([]install.Task)) (install.Result, error) {
+		opts := installOptions(home, p, a, false, loc)
+		opts.InNiriSession = inNiri
+		opts.Progress = progress
+		return install.Run(ctx, opts)
+	}
+	final, err := prog.Run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	fm, ok := final.(model)
-	if !ok || !fm.confirmed {
+	if !ok {
 		return
 	}
-	opts := installOptions(home, p, fm.w.Answers(), false, loc)
-	opts.InNiriSession = inNiri
-	res, err := install.Run(ctx, opts)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	if fm.installErr != nil {
+		fmt.Fprintln(os.Stderr, fm.installErr)
 		os.Exit(1)
 	}
-	printTasks(os.Stdout, res)
 }
 
 func printTasks(out io.Writer, res install.Result) {
