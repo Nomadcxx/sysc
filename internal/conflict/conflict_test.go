@@ -3,6 +3,7 @@ package conflict
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -26,7 +27,7 @@ func fakeProc(t *testing.T, procs map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
 	for pid, spec := range procs {
-		parts := strings.SplitN(spec, "|", 2)
+		parts := strings.SplitN(spec, "|", 3)
 		dir := filepath.Join(root, pid)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -40,6 +41,12 @@ func fakeProc(t *testing.T, procs map[string]string) string {
 		}
 		if err := os.WriteFile(filepath.Join(dir, "cmdline"), []byte(cmdline), 0o644); err != nil {
 			t.Fatal(err)
+		}
+		if len(parts) > 2 {
+			status := "Name:\t" + parts[0] + "\nUid:\t" + parts[2] + "\t" + parts[2] + "\t" + parts[2] + "\t" + parts[2] + "\n"
+			if err := os.WriteFile(filepath.Join(dir, "status"), []byte(status), 0o644); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	return root
@@ -375,5 +382,27 @@ func TestBusOwnerWithoutAServiceUnitIsNotAUnitOwner(t *testing.T) {
 	}
 	if got := busUnit(parseBusStatus("Comm=n/a\nUserUnit=dunst.service\n")); got != "dunst.service" {
 		t.Fatalf("named service = %q", got)
+	}
+}
+
+// A display manager's greeter runs its own swaync. It is a different user on a
+// different session bus, so it must not be offered as a conflict for ours.
+func TestDetectIgnoresOtherUsersProcesses(t *testing.T) {
+	mine := strconv.Itoa(os.Getuid())
+	root := fakeProc(t, map[string]string{
+		"100": "swaync|/usr/bin/swaync|" + mine,
+		"200": "swaync|/usr/bin/swaync|65534",
+		"300": "mako|/usr/bin/mako|1001",
+	})
+	findings, err := Detect(Env{
+		ProcRoot:  root,
+		Busctl:    func(...string) (string, error) { return "", os.ErrNotExist },
+		Systemctl: func(...string) (string, error) { return "", os.ErrNotExist },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 || findings[0].Name != "swaync" || len(findings[0].PIDs) != 1 || findings[0].PIDs[0] != 100 {
+		t.Fatalf("findings = %+v, want only our own swaync on pid 100", findings)
 	}
 }

@@ -188,11 +188,15 @@ func scanProc(root string) []procInfo {
 		if err != nil {
 			continue
 		}
-		comm, err := os.ReadFile(filepath.Join(root, ent.Name(), "comm"))
+		dir := filepath.Join(root, ent.Name())
+		if !procOwnedByMe(dir) {
+			continue
+		}
+		comm, err := os.ReadFile(filepath.Join(dir, "comm"))
 		if err != nil {
 			continue
 		}
-		raw, err := os.ReadFile(filepath.Join(root, ent.Name(), "cmdline"))
+		raw, err := os.ReadFile(filepath.Join(dir, "cmdline"))
 		if err != nil {
 			continue
 		}
@@ -204,6 +208,34 @@ func scanProc(root string) []procInfo {
 		out = append(out, procInfo{PID: pid, Comm: strings.TrimSpace(string(comm)), Cmdline: cmdline, Args: args})
 	}
 	return out
+}
+
+// procOwnedByMe reports whether a pid belongs to the user running SYSC.
+// /proc is world-readable, so without this another session's daemons — a
+// greeter running swaync, say — show up as conflicts for ours, even though
+// they compete for a different session bus and cannot be signalled anyway.
+// A pid we cannot read the owner of is left alone.
+func procOwnedByMe(dir string) bool {
+	data, err := os.ReadFile(filepath.Join(dir, "status"))
+	if err != nil {
+		return true
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		v, ok := strings.CutPrefix(strings.TrimSpace(line), "Uid:")
+		if !ok {
+			continue
+		}
+		fields := strings.Fields(v)
+		if len(fields) == 0 {
+			return true
+		}
+		uid, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return true
+		}
+		return uid == os.Getuid()
+	}
+	return true
 }
 
 func baseName(s string) string {
