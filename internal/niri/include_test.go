@@ -171,3 +171,29 @@ func TestRestoreLineLeavesEditedLineAlone(t *testing.T) {
 		t.Fatalf("RestoreLine edited the file: %q", got)
 	}
 }
+
+// Identical commented text twice: the stamped position decides which line
+// comes back.
+func TestRestoreLineUsesStampedIndex(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, "config.kdl")
+	write(t, config, "input {}\nspawn-at-startup \"mako\"\nspawn-at-startup \"mako\"\n")
+	first, err := CommentLine(config, 1, `spawn-at-startup "mako"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := CommentLine(config, 2, `spawn-at-startup "mako"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Commented != second.Commented {
+		t.Fatalf("expected identical commented text: %q %q", first.Commented, second.Commented)
+	}
+	if err := RestoreLine(second); err != nil {
+		t.Fatal(err)
+	}
+	want := "input {}\n" + first.Commented + "\nspawn-at-startup \"mako\"\n"
+	if got := readFile(t, config); got != want {
+		t.Fatalf("restored the wrong line:\n got %q\nwant %q", got, want)
+	}
+}

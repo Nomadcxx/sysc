@@ -59,5 +59,6 @@
   "conflicts.state.found": "detected",
   "conflicts.failed": "handover failed",
   "conflicts.dbus_failed": "could not write %s; another notification daemon may still win the bus name",
-  "warn.conflict_kept": "%s was left running; notifications may be shown twice"
+  "warn.conflict_kept": "%s was left running; notifications may be shown twice",
+  "warn.conflict_failed": "%s handover failed; it may still be running"
 }

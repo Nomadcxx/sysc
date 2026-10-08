@@ -35,7 +35,12 @@ func Path(dataHome string) string {
 func Write(dataHome string) (stamp.Activation, error) {
 	path := Path(dataHome)
 	a := stamp.Activation{Path: path}
-	if _, err := os.Stat(path); err == nil {
+	if data, err := os.ReadFile(path); err == nil {
+		if string(data) == string(Content()) {
+			// Already ours (a re-run). Backing this up would make Delete
+			// "restore" our own file and leave it behind after uninstall.
+			return a, nil
+		}
 		created, err := backup.FirstBak(path)
 		if err != nil {
 			return a, err

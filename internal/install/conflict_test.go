@@ -10,6 +10,7 @@ import (
 
 	"github.com/Nomadcxx/sysc/internal/conflict"
 	"github.com/Nomadcxx/sysc/internal/fetch"
+	"github.com/Nomadcxx/sysc/internal/niri"
 	"github.com/Nomadcxx/sysc/internal/pin"
 	"github.com/Nomadcxx/sysc/internal/stamp"
 )
@@ -173,4 +174,83 @@ func TestUninstallRestoresOnlyStampedHandovers(t *testing.T) {
 	if row := taskNamed(res.Tasks, "dbus-activation"); row.Status != Done {
 		t.Fatalf("activation row = %+v", row)
 	}
+}
+
+// A second install must not forget the line the first handover commented: the
+// commented line is no longer detected, so replacing the record would leave
+// the marker in the config forever.
+func TestReRunKeepsStampedHandoverLine(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", "")
+	home := setupHome(t)
+	cfg := filepath.Join(home, ".config", "niri", "config.kdl")
+	line := `spawn-at-startup "mako"`
+	if err := os.WriteFile(cfg, []byte("input {}\n"+line+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	opts := conflictOpts(t, home, loadPin(t))
+	opts.ConflictEnv = conflict.Env{Systemctl: func(...string) (string, error) { return "", nil }}
+	opts.Conflicts = map[string]conflict.Choice{"mako": conflict.HandOver}
+	opts.Findings = []conflict.Finding{{
+		Name: "mako", Kind: conflict.KindNotifications,
+		NiriLines: []niri.Spawn{{Name: "mako", Path: cfg, LineNo: 1, Line: line}},
+	}}
+	if _, err := Run(context.Background(), opts); err != nil {
+		t.Fatal(err)
+	}
+	if s := stampAt(t, home); len(s.HandedOver) != 1 || len(s.HandedOver[0].Lines) != 1 {
+		t.Fatalf("first handover = %+v", s.HandedOver)
+	}
+
+	// The provider came back by another route, so the new record knows only
+	// the unit and no spawn line.
+	opts.Findings = []conflict.Finding{{
+		Name: "mako", Kind: conflict.KindNotifications, Unit: "mako.service", UnitEnabled: true,
+	}}
+	if _, err := Run(context.Background(), opts); err != nil {
+		t.Fatal(err)
+	}
+	s := stampAt(t, home)
+	if len(s.HandedOver) != 1 || len(s.HandedOver[0].Lines) != 1 || s.HandedOver[0].Unit != "mako.service" {
+		t.Fatalf("re-run lost the commented line: %+v", s.HandedOver)
+	}
+	if _, err := Uninstall(Options{Home: home, Pin: loadPin(t), Systemctl: noopSystemctl}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "sysc-handover") || !strings.Contains(string(data), line) {
+		t.Fatalf("spawn line not restored by uninstall: %q", data)
+	}
+}
+
+// Restoring a provider the handover stopped means running again, not only
+// enabled again.
+func TestUninstallRestartsReEnabledUnit(t *testing.T) {
+	home := setupHome(t)
+	s := stamp.Stamp{
+		Release:    "v0.1.0",
+		Components: map[string]string{},
+		HandedOver: []stamp.Handover{{Name: "mako", Unit: "mako.service", UnitWasEnabled: true}},
+	}
+	if err := stamp.Write(filepath.Join(home, ".local", "state", "sysc"), s, true); err != nil {
+		t.Fatal(err)
+	}
+	var calls []string
+	if _, err := Uninstall(Options{
+		Home: home, Pin: loadPin(t),
+		Systemctl: func(args ...string) error {
+			calls = append(calls, strings.Join(args, " "))
+			return nil
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, call := range calls {
+		if call == "enable --now mako.service" {
+			return
+		}
+	}
+	t.Fatalf("provider re-enabled without starting it: %v", calls)
 }

@@ -100,3 +100,28 @@ func TestPathUsesDataHome(t *testing.T) {
 		t.Fatalf("Path = %q", got)
 	}
 }
+
+// A re-run must not back up our own file: Delete would then "restore" it and
+// leave behind a file naming a service the uninstall just removed.
+func TestWriteTwiceLeavesNoBackupOfOwnContent(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := Write(dir); err != nil {
+		t.Fatal(err)
+	}
+	a, err := Write(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Backup != "" {
+		t.Fatalf("re-run stamped a backup of our own file: %+v", a)
+	}
+	if bak := Path(dir) + ".sysc.bak"; func() bool { _, err := os.Stat(bak); return err == nil }() {
+		t.Fatalf("stray backup: %s", bak)
+	}
+	if err := Delete(a); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(Path(dir)); !os.IsNotExist(err) {
+		t.Fatalf("activation file survived uninstall after a second install")
+	}
+}

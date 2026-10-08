@@ -139,6 +139,7 @@ func PlannedLine(sp Spawn) stamp.HandoverLine {
 	indent := sp.Line[:len(sp.Line)-len(strings.TrimLeft(sp.Line, " \t"))]
 	return stamp.HandoverLine{
 		Path:      sp.Path,
+		Index:     sp.LineNo,
 		Original:  sp.Line,
 		Commented: indent + HandoverMarker + strings.TrimLeft(sp.Line, " \t"),
 	}
@@ -173,21 +174,41 @@ func CommentLine(path string, lineNo int, line string) (stamp.HandoverLine, erro
 	if err := writeAtomic(path, []byte(strings.Join(lines, "\n"))); err != nil {
 		return stamp.HandoverLine{}, err
 	}
-	return stamp.HandoverLine{Path: path, Commented: commented, Original: live}, nil
+	return stamp.HandoverLine{Path: path, Index: lineNo, Commented: commented, Original: live}, nil
 }
 
 // RestoreLine puts a commented spawn line back exactly as it was. The stamped
-// commented text must still be present: a line the user edited after handover
+// RestoreLine puts a commented spawn line back exactly as it was. The stamped
+// position is used first, so a config holding the same commented text twice
+// loses the line SYSC actually touched. A line the user edited after handover
 // is left alone and reported. Other stamped lines are unaffected.
 func RestoreLine(hl stamp.HandoverLine) error {
 	data, err := os.ReadFile(hl.Path)
 	if err != nil {
 		return err
 	}
-	text := string(data)
-	if !strings.Contains(text, hl.Commented) {
+	lines := strings.Split(string(data), "\n")
+	matches := func(i int) bool {
+		return i >= 0 && i < len(lines) && strings.TrimRight(lines[i], "\r") == hl.Commented
+	}
+	idx := hl.Index
+	if !matches(idx) {
+		// A stamp written before line indexes existed: fall back to the text.
+		idx = -1
+		for i, line := range lines {
+			if strings.TrimRight(line, "\r") == hl.Commented {
+				idx = i
+				break
+			}
+		}
+	}
+	if idx < 0 {
 		return fmt.Errorf("niri: %s no longer contains %q", hl.Path, hl.Commented)
 	}
-	text = strings.Replace(text, hl.Commented, hl.Original, 1)
-	return writeAtomic(hl.Path, []byte(text))
+	terminator := ""
+	if strings.HasSuffix(lines[idx], "\r") {
+		terminator = "\r"
+	}
+	lines[idx] = hl.Original + terminator
+	return writeAtomic(hl.Path, []byte(strings.Join(lines, "\n")))
 }

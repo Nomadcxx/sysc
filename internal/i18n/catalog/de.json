@@ -59,5 +59,6 @@
   "conflicts.state.found": "erkannt",
   "conflicts.failed": "Übernahme fehlgeschlagen",
   "conflicts.dbus_failed": "konnte %s nicht schreiben; ein anderer Daemon kann den Bus-Namen weiter gewinnen",
-  "warn.conflict_kept": "%s bleibt aktiv; Benachrichtigungen können doppelt erscheinen"
+  "warn.conflict_kept": "%s bleibt aktiv; Benachrichtigungen können doppelt erscheinen",
+  "warn.conflict_failed": "Übernahme von %s fehlgeschlagen; der Dienst läuft möglicherweise weiter"
 }
