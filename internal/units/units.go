@@ -4,6 +4,8 @@ package units
 import (
 	"bytes"
 	"embed"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -82,4 +84,34 @@ func StartAll(run func(args ...string) error) error {
 // GraphicalSessionActive reports whether the user session target is up.
 func GraphicalSessionActive(run func(args ...string) error) bool {
 	return run("is-active", "--quiet", "graphical-session.target") == nil
+}
+
+// ActiveUnits reports which of StopOrder's units are currently active.
+func ActiveUnits(run func(args ...string) error) []string {
+	var active []string
+	for _, name := range StopOrder {
+		if run("is-active", "--quiet", name) == nil {
+			active = append(active, name)
+		}
+	}
+	return active
+}
+
+// StartUnits starts the given units in StartOrder, attempting every unit
+// and joining the errors so one failure cannot leave the rest stopped.
+func StartUnits(run func(args ...string) error, names []string) error {
+	want := map[string]bool{}
+	for _, n := range names {
+		want[n] = true
+	}
+	var errs []error
+	for _, name := range StartOrder {
+		if !want[name] {
+			continue
+		}
+		if err := run("start", name); err != nil {
+			errs = append(errs, fmt.Errorf("start %s: %w", name, err))
+		}
+	}
+	return errors.Join(errs...)
 }
