@@ -91,7 +91,11 @@ func Apply(opts Options) (Result, error) {
 		if _, err := backup.FirstBak(opts.ConfigPath); err != nil {
 			return res, err
 		}
-		if _, err := backup.StateCopy(opts.StateDir, "niri-config.kdl", opts.ConfigPath, opts.Now); err != nil {
+		now := opts.Now
+		if now.IsZero() {
+			now = time.Now()
+		}
+		if _, err := backup.StateCopy(opts.StateDir, "niri-config.kdl", opts.ConfigPath, now); err != nil {
 			return res, err
 		}
 		if err := writeAtomic(opts.ConfigPath, []byte(text)); err != nil {

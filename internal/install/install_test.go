@@ -266,10 +266,11 @@ func TestNiriSessionInactiveGraphicalTargetKeepsSpawn(t *testing.T) {
 	for _, call := range calls {
 		switch {
 		case strings.HasPrefix(call, "is-active"):
-			if !strings.Contains(call, "graphical-session.target") {
-				t.Fatalf("is-active checked %q, want graphical-session.target", call)
+			if strings.Contains(call, "graphical-session.target") {
+				sawInactiveCheck = true
+			} else if !strings.HasSuffix(call, ".service") {
+				t.Fatalf("unexpected is-active probe %q", call)
 			}
-			sawInactiveCheck = true
 		case strings.HasPrefix(call, "enable "):
 			enabled = true
 		case strings.HasPrefix(call, "start "):

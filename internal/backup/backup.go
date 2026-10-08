@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -52,11 +53,11 @@ func StateCopy(stateDir, name, src string, now time.Time) (string, error) {
 	if err := os.WriteFile(dst, data, 0o644); err != nil {
 		return "", err
 	}
-	rotate(stateDir, name)
+	rotate(stateDir, name, dst)
 	return dst, nil
 }
 
-func rotate(stateDir, name string) {
+func rotate(stateDir, name, keep string) {
 	entries, err := os.ReadDir(stateDir)
 	if err != nil {
 		return
@@ -69,9 +70,40 @@ func rotate(stateDir, name string) {
 		}
 		copies = append(copies, e.Name())
 	}
-	sort.Strings(copies)
+	// Plain lexical order puts the bare "<name>.<stamp>" copy before its
+	// suffixed siblings, but the bare name is reused once rotated away, so
+	// the newest copy could both sort first and be deleted in its own run
+	// (#37). Order by the (stamp, suffix) each name actually encodes.
+	sort.Slice(copies, func(i, j int) bool {
+		si, ni := parseCopy(copies[i], prefix)
+		sj, nj := parseCopy(copies[j], prefix)
+		if si != sj {
+			return si < sj
+		}
+		return ni < nj
+	})
+	keepName := filepath.Base(keep)
 	for len(copies) > maxStateCopies {
-		os.Remove(filepath.Join(stateDir, copies[0]))
+		victim := copies[0]
 		copies = copies[1:]
+		if victim == keepName {
+			continue
+		}
+		os.Remove(filepath.Join(stateDir, victim))
 	}
+}
+
+// parseCopy splits a "<name>.<stamp>[.<n>]" copy name into its stamp and
+// numeric suffix (0 when the name has no suffix).
+func parseCopy(copyName, prefix string) (string, int) {
+	rest := strings.TrimPrefix(copyName, prefix)
+	parts := strings.SplitN(rest, ".", 2)
+	if len(parts) == 1 {
+		return parts[0], 0
+	}
+	n, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return parts[0], 0
+	}
+	return parts[0], n
 }

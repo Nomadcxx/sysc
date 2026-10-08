@@ -127,8 +127,7 @@ func unitFor(id string) (units.Unit, bool) {
 
 // Run installs the pin: fetch and swap binaries, gSlapper, units, seed, niri,
 // start, stamp.
-func Run(ctx context.Context, opts Options) (Result, error) {
-	var res Result
+func Run(ctx context.Context, opts Options) (res Result, err error) {
 	if opts.Answers.Location == "" || (opts.Answers.Latitude == 0 && opts.Answers.Longitude == 0) {
 		if opts.Loc != nil {
 			return res, errors.New(i18n.T(*opts.Loc, "refuse.weather"))
@@ -149,6 +148,11 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	// file exists yet, which is after the binaries are already in place.
 	if _, err := seed.ConfigJSON(opts.Answers); err != nil {
 		return res, err
+	}
+	// A zero Now (production callers leave it unset) would stamp every state
+	// copy 00010101T000000Z and make rotation delete the newest copy (#37).
+	if opts.Now.IsZero() {
+		opts.Now = time.Now()
 	}
 	// The pin only carries amd64 assets; installing them on another host
 	// architecture would swap silently broken binaries (AUD-08).
@@ -186,6 +190,11 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		lookPath = exec.LookPath
 	}
 	systemctl := opts.systemctl()
+	// Resolve gslapper once: the stamp must remember whether SYSC owns the
+	// installed package across re-runs (#36).
+	_, gslapperErr := lookPath("gslapper")
+	gslapperOnPath := gslapperErr == nil
+	prev, prevErr := stamp.Read(opts.stateDir())
 
 	staging := filepath.Join(opts.stateDir(), "staging")
 
@@ -238,8 +247,9 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	}
 	emit(rows)
 	st := stamp.Stamp{
-		Release:    opts.Pin.Release,
-		Components: map[string]string{},
+		Release:           opts.Pin.Release,
+		Components:        map[string]string{},
+		GSlapperInstalled: prevErr == nil && prev.GSlapperInstalled && gslapperOnPath,
 	}
 	for _, c := range enabled {
 		st.Components[c.ID] = c.Tag
@@ -254,6 +264,20 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		return nil
 	}
 
+	// If anything below fails after the units were stopped, start the ones
+	// that were running again so a failed upgrade does not leave the user
+	// without a bar until the next login (#39).
+	restarted := false
+	var wasActive []string
+	defer func() {
+		if err == nil || restarted || len(wasActive) == 0 {
+			return
+		}
+		if rerr := units.StartUnits(systemctl, wasActive); rerr != nil {
+			err = fmt.Errorf("%w (restarting previously running units: %v)", err, rerr)
+		}
+	}()
+
 	// The stamp has to exist from the first change uninstall is responsible
 	// for. That is the swap when there are binaries (a failed swap is rolled
 	// back inside SwapAll and does not get here). With no binaries, seed and
@@ -262,6 +286,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 		// Stop user units before swapping so an upgrade actually loads the
 		// new binaries instead of keeping running ones (AUD-07). First
 		// installs have nothing running; errors are not fatal.
+		wasActive = units.ActiveUnits(systemctl)
 		_ = units.StopAll(systemctl)
 		if err := swap(opts.binDir(), staging, allNames); err != nil {
 			return res, err
@@ -287,8 +312,12 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	res.Tasks = append(res.Tasks, rows...)
 	emit(res.Tasks)
 
-	if _, err := lookPath("gslapper"); err == nil {
-		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: "already on PATH"})
+	if gslapperOnPath {
+		reason := "already on PATH"
+		if st.GSlapperInstalled {
+			reason = "already installed by SYSC"
+		}
+		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: reason})
 	} else if opts.InstallPkg == nil {
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped,
 			Reason: fmt.Sprintf("no AUR helper found; install gSlapper with yay or paru (package %q)", opts.Pin.GSlapper.Package)})
@@ -351,6 +380,7 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 	}
 
 	started := false
+	restarted = true
 	if sessionUp {
 		if err := units.StartAll(systemctl); err != nil {
 			// The stamp from the swap already makes this recoverable (AUD-03).

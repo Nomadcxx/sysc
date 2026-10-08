@@ -1,6 +1,7 @@
 package units
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,5 +55,41 @@ func TestWriteBacksUpForeignUnit(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "WantedBy=graphical-session.target") {
 		t.Fatalf("unit missing session target:\n%s", data)
+	}
+}
+
+func TestActiveUnitsAndStartUnits(t *testing.T) {
+	var calls []string
+	run := func(args ...string) error {
+		calls = append(calls, strings.Join(args, " "))
+		return nil
+	}
+	active := ActiveUnits(run)
+	wantActive := []string{"sysc-shell.service", "sysc-walls.service", "sysc-clipboard.service"}
+	if strings.Join(active, ",") != strings.Join(wantActive, ",") {
+		t.Fatalf("ActiveUnits = %v; want %v", active, wantActive)
+	}
+	for _, call := range calls {
+		if !strings.HasPrefix(call, "is-active") {
+			t.Fatalf("ActiveUnits ran %q; want only is-active", call)
+		}
+	}
+
+	calls = nil
+	failing := "sysc-walls.service"
+	runErr := func(args ...string) error {
+		calls = append(calls, strings.Join(args, " "))
+		if len(args) == 2 && args[0] == "start" && args[1] == failing {
+			return fmt.Errorf("boom")
+		}
+		return nil
+	}
+	err := StartUnits(runErr, []string{"sysc-shell.service", "sysc-walls.service", "sysc-clipboard.service"})
+	if err == nil || !strings.Contains(err.Error(), failing) {
+		t.Fatalf("StartUnits error = %v; want a %s failure", err, failing)
+	}
+	want := []string{"start sysc-clipboard.service", "start sysc-walls.service", "start sysc-shell.service"}
+	if strings.Join(calls, ",") != strings.Join(want, ",") {
+		t.Fatalf("StartUnits order = %v; want %v (every unit attempted)", calls, want)
 	}
 }
