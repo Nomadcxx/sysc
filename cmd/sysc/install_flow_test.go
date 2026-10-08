@@ -96,6 +96,18 @@ func TestInstallingIgnoresKeys(t *testing.T) {
 	}
 }
 
+func TestInstallingAllowsCtrlC(t *testing.T) {
+	m := newModel(i18n.EN, nil, false)
+	m.step = ui.StepInstalling
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	if cmd == nil {
+		t.Fatal("ctrl+c did not quit while installing")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatalf("ctrl+c returned %T, want quit", cmd())
+	}
+}
+
 func TestThemeArrowsChangeMode(t *testing.T) {
 	m := newModel(i18n.EN, nil, false)
 	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyLeft})

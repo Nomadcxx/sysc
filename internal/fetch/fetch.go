@@ -13,7 +13,19 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
+
+// NewClient builds the downloader used when callers do not inject one: a
+// cloned DefaultTransport with response-header and TLS handshake ceilings
+// plus an overall timeout so a stalled release server cannot hang the
+// installer.
+func NewClient() *http.Client {
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.ResponseHeaderTimeout = 30 * time.Second
+	tr.TLSHandshakeTimeout = 15 * time.Second
+	return &http.Client{Transport: tr, Timeout: 10 * time.Minute}
+}
 
 // Asset is one pinned download: the install name it stages under, where it
 // comes from, and the SHA256 it must have.
@@ -40,6 +52,9 @@ func safeName(name string) error {
 // DownloadAll fetches every asset into staging, verifying each SHA256. A
 // failed download or checksum leaves no file behind for that asset.
 func DownloadAll(ctx context.Context, client *http.Client, staging string, assets []Asset) error {
+	if client == nil {
+		client = NewClient()
+	}
 	if err := os.MkdirAll(staging, 0o755); err != nil {
 		return err
 	}

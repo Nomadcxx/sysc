@@ -7,15 +7,16 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/Nomadcxx/sysc/internal/fetch"
 	"github.com/Nomadcxx/sysc/internal/geo"
 	"github.com/Nomadcxx/sysc/internal/i18n"
 	"github.com/Nomadcxx/sysc/internal/install"
@@ -138,7 +139,7 @@ func answersFor(ctx context.Context, o options, recommended []string) (seed.Answ
 	a := seed.Answers{Preset: "standard", Mode: "dark", WallpaperDir: "~/Pictures/wallpapers", Plugins: recommended}
 	switch {
 	case o.City != "":
-		p, err := geo.Search(ctx, http.DefaultClient, geo.DefaultGeocodeEndpoint, o.City)
+		p, err := geo.Search(ctx, nil, geo.DefaultGeocodeEndpoint, o.City)
 		if err != nil {
 			return a, err
 		}
@@ -150,7 +151,7 @@ func answersFor(ctx context.Context, o options, recommended []string) (seed.Answ
 		a.Latitude, a.Longitude = o.Lat, o.Lon
 		a.Location = fmt.Sprintf("%.4f, %.4f", o.Lat, o.Lon)
 	default:
-		p, err := geo.Guess(ctx, http.DefaultClient, geo.DefaultEndpoint)
+		p, err := geo.Guess(ctx, nil, geo.DefaultEndpoint)
 		if err != nil {
 			return a, fmt.Errorf("no weather location: pass --city or --lat/--lon: %w", err)
 		}
@@ -169,7 +170,7 @@ func aurHelper() string {
 }
 
 func installOptions(home string, p pin.Pin, a seed.Answers, yes bool, loc i18n.Locale) install.Options {
-	opts := install.Options{Home: home, Pin: p, Answers: a, Yes: yes, Loc: &loc}
+	opts := install.Options{Home: home, Pin: p, Answers: a, Yes: yes, Loc: &loc, Client: fetch.NewClient()}
 	if h := aurHelper(); h != "" {
 		opts.InstallPkg = func(pkg string) error {
 			return exec.Command(h, "-S", "--noconfirm", pkg).Run()
@@ -229,7 +230,7 @@ func newModel(loc i18n.Locale, recommended []string, plainNiri bool) model {
 		width:       ui.MinWidth,
 		height:      ui.MinHeight,
 		step:        ui.StepWizard,
-		logPath:     "/tmp/sysc-installer.log",
+		logPath:     filepath.Join(stateHome(), "sysc", "installer.log"),
 	}
 	m.beams = ui.NewBeamsTextEffect(m.width, ui.BannerHeight(), ui.Banner())
 	return m
@@ -243,14 +244,18 @@ func tick() tea.Cmd {
 
 func guessCmd() tea.Cmd {
 	return func() tea.Msg {
-		p, err := geo.Guess(context.Background(), http.DefaultClient, geo.DefaultEndpoint)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		p, err := geo.Guess(ctx, nil, geo.DefaultEndpoint)
 		return guessMsg{place: p, err: err}
 	}
 }
 
 func searchCmd(name string) tea.Cmd {
 	return func() tea.Msg {
-		p, err := geo.Search(context.Background(), http.DefaultClient, geo.DefaultGeocodeEndpoint, name)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		p, err := geo.Search(ctx, nil, geo.DefaultGeocodeEndpoint, name)
 		return guessMsg{place: p, err: err}
 	}
 }
@@ -290,6 +295,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyMsg:
 		if m.step == ui.StepInstalling {
+			if msg.Type == tea.KeyCtrlC {
+				return m, tea.Quit
+			}
 			return m, nil
 		}
 		if m.step == ui.StepDone || m.step == ui.StepFailed {
@@ -387,7 +395,20 @@ func cycle(values []string, current string, step int) string {
 // runInstall executes the injected installer in the background, teeing every
 // task snapshot to the log file and the tea program.
 func (m model) runInstall() {
-	logFile, err := os.Create(m.logPath)
+	if m.installer == nil {
+		m.notify(installDoneMsg{err: errors.New("installer is not wired up")})
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			m.notify(installDoneMsg{err: fmt.Errorf("installer panicked: %v", r)})
+		}
+	}()
+	if err := os.MkdirAll(filepath.Dir(m.logPath), 0o700); err != nil {
+		m.notify(installDoneMsg{err: err})
+		return
+	}
+	logFile, err := os.OpenFile(m.logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		m.notify(installDoneMsg{err: err})
 		return
@@ -482,6 +503,16 @@ func (m model) View() string {
 	return ui.View(m.w.Locale, title, body, m.w.Page, m.step, m.width, m.height, m.beams)
 }
 
+// newInstallProgram wires send and the installer before the program copies
+// the model: the running copy must not be left with nil seams (#35).
+func newInstallProgram(m model, installer func(seed.Answers, func([]install.Task)) (install.Result, error), opts ...tea.ProgramOption) *tea.Program {
+	var prog *tea.Program
+	m.send = func(msg tea.Msg) { prog.Send(msg) }
+	m.installer = installer
+	prog = tea.NewProgram(m, opts...)
+	return prog
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "uninstall" {
 		os.Exit(runUninstall(os.Args[2:], os.Stdin, os.Stdout, mustHome()))
@@ -538,15 +569,13 @@ func main() {
 	}
 
 	plainNiri := inNiri && !graphicalSessionActive()
-	m := newModel(loc, p.Recommended, plainNiri)
-	prog := tea.NewProgram(m, tea.WithAltScreen())
-	m.send = prog.Send
-	m.installer = func(a seed.Answers, progress func([]install.Task)) (install.Result, error) {
+	installer := func(a seed.Answers, progress func([]install.Task)) (install.Result, error) {
 		opts := installOptions(home, p, a, false, loc)
 		opts.InNiriSession = inNiri
 		opts.Progress = progress
 		return install.Run(ctx, opts)
 	}
+	prog := newInstallProgram(newModel(loc, p.Recommended, plainNiri), installer, tea.WithAltScreen())
 	final, err := prog.Run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -584,6 +613,19 @@ func graphicalSessionActive() bool {
 	return units.GraphicalSessionActive(func(args ...string) error {
 		return exec.Command("systemctl", append([]string{"--user"}, args...)...).Run()
 	})
+}
+
+// stateHome mirrors the installer's XDG state rule so the TUI log lands in
+// the same tree as the stamp and staging dir.
+func stateHome() string {
+	if v := os.Getenv("XDG_STATE_HOME"); filepath.IsAbs(v) {
+		return v
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return os.TempDir()
+	}
+	return filepath.Join(home, ".local", "state")
 }
 
 func mustHome() string {

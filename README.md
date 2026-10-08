@@ -15,8 +15,7 @@ directory, recommended bar plugins, and weather location.
 Once the first release exists, the one-liner is:
 
 ```sh
-curl -fsSL https://github.com/Nomadcxx/sysc/releases/latest/download/sysc-linux-amd64 -o /tmp/sysc
-chmod +x /tmp/sysc && /tmp/sysc
+f=$(mktemp); trap 'rm -f "$f"' EXIT; curl -fsSL https://github.com/Nomadcxx/sysc/releases/latest/download/sysc-linux-amd64 -o "$f" && chmod 700 "$f" && "$f"
 ```
 
 `install.sh` in this repository is the same fetcher: it detects the

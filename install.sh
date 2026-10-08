@@ -13,16 +13,24 @@ case "$(uname -m)" in
   *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;;
 esac
 
-TMP="${TMPDIR:-/tmp}/sysc-install.$$"
-mkdir -p "$TMP"
+TMP=$(mktemp -d "${TMPDIR:-/tmp}/sysc-install.XXXXXXXX")
+cleanup() { rm -rf "$TMP"; }
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+
 BIN="$TMP/$ASSET"
 curl -fsSL "$BASE/$ASSET" -o "$BIN"
 curl -fsSL "$BASE/SHA256SUMS" -o "$TMP/SHA256SUMS"
 grep " $ASSET\$" "$TMP/SHA256SUMS" > "$TMP/check"
 (cd "$TMP" && sha256sum -c check)
-chmod +x "$BIN"
+chmod 700 "$BIN"
 
+status=0
 if [ -t 0 ]; then
-  exec "$BIN" "$@"
+  "$BIN" "$@" || status=$?
+else
+  "$BIN" --yes "$@" || status=$?
 fi
-exec "$BIN" --yes "$@"
+exit "$status"
