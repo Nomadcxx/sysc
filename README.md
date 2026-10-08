@@ -12,7 +12,7 @@ directory, recommended bar plugins, and weather location.
 
 ### Quick Install
 
-Once the first release exists, the one-liner is:
+Install the latest release with:
 
 ```sh
 f=$(mktemp); trap 'rm -f "$f"' EXIT; curl -fsSL https://github.com/Nomadcxx/sysc/releases/latest/download/sysc-linux-amd64 -o "$f" && chmod 700 "$f" && "$f"
@@ -59,7 +59,7 @@ Set `SYSC_REDUCED_MOTION=1` to show a static banner.
 | [sysc-terminal](https://github.com/Nomadcxx/sysc-terminal) | Terminal-effect wallpaper engine |
 | [sysc-walls](https://github.com/Nomadcxx/sysc-walls) | Idle screensaver (not wallpaper) |
 | [sysc-notify](https://github.com/Nomadcxx/sysc-notify) | Notifications daemon (enabled when its first release ships) |
-| [sysc-tray](https://github.com/Nomadcxx/sysc-tray) | StatusNotifierItem tray (enabled when its first release ships) |
+| [sysc-tray](https://github.com/Nomadcxx/sysc-tray) | StatusNotifierItem tray (enabled in installer `v0.1.1`) |
 | [gSlapper](https://github.com/Nomadcxx/gslapper) | Video wallpaper, only if missing |
 | [sysc-lock](https://github.com/Nomadcxx/sysc-lock) | Session locker (enabled by default) |
 
@@ -105,4 +105,4 @@ network; if that fails it refuses and names the flags. `--keep-conflicts` and
 
 ## Status
 
-Not ready to run. Do not curl this repository until the first release exists.
+Ready to run from the latest release or a source checkout.

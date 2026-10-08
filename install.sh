@@ -1,7 +1,6 @@
 #!/bin/sh
 # SYSC suite installer fetcher. Downloads the pinned installer for this
 # architecture, verifies it against the release SHA256SUMS, and runs it.
-# Do not curl this until the first release exists.
 set -eu
 
 REPO="Nomadcxx/sysc"
