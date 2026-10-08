@@ -97,3 +97,18 @@ func TestThemeArrowsChangeMode(t *testing.T) {
 		t.Fatalf("arrows changed the page to %v", got.w.Page)
 	}
 }
+
+func TestWeatherArrowsMoveCursor(t *testing.T) {
+	m := newModel(i18n.EN, nil, false)
+	m.w.Page = ui.PageWeather
+	m.input.Focus()
+	m.input.SetValue("abc")
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	got := next.(model)
+	if got.input.Position() != 2 {
+		t.Fatalf("left: cursor at %d, want 2", got.input.Position())
+	}
+	if got.w.Mode != "dark" {
+		t.Fatalf("left changed the theme mode to %q", got.w.Mode)
+	}
+}
