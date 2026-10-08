@@ -297,6 +297,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
+		case "left", "right":
+			if m.w.Page == ui.PageTheme {
+				m.w = m.w.CycleMode()
+			} else if m.w.Page == ui.PageWeather {
+				var cmd tea.Cmd
+				m.input, cmd = m.input.Update(msg)
+				return m, cmd
+			}
 		case "up", "down":
 			m.cycle(msg.String() == "down")
 		default:
