@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -136,9 +135,13 @@ func (o Options) systemctl() func(args ...string) error {
 	}
 }
 
-func unitFor(id string) (units.Unit, bool) {
+func unitFor(c pin.Component) (units.Unit, bool) {
+	name := c.Unit
+	if name == "" {
+		name = c.ID + ".service"
+	}
 	for _, u := range units.All {
-		if strings.TrimSuffix(u.Name, ".service") == id {
+		if u.Name == name {
 			return u, true
 		}
 	}
@@ -147,7 +150,7 @@ func unitFor(id string) (units.Unit, bool) {
 
 func componentEnabled(enabled []pin.Component, id string) bool {
 	for _, c := range enabled {
-		if c.ID == id {
+		if !c.Disabled && c.ID == id {
 			return true
 		}
 	}
@@ -189,6 +192,9 @@ func mergeHandover(hs []stamp.Handover, h stamp.Handover) []stamp.Handover {
 // Run installs the pin: fetch and swap binaries, gSlapper, units, seed, niri,
 // start, stamp.
 func Run(ctx context.Context, opts Options) (res Result, err error) {
+	if componentEnabled(opts.Pin.Components, "sysc-lock") {
+		opts.Answers.Locker = "sysc-lock"
+	}
 	if opts.Answers.Location == "" || (opts.Answers.Latitude == 0 && opts.Answers.Longitude == 0) {
 		if opts.Loc != nil {
 			return res, errors.New(i18n.T(*opts.Loc, "refuse.weather"))
@@ -262,11 +268,12 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 	// Fail fast before touching the system if an enabled component has no
 	// matching unit (AUD-14) or its unit template cannot be read.
 	enabled := []pin.Component{}
+	unitNames := []string{}
 	for _, c := range opts.Pin.Components {
 		if c.Disabled {
 			continue
 		}
-		u, ok := unitFor(c.ID)
+		u, ok := unitFor(c)
 		if !ok {
 			return res, fmt.Errorf("%s: no matching SYSC unit", c.ID)
 		}
@@ -274,6 +281,7 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 			return res, err
 		}
 		enabled = append(enabled, c)
+		unitNames = append(unitNames, u.Name)
 	}
 	// A SkipSYSC conflict choice leaves the competing SYSC component neither
 	// enabled nor started; its binary still installs like any other.
@@ -365,8 +373,8 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		// Stop user units before swapping so an upgrade actually loads the
 		// new binaries instead of keeping running ones (AUD-07). First
 		// installs have nothing running; errors are not fatal.
-		wasActive = units.ActiveUnits(systemctl)
-		_ = units.StopAll(systemctl)
+		wasActive = units.ActiveUnits(systemctl, unitNames...)
+		_ = units.StopUnits(systemctl, unitNames)
 		if err := swap(opts.binDir(), staging, allNames); err != nil {
 			return res, err
 		}
@@ -416,7 +424,7 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		if skipComponent[c.ID] {
 			continue
 		}
-		u, _ := unitFor(c.ID)
+		u, _ := unitFor(c)
 		if err := units.Write(opts.unitDir(), u); err != nil {
 			return res, err
 		}
@@ -568,7 +576,15 @@ func Uninstall(opts Options) (Result, error) {
 		return res, fmt.Errorf("no SYSC installation found: %w", err)
 	}
 	systemctl := opts.systemctl()
-	units.StopAll(systemctl)
+	var ownedUnits []string
+	for _, c := range opts.Pin.Components {
+		if _, owned := st.Components[c.ID]; owned {
+			if u, ok := unitFor(c); ok {
+				ownedUnits = append(ownedUnits, u.Name)
+			}
+		}
+	}
+	_ = units.StopUnits(systemctl, ownedUnits)
 
 	for i := len(st.HandedOver) - 1; i >= 0; i-- {
 		h := st.HandedOver[i]
@@ -612,7 +628,7 @@ func Uninstall(opts Options) (Result, error) {
 			// Swap keeps <name>.bak next to the binary it replaced.
 			os.Remove(filepath.Join(opts.binDir(), b.Name+".bak"))
 		}
-		if u, ok := unitFor(c.ID); ok {
+		if u, ok := unitFor(c); ok {
 			// Disable first: removing the unit file alone leaves dangling
 			// wants symlinks under graphical-session.target.wants (AUD-09).
 			_ = systemctl("disable", u.Name)

@@ -28,12 +28,14 @@ var All = []Unit{
 	{Name: "sysc-walls.service", Template: "templates/sysc-walls.service"},
 	{Name: "sysc-notify.service", Template: "templates/sysc-notify.service"},
 	{Name: "sysc-tray.service", Template: "templates/sysc-tray.service"},
+	{Name: "sysc-lock-session.service", Template: "templates/sysc-lock-session.service"},
 }
 
 // StopOrder stops the shell first: it owns the wallpaper children, and the
 // companions last so notifications and tray icons stay up while the rest goes.
 var StopOrder = []string{
 	"sysc-shell.service",
+	"sysc-lock-session.service",
 	"sysc-walls.service",
 	"sysc-clipboard.service",
 	"sysc-tray.service",
@@ -47,6 +49,7 @@ var StartOrder = []string{
 	"sysc-tray.service",
 	"sysc-clipboard.service",
 	"sysc-walls.service",
+	"sysc-lock-session.service",
 	"sysc-shell.service",
 }
 
@@ -79,12 +82,24 @@ func Write(dir string, u Unit) error {
 
 // StopAll stops every unit in StopOrder. run is e.g. systemctl --user.
 func StopAll(run func(args ...string) error) error {
+	return StopUnits(run, StopOrder)
+}
+
+// StopUnits attempts every selected stop, even when a unit is not loaded.
+func StopUnits(run func(args ...string) error, names []string) error {
+	want := make(map[string]bool, len(names))
+	for _, name := range names {
+		want[name] = true
+	}
+	var errs []error
 	for _, name := range StopOrder {
-		if err := run("stop", name); err != nil {
-			return err
+		if want[name] {
+			if err := run("stop", name); err != nil {
+				errs = append(errs, fmt.Errorf("stop %s: %w", name, err))
+			}
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 // StartAll starts every unit in StartOrder.
@@ -103,9 +118,12 @@ func GraphicalSessionActive(run func(args ...string) error) bool {
 }
 
 // ActiveUnits reports which of StopOrder's units are currently active.
-func ActiveUnits(run func(args ...string) error) []string {
+func ActiveUnits(run func(args ...string) error, names ...string) []string {
+	if len(names) == 0 {
+		names = StopOrder
+	}
 	var active []string
-	for _, name := range StopOrder {
+	for _, name := range names {
 		if run("is-active", "--quiet", name) == nil {
 			active = append(active, name)
 		}

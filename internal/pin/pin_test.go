@@ -41,9 +41,9 @@ func TestDecodeRequiresAssetsAndSHA(t *testing.T) {
 			"amd64",
 		},
 		{
-			"enabled lock",
+			"enabled lock with invalid asset",
 			`{"release":"v1","recommended":["a"],"components":[{"id":"sysc-lock","binaries":[{"name":"x","assets":{"amd64":{"url":"u","sha256":"s"}}}]}]}`,
-			"sysc-lock",
+			"https",
 		},
 		{
 			"disabled without reason",
@@ -93,7 +93,7 @@ func TestEnabledCompanionFixtureValidates(t *testing.T) {
 		if c.Unit != unit {
 			t.Errorf("%s: unit = %q, want %q", c.ID, c.Unit, unit)
 		}
-		if _, ok := unitForID(c.ID); !ok {
+		if _, ok := unitForName(c.Unit); !ok {
 			t.Errorf("%s: no matching unit template", c.ID)
 		}
 		delete(want, c.ID)

@@ -19,6 +19,7 @@ func TestStopOrderShellFirst(t *testing.T) {
 	}
 	want := []string{
 		"stop sysc-shell.service",
+		"stop sysc-lock-session.service",
 		"stop sysc-walls.service",
 		"stop sysc-clipboard.service",
 		"stop sysc-tray.service",
@@ -37,6 +38,7 @@ func TestStopOrderShellFirst(t *testing.T) {
 		"start sysc-tray.service",
 		"start sysc-clipboard.service",
 		"start sysc-walls.service",
+		"start sysc-lock-session.service",
 		"start sysc-shell.service",
 	}
 	if strings.Join(calls, ",") != strings.Join(want, ",") {
@@ -79,6 +81,7 @@ func TestActiveUnitsAndStartUnits(t *testing.T) {
 	active := ActiveUnits(run)
 	wantActive := []string{
 		"sysc-shell.service",
+		"sysc-lock-session.service",
 		"sysc-walls.service",
 		"sysc-clipboard.service",
 		"sysc-tray.service",
@@ -109,5 +112,22 @@ func TestActiveUnitsAndStartUnits(t *testing.T) {
 	want := []string{"start sysc-clipboard.service", "start sysc-walls.service", "start sysc-shell.service"}
 	if strings.Join(calls, ",") != strings.Join(want, ",") {
 		t.Fatalf("StartUnits order = %v; want %v (every unit attempted)", calls, want)
+	}
+}
+
+func TestStopAllContinuesAfterMissingUnit(t *testing.T) {
+	var calls []string
+	err := StopAll(func(args ...string) error {
+		calls = append(calls, strings.Join(args, " "))
+		if args[1] == "sysc-lock-session.service" {
+			return fmt.Errorf("unit not loaded")
+		}
+		return nil
+	})
+	if err == nil {
+		t.Fatal("stop failure lost")
+	}
+	if len(calls) != len(StopOrder) {
+		t.Fatalf("stopped %v, want all %v", calls, StopOrder)
 	}
 }
