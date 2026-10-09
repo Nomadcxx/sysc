@@ -1,0 +1,77 @@
+---
+title: sysc-wayland
+description: Connect to a Wayland compositor with the versioned pure-Go client.
+---
+
+
+sysc-wayland provides a pure-Go Wayland transport and generated protocol bindings. It does not need CGO or libwayland. The current source supports core bindings plus text-input, cursor-shape and idle protocols.
+
+**Source:** [default-branch commit 74b83d8e](https://github.com/Nomadcxx/sysc-wayland/commit/74b83d8e2fb167701e5ce15fc326344e9f0f15db) · **SYSC v0.1.1 status:** library dependency, not a separately installed program.
+
+## List compositor globals
+
+Add the version tied to this source revision:
+
+~~~sh
+go get github.com/Nomadcxx/sysc-wayland@v0.3.2-rc.1.0.20261008045000-74b83d8e2fb1
+~~~
+
+This small client connects through WAYLAND_SOCKET when the compositor provides one, or through WAYLAND_DISPLAY and XDG_RUNTIME_DIR. It prints each advertised global after the first round trip:
+
+~~~go
+package main
+
+import (
+    "fmt"
+    "log"
+
+    "github.com/Nomadcxx/sysc-wayland/client"
+)
+
+func main() {
+    display, err := client.Connect("")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer display.Context().Close()
+
+    registry, err := display.GetRegistry()
+    if err != nil {
+        log.Fatal(err)
+    }
+    registry.SetGlobalHandler(func(global client.RegistryGlobalEvent) {
+        fmt.Printf("%s v%d\n", global.Interface, global.Version)
+    })
+
+    done := false
+    callback, err := display.Sync()
+    if err != nil {
+        log.Fatal(err)
+    }
+    callback.SetDoneHandler(func(client.CallbackDoneEvent) { done = true })
+
+    for !done {
+        if err := display.Context().Dispatch(); err != nil {
+            log.Fatal(err)
+        }
+    }
+}
+~~~
+
+Run it inside a Wayland session. Output depends on the compositor; a line can look like wl_compositor v6.
+
+## Connection ownership
+
+One goroutine must own a connection, its context and every proxy created from it. Call Dispatch on that same goroutine to receive events. Connect with an empty address to use the session environment, or pass a socket address explicitly.
+
+The documented version is a prerelease snapshot. The stable v0.3.1 API remains available from the [versioned package docs](https://pkg.go.dev/github.com/Nomadcxx/sysc-wayland@v0.3.1/client). SYSC v0.1.1's sysc-shell v0.1.0 uses an earlier module snapshot; see the [source record](/docs/reference/sources) for that exact dependency.
+
+## Protocol packages and ownership
+
+The stable module exposes `client`, `textinput`, `cursorshape` and `idle`. The recorded source adds `sessionlock` as a prerelease package. A protocol package gives an application generated types and transport; the compositor must advertise the matching global before a client can use it.
+
+One goroutine owns the connection, its context and every proxy created from it. Keep `Dispatch` on that goroutine while it receives events. Close the context when the client exits. The library starts no event loop on your behalf, so an application that never dispatches cannot receive callbacks.
+
+The repository also includes a scanner for generating bindings from protocol XML. Its `go:generate` directives use the checked-in scanner and local inputs. When adding a protocol, confirm its XML source and license, regenerate from the repository command, then run the module tests and vet checks. See the [source repository's upstream record](https://github.com/Nomadcxx/sysc-wayland/blob/74b83d8e2fb167701e5ce15fc326344e9f0f15db/UPSTREAM.md).
+
+[Source code](https://github.com/Nomadcxx/sysc-wayland/tree/74b83d8e2fb167701e5ce15fc326344e9f0f15db) · [Report an issue](https://github.com/Nomadcxx/sysc-wayland/issues)

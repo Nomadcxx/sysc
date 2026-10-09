@@ -1,0 +1,48 @@
+---
+title: sysc-Go
+description: Run terminal animations or use the animation library from Go.
+---
+
+sysc-Go provides terminal animations and text effects for Go programs. Its command-line tools are `syscgo` and `syscgo-tui`; sysc-terminal and sysc-walls use the library for desktop effects.
+
+**Source:** [default-branch commit 562ad7bf](https://github.com/Nomadcxx/sysc-Go/commit/562ad7bdf5353325e4589e55193a9a570f3d8cd8) · **SYSC v0.1.1 status:** dependency reference; the installer does not install a separate sysc-Go binary.
+
+## Run an effect
+
+The CLI supports standalone animations such as fire, matrix rain, rain, fireworks, beams and aquarium. Text effects take a file containing text or ASCII art:
+
+~~~sh
+syscgo -effect fire -theme rama -duration 10
+syscgo -effect matrix-art -file ./banner.txt -theme nord -duration 10
+~~~
+
+Duration is measured in seconds. Use `-duration 0` for a continuing animation. Run `syscgo -h` in the installed version to inspect its accepted flags and effect names.
+
+The interactive browser can preview effects and themes:
+
+~~~sh
+syscgo-tui
+~~~
+
+The TUI includes the BIT ASCII-art editor. Exported art goes to `~/.local/share/syscgo/assets/` by default; `XDG_DATA_HOME` changes that location. The CLI searches the given absolute path, the current directory, user assets and then system asset directories when it resolves a text file.
+
+## Install the documented source
+
+The project README recommends Go 1.26 or later for building its commands. Install the CLI tools from the reviewed source commit with:
+
+~~~sh
+GOBIN="$HOME/.local/bin" go install github.com/Nomadcxx/sysc-Go/cmd/syscgo@562ad7bdf5353325e4589e55193a9a570f3d8cd8
+GOBIN="$HOME/.local/bin" go install github.com/Nomadcxx/sysc-Go/cmd/syscgo-tui@562ad7bdf5353325e4589e55193a9a570f3d8cd8
+~~~
+
+For use as a library, add the reviewed module revision to your Go project:
+
+~~~sh
+go get github.com/Nomadcxx/sysc-Go@562ad7bdf5353325e4589e55193a9a570f3d8cd8
+~~~
+
+This project revision records `go 1.24.2` in `go.mod`; the repository README asks command builders to use Go 1.26 or later. Check the target project's module version before upgrading a dependency. `sysc-terminal`, `sysc-walls` and sysc-shell can each use a different sysc-Go revision; the [source record](/docs/reference/sources) lists the revisions behind this site's guidance and the v0.1.1 module graph.
+
+The commands run terminal effects. The sysc-terminal and sysc-walls integrations render through their own desktop processes and use their own dependency pins. See [wallpaper ownership](/docs/guides/wallpapers) before running a desktop wallpaper process alongside the shell.
+
+[Source code](https://github.com/Nomadcxx/sysc-Go/tree/562ad7bdf5353325e4589e55193a9a570f3d8cd8) · [Guide and CLI reference](https://github.com/Nomadcxx/sysc-Go/blob/562ad7bdf5353325e4589e55193a9a570f3d8cd8/GUIDE.md)

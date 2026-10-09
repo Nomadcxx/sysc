@@ -1,0 +1,49 @@
+---
+title: Test a plugin
+description: Test plugin behavior, manifests, view geometry and release media.
+---
+
+
+Test the plugin logic without a desktop session, then validate the manifest, every view tree and the release catalog.
+
+## Test behavior and protocol handling
+
+Use focused package tests while changing a plugin:
+
+```sh
+go test ./plugins/<dir>
+go test ./cmd/sysc-plugin-<name>
+```
+
+Cover the data and error cases your plugin handles. Test handshake failures, host call errors, settings updates, view open/close and shutdown when those paths apply. Check that one view's failure does not corrupt other views.
+
+Add a geometry test for each view the plugin can return. Run `v1.Validate` for structural rules and [`lint.Tree`](../ui) at the host dimensions. Use manifest dimensions for panels and the SDK constants for bars and tooltips.
+
+## Run repository checks
+
+Before a pull request, run the relevant repository targets:
+
+```sh
+make test
+make vet
+make validate
+make thumbnails
+make catalog-validate
+```
+
+At the recorded `sysc-plugins` source, CI also runs gofmt, staticcheck, race-enabled tests, and `make build STRICT=1`. The strict build includes Calendar, which needs `libecal2.0-dev` and a native runner for each target architecture.
+
+## Capture fixture data
+
+Every new catalog plugin needs `screenshot.png` and `thumbnail.webp`. The capture test must use fictional data. Never include real accounts, messages, hostnames, paths or device names in a committed fixture.
+
+Install the preview command from the current shell source recorded on the [source page](/docs/reference/sources), then capture one plugin:
+
+```sh
+go install github.com/Nomadcxx/sysc-shell/cmd/sysc-panel-preview@v0.1.1-0.20261009080304-0b6840392e1e
+make capture PLUGIN=<dir>
+```
+
+The capture uses the plugin's real panel builder and manifest dimensions. A bar-only plugin can use a bar crop. Recreate both files after a visual change, then run `make thumbnails` to check the generated thumbnail.
+
+For current capture and CI details, see the [`sysc-plugins` publishing guide](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/docs/publishing.md).

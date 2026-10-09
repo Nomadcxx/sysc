@@ -1,0 +1,73 @@
+---
+title: sysc-greet
+description: Standalone graphical login greeter for greetd; installed and managed separately from the SYSC suite.
+---
+
+
+sysc-greet is a graphical greeter for greetd. SYSC v0.1.1 does not install it. The greetd service runs before a user session and changes the machine's login path, so treat its installation as system administration.
+
+The upstream README currently lists Niri as the default greeter compositor, plus Cagebreak, Sway and Mango. It marks Hyprland support deprecated. It also lists Arch AUR packages, a NixOS module and release packages for Debian/Ubuntu and Fedora. Follow the [current upstream installation guide](https://github.com/Nomadcxx/sysc-greet#installation) for package and compositor details; these routes do not extend SYSC suite support.
+
+## Source installer
+
+The upstream source installer requires root, Go, git and systemd. It builds current sysc-greet source, installs the greeter and its selected compositor configuration, writes /etc/greetd/config.toml, and enables greetd.service. It removes an existing /etc/systemd/system/display-manager.service link before enabling greetd. When the previous greetd config differs, the installer saves it as /etc/greetd/config.toml.bak.
+
+Before installing, inspect and record the current display-manager link target. If no link exists, record that too:
+
+```sh
+readlink /etc/systemd/system/display-manager.service
+```
+
+The installer removes an existing link without saving its target ([reviewed installer source](https://github.com/Nomadcxx/sysc-greet/blob/4c98abc5bdddbf6c84d2a55d71b9120cbfccad0f/cmd/installer/main.go#L2229-L2240)). Keep the target for your distribution's rollback procedure.
+
+The upstream one-line command runs the moving master installer as root. Review the [installer script](https://github.com/Nomadcxx/sysc-greet/blob/4c98abc5bdddbf6c84d2a55d71b9120cbfccad0f/install.sh) and keep a working TTY login before using it:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Nomadcxx/sysc-greet/master/install.sh | sudo bash
+```
+
+The source installer enables the service but does not restart greetd during its install task. Reboot when you are ready to test the new login screen. Do not restart the login service from your only usable session.
+
+## Optional widgets
+
+CPU and memory panels and weather start disabled. You can test them without changing the system greeter:
+
+~~~sh
+sysc-greet --test --metrics --weather-location=-37.8136,144.9631
+~~~
+
+Use `--weather-units fahrenheit` for Fahrenheit. Celsius is the default. The preview reads `/etc/sysc-greet/widgets.json`, then the selected user's XDG config file; launch flags override file values. Set `--widget-config PATH` to read a different file.
+
+For a persistent user-level setup, create `~/.config/sysc-greet/widgets.json`:
+
+~~~json
+{
+  "metrics": true,
+  "weather_location": "-37.8136,144.9631",
+  "weather_units": "celsius"
+}
+~~~
+
+Greetd runs under the `greeter` account. It cannot read arbitrary files in your home directory. Put shared widget settings in `/etc/sysc-greet/widgets.json`, or grant the greeter access to an explicitly selected file. If weather uses `"sysc-shell"` as its location source, the shell config must be readable by the greeter and must contain coordinates. If that lookup fails, the greeter logs a warning and leaves the login form available.
+
+## Theme and other outputs
+
+At startup, sysc-greet can follow the named palette that sysc-shell last committed. The greeter installer chooses which user's palette to follow; set `SYSC_THEME_USER` during a root install when that should differ from `SUDO_USER`. The theme file lives under `/var/lib/sysc-greet/shell-theme/` and belongs to that selected user. A greeter theme choice or `--theme NAME` sets an independent palette for that launch. Missing or unsupported shell selections keep the greeter's saved theme.
+
+On Niri, the greeter can start sysc-terminal backgrounds on outputs other than the login window's output. Install sysc-terminal separately and make it available to the greeter's service environment. A missing helper leaves the login form available. `--secondary-backgrounds=false` disables this feature; `--secondary-exclude DP-3,HDMI-A-1` skips named outputs. The background exits with the greeter and reveals the wallpaper behind it. Other compositor backends do not use this helper.
+
+For service logs and a TTY recovery path, see [greeter troubleshooting](/docs/troubleshooting/greeter). Keep a working text login available while changing greetd.
+
+## Rollback and removal
+
+The installer has an Uninstall option. It disables greetd and removes the sysc-greet binary and compositor files. It leaves /etc/greetd/config.toml, the polkit rule and the greeter account. It does not restore /etc/greetd/config.toml.bak or recreate the previous display-manager.service link; the installer never saved its target.
+
+Before uninstalling, use a TTY and system-administrator access to decide which greeter should own the next boot. If the previous config is the one you want, inspect the backup and restore it with:
+
+```sh
+sudo cp -a /etc/greetd/config.toml.bak /etc/greetd/config.toml
+```
+
+Then restore the system's previous display-manager selection using your distribution's procedure. Keep the current config and logs until you confirm a working login.
+
+For read-only checks and a TTY recovery path, see [greeter troubleshooting](/docs/troubleshooting/greeter). The source record links the reviewed upstream commit and its current branch.

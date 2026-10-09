@@ -1,0 +1,22 @@
+---
+title: Existing desktop services
+description: Choose whether SYSC takes over a detected bar, shell or notification provider.
+---
+
+## Handle existing desktop services
+
+SYSC checks for notification daemons, bars and shells that can compete with the suite. It can detect providers such as mako, dunst, swaync, fnott, Waybar, Noctalia, Quickshell shells and DMS.
+
+Choose one action for each detected provider:
+
+| Choice | Result |
+|---|---|
+| Hand over | Stop and disable the provider's user unit when present. Comment its Niri startup line so SYSC can take over. SYSC records each change in its install stamp. |
+| Keep both | Leave the provider enabled. Two bars or notification services may overlap or compete for the same interface. |
+| Skip SYSC component | Do not enable or start that SYSC service. SYSC still downloads the pinned binary. |
+
+The --yes default hands over notification daemons and keeps bars and shells, with a warning for each kept conflict. Use --keep-conflicts to keep all detected providers, or --handover=all to hand all of them over. Those flags cannot be combined.
+
+When sysc-notify is enabled, SYSC also writes a user D-Bus activation file for org.freedesktop.Notifications. If it replaces an existing user activation file, the stamp records that file so uninstall can restore it.
+
+Review the changes before accepting a handover. The installer does not replace an existing sysc-shell config. See [upgrade](/docs/guides/upgrade) for repeat installs and [uninstall](/docs/guides/uninstall) for the recorded restore steps.

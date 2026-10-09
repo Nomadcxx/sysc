@@ -1,0 +1,52 @@
+---
+title: Source record
+description: Current component source revisions and the exact releases installed by SYSC v0.1.1.
+---
+
+
+Use the current default-branch commit for behavior guidance. Use the release tag for the version that SYSC v0.1.1 installs. A branch can move ahead of the suite pin. SYSC does not install projects that its manifest does not pin.
+
+We checked these default branch heads on 2026-10-09. Each source link opens a full commit. When behavior changes, update the affected article and this record together. These commits show which source the docs used; component development continues independently.
+
+| Project | Current source and SYSC v0.1.1 pin or status |
+|---|---|
+| [sysc](/docs/components/sysc) | [main · b26621ef5f9f](https://github.com/Nomadcxx/sysc/commit/b26621ef5f9f2c32c6eb1c8a8b618558e341202b) · installer v0.1.1 |
+| [sysc-greet](/docs/components/sysc-greet) | [master · 4c98abc5bddd](https://github.com/Nomadcxx/sysc-greet/commit/4c98abc5bdddbf6c84d2a55d71b9120cbfccad0f) · not installed by the suite |
+| [sysc-lock](/docs/components/sysc-lock) | [master · 408570acaf54](https://github.com/Nomadcxx/sysc-lock/commit/408570acaf540e19d5bf8e4aebb821ea165b5f08) · sysc-lock v0.1.0 |
+| [sysc-shell](/docs/components/sysc-shell) | [main · 0b6840392e1e](https://github.com/Nomadcxx/sysc-shell/commit/0b6840392e1e80ca45f0a1284dfab8e6d8ac6960) · sysc-shell v0.1.0 |
+| [sysc-tray](/docs/components/sysc-tray) | [main · a7928ebd45aa](https://github.com/Nomadcxx/sysc-tray/commit/a7928ebd45aa1fd1253d6142bb1d98e4681e8126) · sysc-tray v0.1.1 |
+| [sysc-terminal](/docs/components/sysc-terminal) | [main · 3f24ca081bfc](https://github.com/Nomadcxx/sysc-terminal/commit/3f24ca081bfc97f790147889d32ed08b31882960) · disabled in the installer manifest; no binary pin |
+| [sysc-clipboard](/docs/components/sysc-clipboard) | [main · 35194acabf8f](https://github.com/Nomadcxx/sysc-clipboard/commit/35194acabf8f2fad9e906678a94949a41d330f5a) · sysc-clipboard v0.1.2 |
+| [sysc-wayland](/docs/components/sysc-wayland) | [main · 74b83d8e2fb1](https://github.com/Nomadcxx/sysc-wayland/commit/74b83d8e2fb167701e5ce15fc326344e9f0f15db) · library, not installed by the suite |
+| [sysc-metrics](/docs/components/sysc-metrics) | [main · 0ceba66ccb36](https://github.com/Nomadcxx/sysc-metrics/commit/0ceba66ccb36044fb4b2e98f554ee356badcf8c5) · library, not installed by the suite |
+| [sysc-launch](/docs/components/sysc-launch) | [main · c0c7ef2d4bbf](https://github.com/Nomadcxx/sysc-launch/commit/c0c7ef2d4bbf0a4ab78bc6d837304488016f80f2) · library/CLI, not installed by the suite |
+| [sysc-plugins](/docs/plugins) | [main · b6323d6f131b](https://github.com/Nomadcxx/sysc-plugins/commit/b6323d6f131bc8fa2d814942b271faecd045522a) · plugin source/catalog, not installed as a binary |
+| [sysc-walls](/docs/components/sysc-walls) | [master · f7ec3a72d7e1](https://github.com/Nomadcxx/sysc-walls/commit/f7ec3a72d7e198881a06956861e63f45bc947340) · sysc-walls v1.0.2 |
+| [sysc-notify](/docs/components/sysc-notify) | [main · f44a247e01c1](https://github.com/Nomadcxx/sysc-notify/commit/f44a247e01c18d582b7e8eca42372588d9f85a7b) · sysc-notify v0.1.0 |
+| [gSlapper](/docs/components/gslapper) | [master · 71213be7fc04](https://github.com/Nomadcxx/gSlapper/commit/71213be7fc04eb23abe40b7f3f8f874128227931) · gSlapper v1.5.1 |
+| [sysc-Go](/docs/components/sysc-go) | [master · 562ad7bdf535](https://github.com/Nomadcxx/sysc-Go/commit/562ad7bdf5353325e4589e55193a9a570f3d8cd8) · dependency reference, not installed by the suite |
+
+At the documented sysc-terminal source commit, go.mod pins sysc-Go v1.0.6-0.20261008172414-1ff1f6c3c8d0, which resolves to [commit 1ff1f6c3c8d0860f2fcd9f0d89349d491619dc6d](https://github.com/Nomadcxx/sysc-Go/commit/1ff1f6c3c8d0860f2fcd9f0d89349d491619dc6d). The sysc-terminal README build note still says v1.0.4; its committed go.mod sets the dependency used by the pinned manual install command.
+
+## SYSC module versions in the installed shell
+
+The sysc-shell v0.1.0 source in the SYSC v0.1.1 suite declares the Go module versions below. These can differ from separately installed service binaries and current default branches. The [tagged go.mod](https://github.com/Nomadcxx/sysc-shell/blob/v0.1.0/go.mod) is the source for this table.
+
+| Module | Version in sysc-shell v0.1.0 |
+|---|---|
+| sysc-clipboard | `v0.1.2-0.20261001114242-d1798d6838d7` |
+| sysc-wayland | `v0.3.2-0.20261005032310-d48237c38013` |
+| sysc-launch | `v0.2.1-0.20260928124755-5ccc1d40f3cf` |
+| sysc-metrics | `v0.7.0` |
+| sysc-notify | `v0.1.0-rc.4.0.20260928141411-254ec5732728` |
+| sysc-tray | `v0.1.0-rc.3` |
+| sysc-terminal | [`v0.0.0-20261004174459-4e522749ac8b`](https://github.com/Nomadcxx/sysc-terminal/commit/4e522749ac8be37808e96bd0997824d04dd81f2a) |
+| sysc-Go | [`v1.0.4-0.20261004042739-c80d48f1f38e`](https://github.com/Nomadcxx/sysc-Go/commit/c80d48f1f38e4e1c4950338ae1dbcb225e8dc7f3) (indirect) |
+
+The sysc-shell module graph includes sysc-terminal even though the SYSC v0.1.1 installer manifest has no standalone sysc-terminal binary or user unit. Its optional executable still needs a separate install to appear in Terminal Art.
+
+## Plugin SDK selected by sysc-plugins
+
+At the recorded [`sysc-plugins` revision](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/go.mod), Go selects sysc-shell `v0.0.0-20261005234519-d16632ff376f`, which resolves to [commit `d16632ff376fc86cd585d6e90eb6c87b59a8637d`](https://github.com/Nomadcxx/sysc-shell/commit/d16632ff376fc86cd585d6e90eb6c87b59a8637d). That module supplies `plugin/v1` and `plugin/lint`. Their public types and constants match the current sysc-shell source above, but the shell's internal layout code changed after this dependency. Plugin tests against the pinned linter therefore do not establish identical rendering in a newer shell.
+
+The v0.1.1 manifest lists the suite pins. The installer workflow publishes installer binaries; each component publishes its own assets. Check the component release before inferring availability from the installer's architecture matrix. Component articles will link the relevant source files and call out behavior differences from the suite pin.

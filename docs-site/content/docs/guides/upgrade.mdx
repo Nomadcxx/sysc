@@ -1,0 +1,16 @@
+---
+title: Upgrade
+description: Upgrade SYSC by running the installer release whose component pin you want.
+---
+
+## Upgrade SYSC
+
+SYSC does not update components from floating branches. Each installer binary carries one suite pin. Choose the installer release whose pinned component set you want, verify its checksum, then run it as the same normal user who owns the current install.
+
+Use the release steps on [Install SYSC](/docs/start/install). If you select a version other than v0.1.1, use that version in both release URLs. A source build instead follows the pin currently committed to sysc main.
+
+The installer downloads and verifies all pinned component binaries before swapping them into ~/.local/bin. It stops active suite units before replacing binaries, writes the install stamp as soon as the swap can be undone, updates user units, and starts them when the graphical-session.target is active. It leaves a pre-existing sysc-shell config in place.
+
+Review the final task list. gSlapper is optional: an unavailable helper or failed package action appears as skipped while the suite tasks continue. Other failures can leave a recorded partial install; use the stamp and final task list to see what SYSC owns, then follow [uninstall](/docs/guides/uninstall) if you want to remove it.
+
+If the installer says units are enabled but not started, log into Niri through niri-session and check the [session target](/docs/guides/niri-session). For a failed service, collect the [service diagnostics](/docs/troubleshooting/services) before starting it manually.

@@ -1,0 +1,21 @@
+---
+title: Release records
+description: Read installer tags, embedded suite pins, and component releases.
+---
+
+
+The SYSC installer and its components release from separate repositories. The [source record](/docs/reference/sources) names the source revision reviewed for current behavior. The [suite reference](/docs/reference/suite) lists the component versions installed by SYSC v0.1.1.
+
+## SYSC installer releases
+
+The [release workflow](https://github.com/Nomadcxx/sysc/blob/b26621ef5f9f2c32c6eb1c8a8b618558e341202b/.github/workflows/release.yml) runs when a `v*` tag is pushed. It builds Linux amd64 and arm64 installer binaries with CGO disabled, then publishes those binaries and `SHA256SUMS`. The installer embeds its component pin manifest. The checksum file verifies the installer binaries; the embedded manifest verifies component downloads.
+
+Read `internal/pin/pin.json` at the installer tag you are documenting. For v0.1.1, use the [tagged manifest](https://github.com/Nomadcxx/sysc/blob/v0.1.1/internal/pin/pin.json). A pin change on the default branch does not change an existing installer release. The next installer tag must include that manifest change before its installed versions differ.
+
+The arm64 installer asset does not establish full-suite support on arm64. The installer checks the supported system before installation; see [compatibility limits](/docs/reference/compatibility).
+
+## Component releases
+
+Each component publishes its own release assets and checksums. SYSC downloads the versions recorded in its embedded pin manifest. Updating a component's default branch does not change those installed assets.
+
+When source behavior changes, update the affected guidance against the current source revision and refresh its full commit link in the source record. For an installed workflow, compare that behavior with the component release named by the installer tag. Keep both facts when the current source and installed release differ.

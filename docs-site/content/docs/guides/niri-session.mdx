@@ -1,0 +1,25 @@
+---
+title: Niri session startup
+description: Understand how SYSC's enabled user services start with a Niri session.
+---
+
+## Start the suite with Niri
+
+SYSC installs systemd user units that require graphical-session.target. Start Niri through niri-session so the session manager exposes the Wayland and Niri environment and activates that target.
+
+The installer distinguishes an enabled unit from a running unit:
+
+- From SSH or a TTY, it enables the suite units but does not start them.
+- In a live Niri session with graphical-session.target active, it enables and starts the selected units.
+- A live Niri session started with plain niri can lack graphical-session.target. In that case, SYSC leaves the shell startup line in place and reports that the user units did not start.
+
+Check the target from the same user session:
+
+```sh
+systemctl --user is-active graphical-session.target
+systemctl --user --no-pager status sysc-shell.service
+```
+
+The first command should report active. A unit that requires the target cannot start before that session is available. Do not add sudo to systemctl --user. For a failed unit, use the read-only checks in [troubleshooting services](/docs/troubleshooting/services).
+
+The installer preserves the existing Niri config, adds an include for its generated sysc.kdl sidecar, and may comment an existing sysc-shell spawn line to prevent duplicate startup. The sidecar is SYSC-owned and gets rewritten on an installer rerun. See [paths and ownership](/docs/reference/paths).

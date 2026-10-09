@@ -1,0 +1,29 @@
+---
+title: User services
+description: Read SYSC user-service status and logs before changing a session.
+---
+
+## Diagnose a user service
+
+Run these commands as the account that installed SYSC. Do not use sudo with systemctl --user.
+
+```sh
+systemctl --user is-active graphical-session.target
+systemctl --user --no-pager --failed
+systemctl --user --no-pager status sysc-shell.service
+journalctl --user -u sysc-shell.service -b --no-pager
+```
+
+If systemctl cannot connect to the user bus from SSH, sign in to the graphical user session and run the checks there. The service environment comes from the session.
+
+If graphical-session.target is inactive, start Niri through niri-session and check again. A manual unit start outside that target will fail because the suite units require the graphical session.
+
+If the target is active and one unit failed, read its status and journal before restarting it. Once you understand the error and are ready to start that feature, run the normal-user command for that unit, for example:
+
+```sh
+systemctl --user start sysc-shell.service
+```
+
+Use the exact unit from the [v0.1.1 suite list](/docs/reference/suite). sysc-terminal has no suite unit in this release. A conflict choice can leave an installed component's unit disabled by design.
+
+The installer log is normally ~/.local/state/sysc/installer.log; the install stamp beside it records the release and whether the suite started. An absolute XDG_STATE_HOME changes both paths. See [paths](/docs/reference/paths), [verification](/docs/start/verify) and [recovery through uninstall](/docs/guides/uninstall).

@@ -1,0 +1,30 @@
+---
+title: Maintain this documentation
+description: Update source references, release guidance, and the static site checks.
+---
+
+
+Component repositories own their code and releases. This repository owns the shared instructions, source record, site styling, and documentation checks. A successful site build proves the export passed its checks; it does not qualify a component on a distribution, device, or compositor.
+
+## Update guidance from source
+
+1. Read the current component source for behavior guidance. Record the full commit reviewed in the [source record](/docs/reference/sources).
+2. For an installed workflow, read `internal/pin/pin.json` from the exact SYSC release tag and compare the pinned component release. Update the [suite reference](/docs/reference/suite) when that tag changes.
+3. Update every affected procedure and limitation. If a statement comes from a plan or proposal rather than implemented code, label it as planned and link the plan.
+4. Ask a reviewer familiar with the component to check its behavior and release details. Keep unknown support qualifications marked unknown.
+
+Read the [release record](/docs/developers/releases) when an installer or component tag changes. Keep the current source revision separate from the exact component tags installed by a suite release.
+
+## Check a documentation change
+
+From `docs-site/`, run `npm ci`, `npm run check`, and `DOCS_BASE_PATH=/sysc npm run check`. The first export checks the local root path; the second checks the GitHub Pages path. The [documentation README](https://github.com/Nomadcxx/sysc/blob/main/docs-site/README.md) explains how to preview the pull request artifact.
+
+The `docs-check` workflow runs on pull requests and pushes to `main`. Pull requests upload a seven-day static preview artifact. A successful push to `main` uploads the Pages artifact, deploys it through the `github-pages` environment, then checks the published docs, install page and sysc-Go guide. The repository's Pages source must be set to **GitHub Actions**. The deploy job receives `pages: write` and `id-token: write`; the build and PR jobs keep read-only repository permissions.
+
+After a deploy, check the `github-pages` environment URL and the smoke-test step in the workflow run. If GitHub Pages is not enabled or its source is set to a branch, the deploy job reports that setup error; change the Pages source in repository Settings → Pages and rerun the main-branch workflow.
+
+## Review ownership
+
+Each component maintainer reviews behavior in that project's pages. A site maintainer handles the shared build, dependencies, and publishing workflow. This repository does not name a site maintainer or assign component reviewers yet. Record those assignments before transferring ongoing publishing responsibility. Do not create a second cross-repository status tracker for this site.
+
+For the installer release, review the suite pin and affected install, upgrade, and recovery pages. For a plugin SDK change, review protocol, manifest, UI geometry, and submission guidance. Keep review scope with the source change and update the source record with the commit used.

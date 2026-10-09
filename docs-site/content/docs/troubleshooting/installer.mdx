@@ -1,0 +1,30 @@
+---
+title: Installer failures
+description: Tell a failed SYSC download from a partial install and recover safely.
+---
+
+## Recover from an installer failure
+
+Run SYSC as the user who owns the suite. Do not prefix the installer or `systemctl --user` with `sudo`. The optional gSlapper package step can request administrator authentication.
+
+## Download or swap failure
+
+SYSC downloads and checks every enabled component before it replaces any installed binary. A download or checksum error leaves the current component binaries in place. Fix the network or storage problem, then retry the same release.
+
+During an upgrade, SYSC stops active suite units before swapping binaries. If a swap fails, it rolls back binaries changed by that attempt and tries to restart the units that were active before it began.
+
+## Failure after the swap
+
+After a successful swap, SYSC writes `installed.json` before it enables units, seeds configuration or edits Niri's config. A later error can leave a partial install. The record contains the release, component versions, session start status and any provider handovers.
+
+Read the error and task results. The optional gSlapper package can be skipped while the rest of the suite installs. For a failed user service, use the read-only [service checks](/docs/troubleshooting/services). After fixing the cause, rerun the same installer release to apply its pin again, or use [uninstall](/docs/guides/uninstall) to remove the recorded suite.
+
+The guided wizard writes its task results to `~/.local/state/sysc/installer.log`. An absolute `XDG_STATE_HOME` moves that file to `$XDG_STATE_HOME/sysc/installer.log`. The install record sits beside it.
+
+## If uninstall reports a restore failure
+
+Before uninstalling, copy `installed.json` somewhere safe. By default it is `~/.local/state/sysc/installed.json`; an absolute `XDG_STATE_HOME` moves it to `$XDG_STATE_HOME/sysc/installed.json`. The record contains the Niri lines and user units that SYSC took over.
+
+Uninstall reports failures while restoring a handed-over provider or removing gSlapper. After Niri cleanup succeeds, it removes the install record even if one of those tasks failed. Keep the copy and use the failed task name and saved handover details to finish recovery. If Niri cleanup itself fails, uninstall returns before removing the record.
+
+Run uninstall with the same `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and `XDG_DATA_HOME` values used for installation. SYSC uses the current environment to find the Niri config, user units, install record and D-Bus activation file. See [installer paths](/docs/reference/paths) and [uninstall](/docs/guides/uninstall).

@@ -1,0 +1,49 @@
+---
+title: gSlapper
+description: Play a video or image wallpaper and check the available output names.
+---
+
+
+gSlapper plays video and static image wallpapers with GStreamer. SYSC v0.1.1 installs gSlapper v1.5.1 through the distribution-specific package routes in the [compatibility guide](/docs/reference/compatibility).
+
+**Source:** [default-branch commit 71213be7](https://github.com/Nomadcxx/gSlapper/commit/71213be7fc04eb23abe40b7f3f8f874128227931) · **SYSC v0.1.1 pin:** gSlapper v1.5.1.
+
+## Check available outputs
+
+This command lists the output names and exits without starting a wallpaper:
+
+~~~sh
+gslapper --help-output
+~~~
+
+For a manual video start, choose the output from that list and replace OUTPUT:
+
+~~~sh
+gslapper -o "loop fill" OUTPUT /path/to/video.mp4
+~~~
+
+For a still image:
+
+~~~sh
+gslapper -o fill OUTPUT /path/to/image.jpg
+~~~
+
+These commands start wallpaper processes. The -o option passes playback and scaling options to GStreamer. Available scaling values include fill, stretch, original and panscan. Animated GIF playback needs gst-libav; without it gSlapper displays the first frame.
+
+To use the same video across every output, quote the wildcard so the shell does not expand it:
+
+~~~sh
+gslapper -o loop '*' /path/to/video.mp4
+~~~
+
+The output name comes from `gslapper --help-output`. A missing file, output name or GStreamer decoder can prevent playback; confirm each before changing the shell's wallpaper setting. gSlapper uses one GStreamer pipeline for its outputs and supports still images as well as video.
+
+## Let the shell manage it
+
+The current sysc-shell source starts one gSlapper process per output and owns the control socket. Choose the wallpaper through the shell when it manages that output. Do not start a second manual process on the same output.
+
+[Wallpaper ownership guide](/docs/guides/wallpapers) explains how gSlapper differs from sysc-terminal and sysc-walls. The suite pin and current shell source can differ; check the [source record](/docs/reference/sources) before expecting a newer shell integration.
+
+For a standalone package, use the route for that operating system in the [compatibility reference](/docs/reference/compatibility). The suite's gSlapper step runs only when the package is missing. If it skips installation, read that task result; SYSC can finish installing the rest of the suite without gSlapper.
+
+[Version 1.5.1 release](https://github.com/Nomadcxx/gSlapper/releases/tag/v1.5.1) · [Source code](https://github.com/Nomadcxx/gSlapper/tree/71213be7fc04eb23abe40b7f3f8f874128227931) · [Report an issue](https://github.com/Nomadcxx/gSlapper/issues)

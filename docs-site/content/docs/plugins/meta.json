@@ -1,0 +1,14 @@
+{
+  "title": "Plugins",
+  "pages": [
+    "index",
+    "catalog",
+    "write",
+    "manifest",
+    "protocol",
+    "ui",
+    "test",
+    "publish",
+    "submit"
+  ]
+}

@@ -7,3 +7,5 @@
 | [2026-10-05-sysc-suite-installer.md](2026-10-05-sysc-suite-installer.md) | implementation plan |
 | [2026-10-05-sysc-installer-audit-commission.md](2026-10-05-sysc-installer-audit-commission.md) | audit commission |
 | [2026-10-09-sysc-documentation-site-handover.md](2026-10-09-sysc-documentation-site-handover.md) | documentation audit and implementation handover |
+| [2026-10-09-sysc-documentation-site-design.md](2026-10-09-sysc-documentation-site-design.md) | approved design |
+| [2026-10-09-sysc-documentation-site-implementation-plan.md](2026-10-09-sysc-documentation-site-implementation-plan.md) | implementation plan |

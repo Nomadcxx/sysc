@@ -1,0 +1,20 @@
+{
+  "title": "Components",
+  "pages": [
+    "index",
+    "sysc",
+    "sysc-greet",
+    "sysc-lock",
+    "sysc-shell",
+    "sysc-tray",
+    "sysc-terminal",
+    "sysc-clipboard",
+    "sysc-wayland",
+    "sysc-metrics",
+    "sysc-launch",
+    "sysc-go",
+    "sysc-walls",
+    "sysc-notify",
+    "gslapper"
+  ]
+}

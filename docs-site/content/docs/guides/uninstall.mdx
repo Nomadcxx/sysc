@@ -1,0 +1,50 @@
+---
+title: Uninstall
+description: Remove the stamped SYSC suite and understand which user data remains.
+---
+
+## Uninstall SYSC
+
+Use a SYSC binary or source checkout with the component pin that owns the install. Run it as the normal user who installed the suite:
+
+```sh
+"$HOME/.local/bin/sysc" uninstall
+```
+
+Run uninstall with the same `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and `XDG_DATA_HOME` values used for installation. SYSC uses the current environment to find the Niri config, user units, install record and D-Bus activation file. See [installer paths](/docs/reference/paths).
+
+Before uninstalling, copy the install record somewhere safe. By default it is `~/.local/state/sysc/installed.json`; an absolute `XDG_STATE_HOME` moves it to `$XDG_STATE_HOME/sysc/installed.json`.
+
+```sh
+cp -a "$HOME/.local/state/sysc/installed.json" "$HOME/sysc-installed.json"
+```
+
+If you set an absolute `XDG_STATE_HOME`, use its `sysc/installed.json` path in the command.
+
+The command reads the install record, stops and disables recorded suite services, removes their binaries and unit files, removes the generated Niri sidecar, and tries to restore recorded provider handovers. It also restores matching Niri startup lines and any displaced user D-Bus activation file. The default uninstall keeps your sysc-shell config.
+
+The command does not remove gSlapper unless SYSC's stamp says SYSC installed it and you pass --remove-gslapper. The package manager may ask for administrator authentication. Add --yes to skip the uninstall confirmation.
+
+Add --purge only if you want to delete the entire sysc-shell config directory, including any files you added or edited:
+
+```sh
+"$HOME/.local/bin/sysc" uninstall --purge
+```
+
+With both options:
+
+```sh
+"$HOME/.local/bin/sysc" uninstall --purge --remove-gslapper
+```
+
+## What remains
+
+- Without --purge, the sysc-shell config remains. --purge removes that config directory only.
+- After Niri cleanup succeeds, the installer removes its install record but keeps the guided-installer log and Niri backup files for review. A failed provider-restore or gSlapper-removal task still removes the record, so keep the copy above if you may need its handover details. A Niri cleanup error returns before the record is removed. See [installer recovery](/docs/troubleshooting/installer) for partial failures.
+- Component-specific user data and config outside sysc-shell remain.
+- SYSC removes the generated include and sidecar from the Niri config. It restores matching commented sysc-shell startup lines; inspect your Niri config if you had commented one yourself before installing.
+- If a conflict handover changed a previously enabled provider, SYSC attempts to re-enable and start that provider.
+
+Keep the final task output and check each restored service before deleting any remaining files by hand.
+
+If you installed SYSC from a source checkout, run `./sysc uninstall` from a checkout matching the installer pin. The one-line source installer removes its temporary build; use a matching source checkout or release binary for later uninstall. A different component pin can leave files behind.

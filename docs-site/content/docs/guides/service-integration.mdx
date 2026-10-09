@@ -1,0 +1,55 @@
+---
+title: Service integration
+description: See which user process owns tray, clipboard and notification state.
+---
+
+
+sysc-shell draws the desktop UI. sysc-tray, sysc-clipboard and sysc-notify own their own service state and keep running when the shell restarts.
+
+**SYSC v0.1.1 pins:** sysc-shell v0.1.0, sysc-tray v0.1.1, sysc-clipboard v0.1.2 and sysc-notify v0.1.0. The [source record](/docs/reference/sources) lists each current source commit.
+
+## Who owns each feature
+
+- **Tray:** sysc-tray tracks StatusNotifierItem and DBusMenu state. It provides `org.kde.StatusNotifierWatcher` when the bus name is free, or joins a healthy existing watcher as a host. sysc-shell draws tray icons and menus.
+- **Clipboard:** sysc-clipboard reads Wayland selections and stores encrypted history. sysc-shell draws the history panel and sends restore requests.
+- **Notifications:** sysc-notify owns org.freedesktop.Notifications on the session bus. sysc-shell draws popups and history.
+- **Session:** systemd --user starts these services with graphical-session.target. Start Niri through niri-session so the user service manager receives the session environment.
+
+The suite installs the pinned user units and records conflict handovers. Use [conflict handling](/docs/guides/conflicts) for existing notification providers, bars and shells. Do not add sudo to systemctl --user.
+
+## Read-only checks
+
+Run these commands from the graphical user account:
+
+~~~sh
+systemctl --user is-active graphical-session.target
+systemctl --user --no-pager status sysc-shell.service
+systemctl --user --no-pager status sysc-tray.service
+systemctl --user --no-pager status sysc-clipboard.service
+systemctl --user --no-pager status sysc-notify.service
+busctl --user status org.kde.StatusNotifierWatcher
+busctl --user status org.freedesktop.Notifications
+~~~
+
+The graphical target should report active. A service can be inactive because the installer skipped that component or handed the conflicting provider over. `org.kde.StatusNotifierWatcher` may be owned by sysc-tray or by a healthy external watcher that sysc-tray joined as a host; the bus status identifies the current owner. The `org.freedesktop.Notifications` status names the notification owner. Check the [suite list](/docs/reference/suite) and the install conflict choice before interpreting an inactive unit as a fault.
+
+Read logs without restarting a service:
+
+~~~sh
+journalctl --user -u sysc-shell.service -b --no-pager
+journalctl --user -u sysc-tray.service -b --no-pager
+journalctl --user -u sysc-clipboard.service -b --no-pager
+journalctl --user -u sysc-notify.service -b --no-pager
+~~~
+
+If the user bus is unavailable from SSH, sign in to the graphical session and run the checks there. Each service uses the same user's session environment and runtime directory. See [component diagnostics](/docs/troubleshooting/services) for the session target and unit recovery path.
+
+## Recovery order
+
+1. Check whether graphical-session.target is active.
+2. Check the failed unit and its journal.
+3. Check notification ownership if the notification service failed.
+4. Read the component page for that service before changing its configuration.
+5. Start a unit only after you understand why it stopped.
+
+The shell and companion services use separate processes and sockets. A shell restart does not clear tray registrations, clipboard history or notification history. A missing panel feature can still point to the owning daemon, its session-bus name or its runtime socket.

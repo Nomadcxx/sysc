@@ -1,0 +1,41 @@
+---
+title: Install
+description: Download, verify and run the SYSC v0.1.1 installer.
+---
+
+## Install SYSC v0.1.1
+
+Run this release as your normal user. Do not prefix the installer with sudo. It writes suite programs and systemd user units in your home directory. The optional gSlapper package step may ask the package manager for administrator authentication.
+
+The commands below select the reviewed v0.1.1 release. They verify the amd64 installer against the checksum file before placing it in ~/.local/bin.
+
+```sh
+set -eu
+download_dir=$(mktemp -d)
+trap 'rm -rf "$download_dir"' EXIT
+asset=sysc-linux-amd64
+base=https://github.com/Nomadcxx/sysc/releases/download/v0.1.1
+curl -fsSL "$base/$asset" -o "$download_dir/$asset"
+curl -fsSL "$base/SHA256SUMS" -o "$download_dir/SHA256SUMS"
+(cd "$download_dir" && sha256sum --ignore-missing -c SHA256SUMS)
+install -Dm755 "$download_dir/$asset" "$HOME/.local/bin/sysc"
+"$HOME/.local/bin/sysc"
+```
+
+Continue only when sha256sum reports sysc-linux-amd64: OK. If verification fails, remove the download directory and fetch the release again. The installer stores the exact component versions and checksums in its embedded pin.
+
+Keep ~/.local/bin/sysc if you want to rerun this release or uninstall it later. To use a later SYSC release, change both download URLs to that release tag and read its release notes and compatibility information first.
+
+## Build current source
+
+The source installer follows the current sysc main branch and needs Go 1.26 and git. It builds into a temporary directory and removes that directory after running. It does not leave a sysc command installed.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Nomadcxx/sysc/main/.install | sh
+```
+
+This route uses the pin embedded in current main, which may differ from the v0.1.1 suite described here. For a persistent source checkout, use the build instructions in the [sysc repository](https://github.com/Nomadcxx/sysc#build-from-source).
+
+The source command removes its temporary build after installation. Keep a checkout matching the pin if you may need to rerun or uninstall this installation later.
+
+Before choosing a route, check the [requirements](/docs/start/requirements), [privilege boundaries](/docs/reference/privileges) and [component pins](/docs/reference/suite).

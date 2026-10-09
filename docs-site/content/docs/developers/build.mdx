@@ -1,0 +1,38 @@
+---
+title: Build and test
+description: Run the checks defined for the installer and documentation site.
+---
+
+
+The installer, component projects, and documentation site live in separate repositories. Use the [source record](/docs/reference/sources) to open the reviewed component revision. Each repository defines its own Go version and checks.
+
+## SYSC installer
+
+The installer source uses Go 1.26. Its [CI workflow](https://github.com/Nomadcxx/sysc/blob/b26621ef5f9f2c32c6eb1c8a8b618558e341202b/.github/workflows/ci.yml) reads the version from `go.mod`. On Ubuntu, CI installs `dash` because an installer test exercises shell commands through `bash`, `dash`, `script`, and `setsid`.
+
+From the repository root, run the same checks:
+
+```sh
+gofmt -l .
+go vet ./...
+go test -race -count=1 ./...
+go build ./...
+```
+
+The formatting check should print no files. Go tests report package results; vet and build should exit without errors. The [release guide](/docs/developers/releases) describes the tagged installer build. Its arm64 binary does not qualify the full suite for arm64; see [compatibility](/docs/reference/compatibility).
+
+## Documentation site
+
+Use Node 22 and the committed npm lockfile. From `docs-site/`, run:
+
+```sh
+npm ci
+npm run check
+DOCS_BASE_PATH=/sysc npm run check
+```
+
+The check validates the catalog snapshot and navigation, generates Fumadocs types, type-checks the site, builds the static export, and checks exported links, assets, and search data. The second run checks URLs for GitHub Pages. See [Maintain this documentation](/docs/developers/documentation) for the artifact preview steps.
+
+## Component repositories
+
+The components do not share one Go workspace or test matrix. Read the current source repository's development instructions and CI workflow before running a check. Use the installer tag from the [suite reference](/docs/reference/suite) when you need to reproduce behavior from an installed release. A site build checks the documentation; it does not build or test component binaries.

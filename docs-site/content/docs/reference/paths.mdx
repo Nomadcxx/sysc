@@ -1,0 +1,22 @@
+---
+title: Install paths
+description: SYSC installer-owned binaries, user units, config, state and backups.
+---
+
+## Installer paths
+
+SYSC writes its suite under the installing user's home and XDG directories:
+
+| Path | Contents |
+|---|---|
+| ~/.local/bin | Suite executables. The installer keeps binaries here even when XDG_CONFIG_HOME is set. |
+| ~/.config/systemd/user | Suite user units, or $XDG_CONFIG_HOME/systemd/user when XDG_CONFIG_HOME is absolute. |
+| ~/.config/sysc-shell/config.json | Seeded shell configuration, or $XDG_CONFIG_HOME/sysc-shell/config.json. Existing files stay in place. |
+| ~/.config/niri/config.kdl | Niri configuration, or $XDG_CONFIG_HOME/niri/config.kdl. SYSC adds an include for its sidecar. |
+| ~/.config/niri/sysc.kdl | SYSC-owned Niri bindings sidecar. The installer rewrites it on reruns and removes it on uninstall. |
+| ~/.local/state/sysc/installed.json | Install stamp, or $XDG_STATE_HOME/sysc/installed.json. It records the release, component versions, unit-start status and handovers. |
+| ~/.local/state/sysc/installer.log | Guided installer log, or the corresponding XDG state path. |
+| ~/.local/state/sysc/backups | Timestamped Niri config copies. SYSC also keeps the first copy beside the Niri config as config.kdl.sysc.bak. |
+| ~/.local/share/dbus-1/services | User notification activation file, or $XDG_DATA_HOME/dbus-1/services. SYSC writes it when sysc-notify is selected. |
+
+XDG_CONFIG_HOME, XDG_STATE_HOME and XDG_DATA_HOME override their defaults only when each value is an absolute path. See [uninstall](/docs/guides/uninstall) for files and user data that remain afterward.

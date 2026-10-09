@@ -1,0 +1,10 @@
+{
+  "title": "Troubleshooting",
+  "pages": [
+    "index",
+    "installer",
+    "services",
+    "greeter",
+    "lock"
+  ]
+}

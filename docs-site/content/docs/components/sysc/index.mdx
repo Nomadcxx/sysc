@@ -1,0 +1,29 @@
+---
+title: sysc installer
+description: Install, upgrade and remove the suite release pinned by the SYSC binary.
+---
+
+
+sysc is the guided installer for the SYSC desktop. Each released installer embeds one component pin, downloads the matching binaries, verifies their SHA-256 checksums, writes systemd user units, seeds the shell config when it does not already exist, and updates the Niri include.
+
+The v0.1.1 install route targets Arch-family x86_64 with Niri. Run it as your normal user. It refuses root and does not qualify the complete suite for arm64, Fedora or Debian-based systems.
+
+Use the [requirements](/docs/start/requirements) and [install steps](/docs/start/install) before the first run. The [wizard guide](/docs/start/wizard) explains weather, plugin and provider choices. Use [upgrade](/docs/guides/upgrade) for another pinned release and [uninstall](/docs/guides/uninstall) to remove the stamped installation.
+
+The [suite reference](/docs/reference/suite) lists every v0.1.1 pin and unit. The [source record](/docs/reference/sources) lists current project commits separately from the releases this installer installs.
+
+## What the installer owns
+
+The installer runs as the desktop user. It writes suite binaries to `~/.local/bin`, user service units to the systemd user directory, an include and sidecar for Niri, and an install record under the user's state directory. Absolute `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and `XDG_DATA_HOME` values redirect the matching configuration, state and data paths. The binary directory stays under `~/.local/bin`.
+
+Before it replaces a suite binary, sysc downloads the pinned assets and checks their SHA-256 digests. It records the release and component pins in `installed.json`, then installs the units and starts them when `graphical-session.target` is active. When you run it from a TTY or SSH session, it can install and enable services without starting them.
+
+The installer preserves an existing `sysc-shell/config.json`. Its wizard choices seed a new file; they do not overwrite your saved desktop configuration. The [path reference](/docs/reference/paths) lists files and owners. The [installer recovery guide](/docs/troubleshooting/installer) explains how to read a partial-install record.
+
+## Suite boundary
+
+The v0.1.1 manifest controls what this installer installs. It includes six user services and an optional gSlapper package. It leaves sysc-greet, sysc-wayland, sysc-metrics, sysc-launch and sysc-plugins outside the suite. sysc-terminal is disabled because the release has no unit template for it. A project page can describe a newer source feature; check its pin status before expecting that feature after installing v0.1.1.
+
+The full suite supports Arch-family x86_64 on Niri. An arm64 installer asset exists, but the suite preflight rejects arm64. gSlapper package routes for other distributions do not qualify the rest of SYSC for those systems. See [compatibility](/docs/reference/compatibility) before installing on another platform.
+
+The installer source is in the [sysc repository](https://github.com/Nomadcxx/sysc). The v0.1.1 [README](https://github.com/Nomadcxx/sysc/blob/v0.1.1/README.md), [pin manifest](https://github.com/Nomadcxx/sysc/blob/v0.1.1/internal/pin/pin.json) and [install implementation](https://github.com/Nomadcxx/sysc/blob/v0.1.1/internal/install/install.go) define the release behavior described here.

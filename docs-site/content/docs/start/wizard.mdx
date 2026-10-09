@@ -1,0 +1,23 @@
+---
+title: Wizard
+description: Choose desktop defaults, weather location and conflict handling in the SYSC installer.
+---
+
+## Use the installer wizard
+
+Press Enter to continue and Esc to return to the previous page. Use the arrow keys to change a selection. On the Plugins page, Space toggles the focused checkbox.
+
+| Page | Choice |
+|---|---|
+| Theme | Select Standard, Compact or Expressive. Use Left and Right to choose the desktop's light or dark mode. The installer itself stays black. |
+| Wallpaper | Set the image directory. Enter an absolute path or a path beginning with ~/ such as ~/Pictures/wallpapers. |
+| Plugins | Toggle Weather and Media. The built-in weather widget still needs a location even if Weather is unchecked. |
+| Weather | Accept the automatic location, search for a city, or provide coordinates with command-line flags. Check the location before pressing Enter on the empty input. |
+| Conflicts | Choose Hand over, Keep both or Skip SYSC component for each detected provider. Read [conflict handling](/docs/guides/conflicts) before handing over an existing desktop service. |
+| Review | Check the component list, paths and package-manager advice. Press Enter to start installation. |
+
+PgUp and PgDn scroll long screens, task results and warnings. F9 changes the interface language. Ctrl+C exits; q exits outside text-entry pages.
+
+If a sysc-shell config already exists, the installer leaves it in place. The wizard's theme and plugin defaults seed a config only when none exists. Use the shell's settings UI or edit its config to change an existing desktop.
+
+For a non-interactive run, pass `--city CITY` or both `--lat LAT --lon LON` to set the weather location. With `--yes` and no location flags, the installer guesses from the network; if that lookup fails, installation stops and names those flags. See the [v0.1.1 flags](https://github.com/Nomadcxx/sysc/blob/4cb1899fe678ce5afe0cf032d102a17475969a5d/README.md#L100-L104).

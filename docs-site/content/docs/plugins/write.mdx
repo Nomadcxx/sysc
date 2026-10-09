@@ -1,0 +1,47 @@
+---
+title: Build a plugin
+description: Start a sysc-shell plugin from the current Go SDK and repository pattern.
+---
+
+
+sysc-shell launches each plugin as a separate process and exchanges versioned JSON Lines over standard input and output. In `sysc-plugins`, each plugin has a manifest and implementation under `plugins/`, plus a command under `cmd/`.
+
+## Start with an existing plugin
+
+Use [Cat](https://github.com/Nomadcxx/sysc-plugins/tree/b6323d6f131bc8fa2d814942b271faecd045522a/plugins/cat) as a small example. It declares `org.sysc.cat`, a bar widget and a panel in `manifest.json`. Its command at [`cmd/sysc-plugin-cat`](https://github.com/Nomadcxx/sysc-plugins/tree/b6323d6f131bc8fa2d814942b271faecd045522a/cmd/sysc-plugin-cat) uses the SDK client, answers the handshake, and serves views.
+
+For a new plugin in `sysc-plugins`, add these pieces:
+
+```text
+plugins/<dir>/manifest.json
+plugins/<dir>/*.go
+cmd/sysc-plugin-<dir>/main.go
+```
+
+Use the same suffix for the plugin directory and command: `plugins/<dir>/` pairs with `cmd/sysc-plugin-<dir>/main.go`, and the manifest must set `exec` to `bin/sysc-plugin-<dir>`. The [packager](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/tools/catalog/package.go) derives the command path from `<dir>` and rejects a different `exec`; the [release validator](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/tools/catalog/update.go) checks the same path in tagged archives.
+
+Keep the directory name stable because the release workflow uses it in the tag. Give the manifest a reverse-domain ID and keep the name, description and version aligned with the published catalog entry.
+
+## Connect the process
+
+Create a `plugin/v1.Client` with stdin and stdout. Call `Handshake` before sending any other message. Pass the identity from your manifest. Write diagnostics to stderr; stdout carries protocol messages only.
+
+```go
+c := v1.NewClient(os.Stdin, os.Stdout)
+if _, err := c.Handshake(v1.Identity{
+    ID: "org.example.clock", Name: "Clock", Version: "0.1.0",
+}); err != nil {
+    fmt.Fprintln(os.Stderr, err)
+    return err
+}
+```
+
+Then handle host messages such as `view.open`, `input.event`, `settings.changed`, `view.resync` and `host.shutdown`. The host assigns each `view_id` and gives each opened view its available dimensions. Send a snapshot for the current revision, or a patch against the revision the host has already accepted. See [Protocol](../protocol) for handshake and error behavior.
+
+## Declare only what the plugin uses
+
+Add host capabilities to the manifest only when a feature needs them. List external commands under `requires.commands`. Give each interactive node an ID, accessible name, role and supported events. Check every view with `v1.Validate` and the host layout linter before asking for review.
+
+Keep user data and credentials out of fixtures, logs and screenshots. A plugin process runs as the same user as sysc-shell, so host capabilities do not restrict ordinary operating-system access. Read the [manifest](../manifest), [UI rules](../ui) and [testing steps](../test) before release.
+
+The [sysc-plugins authoring guide](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/docs/writing-plugins.md) and the [sysc-shell SDK source](https://github.com/Nomadcxx/sysc-shell/tree/0b6840392e1e80ca45f0a1284dfab8e6d8ac6960/plugin/v1) define the interfaces for this revision.

@@ -1,0 +1,43 @@
+---
+title: Accessible plugin views
+description: Build semantic views and check them at the sizes sysc-shell uses.
+---
+
+
+Plugins send a declarative node tree. sysc-shell owns rendering, focus, theme colors and layout. Build from `plugin/v1.Node` kinds and semantic tones instead of sending renderer objects or fixed colors.
+
+## Give every control an accessible identity
+
+Interactive nodes need a stable `ID`, a useful `Name`, a `Role` and at least one supported event. A placeholder or icon does not replace the accessible name. Declare only events the node can emit. For example, a button can emit `activate`; a text input can emit `change` and `submit`.
+
+`v1.Validate` checks node structure, IDs, event kinds, accessibility fields and view-specific rules. It does not check whether children fit the available rectangle. A tree can pass validation and still be refused during layout.
+
+## Test the host's geometry
+
+Use the same linter as sysc-shell. `lint.Tree` runs validation, conversion and the host layout check, then reports all findings for that view size.
+
+```go
+for _, f := range lint.Tree(bar, v1.ViewBar, lint.BarWidth, lint.BarHeight) {
+    t.Errorf("bar: %s", f)
+}
+for _, f := range lint.Tree(panel, v1.ViewPanel, panelWidth, panelHeight) {
+    t.Errorf("panel: %s", f)
+}
+```
+
+Use `lint.BarWidth` and `lint.BarHeight` for the 240×32 bar slot, and `lint.TooltipWidth` and `lint.TooltipHeight` for the 280×200 tooltip. Set panel dimensions from the manifest. For side bars, use the width and height from each `view.open`; also test the 32×32 and 64×32 narrow cases.
+
+The SDK's linter cannot model the smaller content box a panel gets when the host wraps it with included settings. Leave room for that wrapper. A narrow column may clip or overflow without a linter finding, so budget its children yourself.
+
+At the recorded `sysc-plugins` revision, `go.mod` selects sysc-shell commit `d16632ff`. That revision's plugin API and linter constants match the current source, but the shell's internal layout code changed afterward. A passing linter test against the recorded dependency does not prove the view renders the same way in a newer shell; check the [source record](/docs/reference/sources) when targeting a different host revision.
+
+## Avoid rejected layouts
+
+- A bar root must be a row. A panel root must be a column or list. A tooltip root must be a column.
+- Height includes padding. A row's content height is `Height − 2 × Padding`.
+- Controls must fit a row's content width. Use explicit widths or `PinEnd` when text shares a row with a trailing control.
+- Text uses the SDK's fixed byte-based measure during layout. A real font may render it differently.
+- Unknown icon names fail validation. Use names from the shell's current icon catalog.
+- A control inside another interactive control creates an invalid nested target.
+
+The [UI geometry rules](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/docs/plugin-ui-rules.md) contain the current layout contract. Run these checks in tests so a view failure appears before a user opens the plugin.

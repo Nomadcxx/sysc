@@ -1,0 +1,34 @@
+---
+title: Component architecture
+description: Follow process, library and session ownership across the SYSC desktop.
+---
+
+
+The installer owns suite selection and user-unit setup. sysc-shell owns the Niri desktop surface. Companion services own their protocol state; libraries compile into the shell.
+
+SYSC v0.1.1 pins the installed releases listed in the [suite reference](/docs/reference/suite). The [source record](/docs/reference/sources) tracks current default-branch commits separately.
+
+~~~mermaid
+flowchart TD
+    installer["sysc installer<br/>pinned binaries and user units"] --> session["systemd --user<br/>graphical-session.target"]
+    session --> shell["sysc-shell<br/>Niri UI and settings"]
+    shell --> tray["sysc-tray<br/>StatusNotifierItem and DBusMenu"]
+    shell --> clipboard["sysc-clipboard<br/>Wayland capture and encrypted history"]
+    shell --> notify["sysc-notify<br/>D-Bus notification owner"]
+    shell --> wallpaper["wallpaper children<br/>awww / swaybg / gSlapper / sysc-terminal"]
+    shell --> walls["sysc-walls<br/>idle screensaver service"]
+    shell --> libs["Go libraries<br/>sysc-wayland / sysc-metrics / sysc-launch"]
+~~~
+
+## Process boundaries
+
+- **sysc installer:** downloads the versions in the suite manifest, writes user units, and records changes for upgrade and uninstall.
+- **sysc-shell:** runs in the Niri user session. It draws through wl_shm, talks to Niri over its IPC socket, and starts selected wallpaper or lock processes.
+- **sysc-tray, sysc-clipboard, sysc-notify:** run independently of the shell. They own tray discovery, clipboard persistence and notification-bus ownership.
+- **sysc-walls:** runs as a user service and starts a screensaver after idle time.
+- **sysc-wayland, sysc-metrics, sysc-launch:** Go modules used by programs; they do not add separate suite services.
+- **sysc-Go:** animation dependency used by sysc-terminal and sysc-walls. It is not a component installed from the suite manifest.
+
+Configuration and state live with the component that owns them. The installer stamp belongs to sysc; shell preferences belong to sysc-shell; clipboard history belongs to sysc-clipboard. See [paths and ownership](/docs/reference/paths) and the [service integration guide](/docs/guides/service-integration).
+
+This page describes project boundaries from the current source record. It does not qualify architectures, distributions or compositors beyond the [compatibility reference](/docs/reference/compatibility).

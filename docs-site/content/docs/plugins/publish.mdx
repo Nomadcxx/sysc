@@ -1,0 +1,54 @@
+---
+title: Publish a plugin
+description: Tag a plugin release and validate the archive and catalog entry.
+---
+
+
+`sysc-plugins` releases each plugin separately. The tag names the plugin directory and must match the version already committed in its manifest.
+
+## Prepare the release
+
+Commit the version change on `main`, then push a tag in this form:
+
+```text
+<dir>-v<version>
+```
+
+For example, `cat-v1.0.1` releases `plugins/cat` version `1.0.1`. The release workflow checks the tag against `manifest.json`, builds Linux `amd64` and `arm64` assets, publishes a GitHub release, and opens a pull request for the regenerated catalog. A maintainer merges the catalog pull request.
+
+Pure-Go plugins build with `CGO_ENABLED=0`. Calendar is the current CGO exception. It needs `libecal2.0-dev` and a native runner for each architecture. Do not assume every plugin uses a static Go build.
+
+## Check the package shape
+
+Each asset is named `<id>-<version>-linux-<arch>.tar.gz`. It contains one top-level directory named for the plugin ID, the unchanged manifest, plugin data files and the built executable at the manifest's `exec` path. The package tool excludes Go source, tests, source `bin/` files, `screenshot.png` and `thumbnail.webp`.
+
+The same tagged commit produces the same archive bytes. Use the repository package tool and avoid hand-building release archives:
+
+```sh
+go run ./tools/catalog package -plugin <dir> -arch amd64 -out dist
+```
+
+## Validate catalog metadata
+
+`catalog-meta.json` requires a category and author. License, HTTPS homepage, long description and screenshot fields are optional in the schema. The `license` field stays optional for community proposals too.
+
+Run validation before proposing the catalog update:
+
+```sh
+go run ./tools/catalog validate
+go run ./tools/catalog validate -fetch
+```
+
+The validator compares catalog identity, protocol, capabilities and required commands with the manifest at the release tag. `-fetch` downloads named assets and verifies their size and SHA-256. The shell uses that digest to detect content changes; it does not certify the plugin as safe.
+
+Community catalog checks can require a screenshot:
+
+```sh
+go run ./tools/catalog validate -community
+```
+
+The pinned [publishing guide](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/docs/publishing.md) asks for a PNG screenshot at least 320 px wide and no more than 4 MiB. The catalog flags enforce separate checks: `-community` requires a screenshot field on each catalog row, while `-fetch` verifies its URL and SHA-256 with the generic 64 MiB asset limit. The catalog validator does not check image dimensions or enforce the source PNG's 4 MiB limit.
+
+For an official `sysc-plugins` pull request, repository CI also runs [`thumbnail -check`](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/tools/thumbnail/main.go). That check reads `plugins/<dir>/screenshot.png`, requires PNG format, a width of at least 320 px and a size no larger than 4 MiB, then checks the generated thumbnail. The [CI workflow](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/.github/workflows/ci.yml) runs this check; the [release workflow](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/.github/workflows/release.yml) runs `catalog validate -fetch` without `-community`. Use `-community` when a catalog requires every row to carry a screenshot field.
+
+See the pinned [`publishing.md`](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/docs/publishing.md) for packaging and thumbnail details.
