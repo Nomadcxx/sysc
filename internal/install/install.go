@@ -189,11 +189,20 @@ func mergeHandover(hs []stamp.Handover, h stamp.Handover) []stamp.Handover {
 	return append(out, h)
 }
 
+// idleLock matches the sysc-shell Settings default for When idle.
+const idleLock = 5 * time.Minute
+
 // Run installs the pin: fetch and swap binaries, gSlapper, units, seed, niri,
 // start, stamp.
 func Run(ctx context.Context, opts Options) (res Result, err error) {
 	if componentEnabled(opts.Pin.Components, "sysc-lock") {
 		opts.Answers.Locker = "sysc-lock"
+		// The shell's When idle setting is lock or screensaver, not both: an
+		// installed sysc-walls screensaver keeps idle, and lock stays manual
+		// and before sleep.
+		if !componentEnabled(opts.Pin.Components, "sysc-walls") {
+			opts.Answers.IdleLock = idleLock
+		}
 	}
 	if opts.Answers.Location == "" || (opts.Answers.Latitude == 0 && opts.Answers.Longitude == 0) {
 		if opts.Loc != nil {
