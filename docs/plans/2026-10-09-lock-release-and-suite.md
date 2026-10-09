@@ -2,9 +2,9 @@
 
 **Goal:** Release sysc-lock v0.1.0 and install/enable it by default through sysc.
 
-**Architecture:** Use the existing verified asset download, unit installation, startup ordering and uninstall stamp. Resolve unit templates from the component's declared unit, since sysc-lock uses sysc-lock-session.service. Seed session.locker=sysc-lock only in new shell configs; preserve existing files. No new dependencies or service abstraction.
+**Architecture:** Use the existing verified asset download, unit installation, startup ordering and uninstall stamp. Resolve unit templates from the component's declared unit, since sysc-lock uses sysc-lock-session.service. Seed session.locker=sysc-lock only in new shell configs; preserve existing files. Stop only units being installed or stamped as owned; attempt every selected stop even if one fails. No new dependencies or service abstraction.
 
-**Release:** Build Linux amd64 on Ubuntu 22.04 with PAM/EGL/GLES dependencies. Publish sysc-lock, the session unit and SHA256SUMS. Set the compiled version to 0.1.0. Support workflow_dispatch for artifact proof before the tag. Check version and description without acquiring a lock.
+**Release:** Build Linux amd64 on Ubuntu 22.04 with PAM/EGL/GLES dependencies and CGO_CFLAGS=-D_GNU_SOURCE, needed by the PAM binding with older glibc headers. Publish sysc-lock, the session unit and SHA256SUMS. Set the compiled version to 0.1.0. Support workflow_dispatch for artifact proof before the tag. Check version and description without acquiring a lock.
 
 **Implementation sequence:**
 

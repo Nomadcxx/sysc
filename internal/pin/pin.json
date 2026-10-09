@@ -88,8 +88,19 @@
     },
     {
       "id": "sysc-lock",
-      "disabled": true,
-      "reason": "not shipped yet"
+      "tag": "v0.1.0",
+      "unit": "sysc-lock-session.service",
+      "binaries": [
+        {
+          "name": "sysc-lock",
+          "assets": {
+            "amd64": {
+              "url": "https://github.com/Nomadcxx/sysc-lock/releases/download/v0.1.0/sysc-lock",
+              "sha256": "cc619af0874b51d9fbf4b9b85a61c8f56ad32d5f641d58dfa69de65023075d79"
+            }
+          }
+        }
+      ]
     }
   ],
   "gslapper": {

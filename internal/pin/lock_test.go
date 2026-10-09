@@ -16,3 +16,19 @@ func TestEnabledLockPin(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestEmbeddedPinIncludesLock(t *testing.T) {
+	p, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range p.Components {
+		if c.ID == "sysc-lock" {
+			if c.Disabled || c.Tag != "v0.1.0" || c.Unit != "sysc-lock-session.service" {
+				t.Fatalf("lock pin=%+v", c)
+			}
+			return
+		}
+	}
+	t.Fatal("missing lock pin")
+}
