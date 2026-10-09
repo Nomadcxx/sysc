@@ -6,19 +6,19 @@ description: Handshake, capabilities, view updates and errors in sysc-shell plug
 
 The SDK in [`sysc-shell/plugin/v1`](https://github.com/Nomadcxx/sysc-shell/tree/0b6840392e1e80ca45f0a1284dfab8e6d8ac6960/plugin/v1) defines the Go types for the wire protocol. The wire format remains JSON Lines over stdin and stdout, so a plugin written in another language can implement the same messages.
 
-## Complete the handshake first
+## Plugin handshake
 
 The host sends `host.hello` as the first message. It lists supported protocol versions, the plugin identity, capability grants and message limits. The plugin responds with `plugin.hello`, including its identity and selected version. `Client.Handshake` reads the first message, chooses the highest common protocol v1 minor and sends the response.
 
 The helper returns an error if the first message is not `host.hello` or the host advertises no compatible v1 version. Stop startup on that error. Keep the ID, name and version consistent with the manifest. Do not write logs or banners to stdout; send diagnostics to stderr so they cannot corrupt the message stream.
 
-## Respect the host grants
+## Host capabilities
 
 The host sends only capabilities it grants after intersecting the plugin's request with host support. Check the returned grants before using host APIs. A call can fail because a capability or resource is unavailable; inspect both the Go error and `HostReply.Error`, and use a deadline when waiting for a reply.
 
 Capabilities limit calls through the host API. They do not sandbox the plugin process. The executable can still access files, processes and network resources allowed to the same user.
 
-## Serve each view lifecycle
+## View lifecycle
 
 The host opens a view with `view.open` and assigns its `view_id`, view kind and available dimensions. Send a `view.snapshot` with a new revision. A `view.patch` names the base revision it replaces. On `view.resync`, send a fresh snapshot. Handle `view.close` without stopping the process if other views remain. On `host.shutdown`, release resources and exit.
 

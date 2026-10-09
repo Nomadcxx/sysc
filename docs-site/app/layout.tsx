@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     default: 'SYSC documentation',
     template: '%s | SYSC',
   },
-  description: 'Install, configure, troubleshoot, develop, and extend the SYSC desktop.',
+  description: 'Documentation for installing, configuring, troubleshooting, developing, and extending SYSC.',
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {

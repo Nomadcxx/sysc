@@ -28,7 +28,7 @@ We checked these default branch heads on 2026-10-09. Each source link opens a fu
 
 At the documented sysc-terminal source commit, go.mod pins sysc-Go v1.0.6-0.20261008172414-1ff1f6c3c8d0, which resolves to [commit 1ff1f6c3c8d0860f2fcd9f0d89349d491619dc6d](https://github.com/Nomadcxx/sysc-Go/commit/1ff1f6c3c8d0860f2fcd9f0d89349d491619dc6d). The sysc-terminal README build note still says v1.0.4; its committed go.mod sets the dependency used by the pinned manual install command.
 
-## SYSC module versions in the installed shell
+## Shell module versions
 
 The sysc-shell v0.1.0 source in the SYSC v0.1.1 suite declares the Go module versions below. These can differ from separately installed service binaries and current default branches. The [tagged go.mod](https://github.com/Nomadcxx/sysc-shell/blob/v0.1.0/go.mod) is the source for this table.
 
@@ -45,7 +45,7 @@ The sysc-shell v0.1.0 source in the SYSC v0.1.1 suite declares the Go module ver
 
 The sysc-shell module graph includes sysc-terminal even though the SYSC v0.1.1 installer manifest has no standalone sysc-terminal binary or user unit. Its optional executable still needs a separate install to appear in Terminal Art.
 
-## Plugin SDK selected by sysc-plugins
+## Plugin SDK version
 
 At the recorded [`sysc-plugins` revision](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/go.mod), Go selects sysc-shell `v0.0.0-20261005234519-d16632ff376f`, which resolves to [commit `d16632ff376fc86cd585d6e90eb6c87b59a8637d`](https://github.com/Nomadcxx/sysc-shell/commit/d16632ff376fc86cd585d6e90eb6c87b59a8637d). That module supplies `plugin/v1` and `plugin/lint`. Their public types and constants match the current sysc-shell source above, but the shell's internal layout code changed after this dependency. Plugin tests against the pinned linter therefore do not establish identical rendering in a newer shell.
 

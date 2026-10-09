@@ -3,11 +3,11 @@ title: Installer failures
 description: Tell a failed SYSC download from a partial install and recover safely.
 ---
 
-## Recover from an installer failure
+## Installer recovery
 
 Run SYSC as the user who owns the suite. Do not prefix the installer or `systemctl --user` with `sudo`. The optional gSlapper package step can request administrator authentication.
 
-## Download or swap failure
+## Download/swap errors
 
 SYSC downloads and checks every enabled component before it replaces any installed binary. A download or checksum error leaves the current component binaries in place. Fix the network or storage problem, then retry the same release.
 
@@ -21,7 +21,7 @@ Read the error and task results. The optional gSlapper package can be skipped wh
 
 The guided wizard writes its task results to `~/.local/state/sysc/installer.log`. An absolute `XDG_STATE_HOME` moves that file to `$XDG_STATE_HOME/sysc/installer.log`. The install record sits beside it.
 
-## If uninstall reports a restore failure
+## Recover uninstall files
 
 Before uninstalling, copy `installed.json` somewhere safe. By default it is `~/.local/state/sysc/installed.json`; an absolute `XDG_STATE_HOME` moves it to `$XDG_STATE_HOME/sysc/installed.json`. The record contains the Niri lines and user units that SYSC took over.
 

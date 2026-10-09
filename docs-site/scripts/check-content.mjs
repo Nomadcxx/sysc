@@ -174,7 +174,7 @@ for (const section of ['Start', 'Guides', 'Components', 'Developers', 'Plugins']
 }
 
 for (const action of [
-  'Install SYSC', 'Configure the desktop', 'Troubleshoot a problem',
+  'Install SYSC', 'Configure SYSC', 'Troubleshoot a problem',
   'Develop with components', 'Author a plugin',
 ]) {
   assert.ok(homeCode.includes(action), `home action hub is missing: ${action}`);

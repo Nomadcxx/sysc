@@ -8,7 +8,7 @@ sysc-terminal renders sysc-Go effects on Niri's background layer. It runs one pr
 
 **Source:** [default-branch commit 3f24ca08](https://github.com/Nomadcxx/sysc-terminal/commit/3f24ca081bfc97f790147889d32ed08b31882960) · **SYSC v0.1.1 status:** disabled in the installer manifest; the suite does not install a binary or unit.
 
-## Install the documented source
+## Install from source
 
 This source needs Go 1.26 or later and CGO disabled. The command below installs the exact source revision recorded on the [source page](/docs/reference/sources):
 
@@ -42,13 +42,13 @@ Set OUTPUT to one connector from the first command. Use a different socket for e
 
 If the shell manages Terminal Art for an output, do not start another sysc-terminal process for that same output. For wallpaper ownership across the shell, sysc-terminal, sysc-walls and gSlapper, see the [wallpaper guide](/docs/guides/wallpapers).
 
-## Effect discovery and controls
+## Effects and controls
 
 Run `sysc-terminal --list` after installing the binary to see effect IDs and themes from the sysc-Go registry linked into that build. Use one process and one IPC socket per output. The shell controls those processes when you choose an effect through Terminal Art; a direct command remains yours to stop.
 
 The IPC socket accepts `query`, `pause`, `resume`, `change effect <id> theme <theme> [file <path>]`, `reset` and `stop`. A paused process keeps its last frame. The CLI's `--file` option supplies text art to text effects. A font without braille glyphs can render an empty or broken-looking image; use `--font /path/to/font.ttf` to select a font that covers them.
 
-The SYSC v0.1.1 installer does not install a sysc-terminal executable or service. If the shell cannot find an optional manual install, check the user manager's `PATH` with `systemctl --user show-environment`; exporting `PATH` in one terminal does not change the service environment. See the [install steps above](#install-the-documented-source) for the user-manager command.
+The SYSC v0.1.1 installer does not install a sysc-terminal executable or service. If the shell cannot find an optional manual install, check the user manager's `PATH` with `systemctl --user show-environment`; exporting `PATH` in one terminal does not change the service environment. See the [install steps above](#install-from-source) for the user-manager command.
 
 The documented source repository's README names an older sysc-Go build dependency than its committed `go.mod`. The source record uses the `go.mod` version for the recorded build. Check the exact dependency before comparing effect IDs or output with another release.
 

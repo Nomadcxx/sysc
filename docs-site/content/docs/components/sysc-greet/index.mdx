@@ -50,7 +50,7 @@ For a persistent user-level setup, create `~/.config/sysc-greet/widgets.json`:
 
 Greetd runs under the `greeter` account. It cannot read arbitrary files in your home directory. Put shared widget settings in `/etc/sysc-greet/widgets.json`, or grant the greeter access to an explicitly selected file. If weather uses `"sysc-shell"` as its location source, the shell config must be readable by the greeter and must contain coordinates. If that lookup fails, the greeter logs a warning and leaves the login form available.
 
-## Theme and other outputs
+## Themes and outputs
 
 At startup, sysc-greet can follow the named palette that sysc-shell last committed. The greeter installer chooses which user's palette to follow; set `SYSC_THEME_USER` during a root install when that should differ from `SUDO_USER`. The theme file lives under `/var/lib/sysc-greet/shell-theme/` and belongs to that selected user. A greeter theme choice or `--theme NAME` sets an independent palette for that launch. Missing or unsupported shell selections keep the greeter's saved theme.
 

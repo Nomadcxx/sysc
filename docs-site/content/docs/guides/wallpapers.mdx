@@ -14,7 +14,7 @@ Use one wallpaper owner per output. sysc-shell can manage static image backends,
 
 The shell can set an image with awww or swaybg. Choose the backend in the shell's Wallpaper settings. The shell owns the process and its Wayland surface.
 
-### Video or image through gSlapper
+### gSlapper wallpaper
 
 The shell can launch gSlapper for each output and manage its control socket. For a manual run, first list connector names:
 
@@ -46,7 +46,7 @@ journalctl --user -u sysc-walls.service -b --no-pager
 
 Do not configure sysc-walls as a wallpaper backend. It starts after the idle timeout and stops when activity resumes.
 
-## Diagnose a blank output
+## Blank output
 
 1. Run the backend's read-only output listing command.
 2. Check that the selected output name matches the compositor's connector.

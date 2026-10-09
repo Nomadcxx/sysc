@@ -55,7 +55,7 @@ const js = files(jsRoot).map((path) => readFileSync(path, 'utf8')).join('\n');
 
 for (const [label, route] of [
   ['Install SYSC', '/docs/start/'],
-  ['Configure the desktop', '/docs/guides/'],
+  ['Configure SYSC', '/docs/guides/'],
   ['Troubleshoot a problem', '/docs/troubleshooting/'],
   ['Develop with components', '/docs/developers/'],
   ['Author a plugin', '/docs/plugins/'],

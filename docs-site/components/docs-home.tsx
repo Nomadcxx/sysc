@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import Image from 'next/image';
+import { basePath } from '@/lib/shared';
 
 const actions = [
   {
@@ -9,7 +11,7 @@ const actions = [
   },
   {
     number: '02',
-    title: 'Configure the desktop',
+    title: 'Configure SYSC',
     detail: 'Find the component that owns a setting.',
     href: '/docs/guides',
   },
@@ -53,9 +55,18 @@ export function DocsHome() {
   return (
     <div className="docs-home" data-docs-home>
       <header className="docs-home-heading">
-        <p className="docs-home-kicker">SYSC / DOCUMENTATION</p>
-        <h1>SYSC desktop documentation</h1>
-        <p>Installation, desktop setup, recovery, component development, and plugins.</p>
+        <h1>
+          <Image
+            className="docs-home-logo"
+            src={`${basePath}/sysc-logo.png`}
+            alt="SYSC"
+            width={873}
+            height={140}
+            priority
+          />
+          <span>Documentation</span>
+        </h1>
+        <p>Install, configure, troubleshoot, develop, and extend SYSC.</p>
       </header>
 
       <nav className="docs-home-actions" aria-label="Documentation tasks">

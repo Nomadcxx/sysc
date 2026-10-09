@@ -12,7 +12,7 @@ Use the [requirements](/docs/start/requirements) and [install steps](/docs/start
 
 The [suite reference](/docs/reference/suite) lists every v0.1.1 pin and unit. The [source record](/docs/reference/sources) lists current project commits separately from the releases this installer installs.
 
-## What the installer owns
+## What SYSC installs
 
 The installer runs as the desktop user. It writes suite binaries to `~/.local/bin`, user service units to the systemd user directory, an include and sidecar for Niri, and an install record under the user's state directory. Absolute `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and `XDG_DATA_HOME` values redirect the matching configuration, state and data paths. The binary directory stays under `~/.local/bin`.
 

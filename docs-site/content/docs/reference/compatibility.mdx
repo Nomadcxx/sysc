@@ -3,7 +3,7 @@ title: Compatibility
 description: Installer routes, release assets, privilege boundaries, and qualification limits for SYSC v0.1.1.
 ---
 
-## Compatibility and support
+## Support status
 
 SYSC v0.1.1 defines installer routes and publishes the assets listed below. SYSC has not published a qualification matrix for specific machines and desktop configurations.
 
@@ -17,11 +17,11 @@ SYSC v0.1.1 defines installer routes and publishes the assets listed below. SYSC
 | Compositor | SYSC targets Niri first. In a Wayland session, preflight requires NIRI_SOCKET. Without WAYLAND_DISPLAY, the installer allows a non-graphical run and enables units. This does not establish support for other compositors or a complete desktop configuration. |
 | User services | The installer writes suite programs and units to the installing user's systemd manager. Check each component's pinned release for runtime dependencies. |
 
-## gSlapper package routes
+## gSlapper packages
 
 For gSlapper, the installer uses yay or paru on Arch-family systems. It uses a .deb for Debian 13, a separate .deb for Ubuntu 24.04, the Debian 13 package for Ubuntu 25.x, and an .rpm for Fedora 42 and later. These routes install gSlapper; suite preflight still requires the Arch family.
 
-## Privileges and build requirements
+## Permissions and builds
 
 Run the installer as a normal user. Preflight refuses root. The installer writes suite files under the user's home and units for systemd --user. A native gSlapper package install can invoke sudo; an Arch-family install runs through the user's yay or paru helper. Check task results after installation because an optional package task can fail while the remaining tasks continue.
 

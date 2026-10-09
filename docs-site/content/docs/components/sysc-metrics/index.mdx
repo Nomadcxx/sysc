@@ -57,13 +57,13 @@ AMD usage comes from sysfs. NVIDIA usage calls nvidia-smi when a card exists. In
 
 The [v0.7.1 API reference](https://pkg.go.dev/github.com/Nomadcxx/sysc-metrics@v0.7.1) covers the latest stable module. The current source snapshot is newer than the `v0.7.0` dependency in sysc-shell v0.1.0; the [source record](/docs/reference/sources) lists that installed-shell version.
 
-## Choose snapshots or samplers
+## Metrics collection
 
 Use a snapshot for a value that comes from one filesystem read, such as memory, filesystems, thermal zones, batteries, uptime or GPU identity. A snapshot can return useful values alongside entries in `Issues`; inspect those issues before treating a missing field as a zero.
 
 Use a sampler for a rate. CPU, disk, network and process rates compare counters with the previous sample. The first sample establishes that baseline, so `Valid` stays false until a later sample. Poll on an application-owned ticker and keep one sampler per caller. Close a GPU sampler when the loop ends because it may hold device counters open.
 
-## Read GPU results with their limits
+## GPU results and limits
 
 `ReadGPU` reports vendor and device information. Usage comes from `GPUSampler`: AMD reads sysfs, NVIDIA runs `nvidia-smi` when an NVIDIA card exists, and Intel i915 prefers PMU counters before a per-process DRM fallback. The fallback sees clients from the current user only. Intel xe usage is unsupported in this source. Permission or driver gaps produce an invalid reading rather than a fabricated zero.
 

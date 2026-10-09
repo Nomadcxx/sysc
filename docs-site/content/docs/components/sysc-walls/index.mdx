@@ -21,13 +21,13 @@ journalctl --user -u sysc-walls.service -b --no-pager
 
 The service should be active in the graphical session. The log can show whether the daemon found a supported compositor and started a display. Follow [Niri session startup](/docs/guides/niri-session) if the graphical-session.target is inactive.
 
-## Install ownership and limits
+## Install scope
 
 The standalone upstream installer can place programs in /usr/local/bin and needs administrator access. SYSC v0.1.1 uses its pinned daemon and installs it under the user's prefix. Use the SYSC installer to update or remove the suite copy; do not overwrite it with a standalone install.
 
 The current upstream README lists Niri, Hyprland, Sway and X11 support. That list describes standalone sysc-walls; it does not expand SYSC's Niri and Arch-family support qualification. The display uses Kitty, and sysc-Go provides its effects.
 
-## Standalone configuration
+## Standalone setup
 
 The standalone source documents `~/.config/sysc-walls/daemon.conf` for its daemon. Its `[idle]` section sets `timeout` and `min_duration`; `[animation]` selects an effect, theme and optional effect cycling; `[datetime]` controls the clock; `[terminal]` selects Kitty; and `[daemon]` enables debug logging. The source defaults the idle timeout to five minutes.
 
