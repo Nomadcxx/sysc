@@ -6,7 +6,7 @@ description: Update source references, release guidance, and the static site che
 
 Component repositories own their code and releases. This repository owns the shared instructions, source record, site styling, and documentation checks. A successful site build proves the export passed its checks; it does not qualify a component on a distribution, device, or compositor.
 
-## Update guidance from source
+## Review source changes
 
 1. Read the current component source for behavior guidance. Record the full commit reviewed in the [source record](/docs/reference/sources).
 2. For an installed workflow, read `internal/pin/pin.json` from the exact SYSC release tag and compare the pinned component release. Update the [suite reference](/docs/reference/suite) when that tag changes.
@@ -15,7 +15,7 @@ Component repositories own their code and releases. This repository owns the sha
 
 Read the [release record](/docs/developers/releases) when an installer or component tag changes. Keep the current source revision separate from the exact component tags installed by a suite release.
 
-## Check a documentation change
+## Run the docs checks
 
 From `docs-site/`, run `npm ci`, `npm run check`, and `DOCS_BASE_PATH=/sysc npm run check`. The first export checks the local root path; the second checks the GitHub Pages path. The [documentation README](https://github.com/Nomadcxx/sysc/blob/main/docs-site/README.md) explains how to preview the pull request artifact.
 

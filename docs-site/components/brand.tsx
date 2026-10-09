@@ -1,11 +1,19 @@
 import type { ComponentProps } from 'react';
+import Image from 'next/image';
+import { basePath } from '@/lib/shared';
 
 export function Brand({ className, ...props }: ComponentProps<'span'>) {
   return (
     <span className={`sysc-brand ${className ?? ''}`} {...props}>
-      <span>SYSC</span>
-      <span className="sysc-brand-mark" aria-hidden="true">///</span>
-      <span className="sysc-brand-label">DOCUMENTATION</span>
+      <Image
+        className="sysc-brand-logo"
+        src={`${basePath}/sysc-logo.png`}
+        alt=""
+        width={873}
+        height={140}
+        priority
+      />
+      <span className="sysc-brand-label">Documentation</span>
     </span>
   );
 }

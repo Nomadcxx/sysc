@@ -55,7 +55,7 @@ The daemon stores up to 100 entries and 256 MiB. It excludes the primary selecti
 
 The public Go client exposes restore, pin, delete, clear, thumbnail and resync operations, plus an update stream. See the [client API for the pinned release](https://pkg.go.dev/github.com/Nomadcxx/sysc-clipboard@v0.1.2/client). For the shell handoff and socket owner, read the [service integration guide](/docs/guides/service-integration).
 
-## Keep history readable across changes
+## Clipboard backups
 
 The encryption key and history must travel together. Back up the key and state directory as a pair before moving them to another machine or changing the Secret Service provider. If you replace the key, old entries cannot be decrypted. A corrupt manifest is quarantined and the daemon falls back to volatile history rather than deleting the clipboard service's remaining state.
 

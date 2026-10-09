@@ -1,0 +1,3 @@
+sysc-logo.png is copied from Nomadcxx/sysc-greet/assets/logo.png at commit 4c98abc5bdddbf6c84d2a55d71b9120cbfccad0f.
+The asset is covered by the GPL-3.0 license in docs-site/LICENSE.
+Source: https://github.com/Nomadcxx/sysc-greet/blob/4c98abc5bdddbf6c84d2a55d71b9120cbfccad0f/assets/logo.png

@@ -8,7 +8,7 @@ sysc-wayland provides a pure-Go Wayland transport and generated protocol binding
 
 **Source:** [default-branch commit 74b83d8e](https://github.com/Nomadcxx/sysc-wayland/commit/74b83d8e2fb167701e5ce15fc326344e9f0f15db) · **SYSC v0.1.1 status:** library dependency, not a separately installed program.
 
-## List compositor globals
+## Compositor globals
 
 Add the version tied to this source revision:
 
@@ -66,7 +66,7 @@ One goroutine must own a connection, its context and every proxy created from it
 
 The documented version is a prerelease snapshot. The stable v0.3.1 API remains available from the [versioned package docs](https://pkg.go.dev/github.com/Nomadcxx/sysc-wayland@v0.3.1/client). SYSC v0.1.1's sysc-shell v0.1.0 uses an earlier module snapshot; see the [source record](/docs/reference/sources) for that exact dependency.
 
-## Protocol packages and ownership
+## Protocol packages
 
 The stable module exposes `client`, `textinput`, `cursorshape` and `idle`. The recorded source adds `sessionlock` as a prerelease package. A protocol package gives an application generated types and transport; the compositor must advertise the matching global before a client can use it.
 

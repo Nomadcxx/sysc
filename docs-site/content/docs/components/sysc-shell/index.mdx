@@ -38,7 +38,7 @@ The shell draws through wl_shm and talks to Niri over its IPC socket. It present
 
 Use the [service integration guide](/docs/guides/service-integration), [theme guide](/docs/guides/themes) and [wallpaper guide](/docs/guides/wallpapers) to follow those ownership boundaries.
 
-## Open panels and change settings
+## Panels and settings
 
 The shell opens panels from the bar. You can also bind `sysc-shell ipc` actions in Niri. For example, open the launcher with Super+Space and the settings panel with Super+Comma:
 
@@ -53,7 +53,7 @@ The IPC endpoint accepts `sysc-shell ipc status` for a read-only status check. P
 
 Use Settings to edit the shell's saved config. The installer seeds that file on first install and leaves an existing file in place during reinstall or upgrade. Back up the config before editing it by hand; the [path reference](/docs/reference/paths) shows the XDG location.
 
-## Companion service failures
+## Service failures
 
 A shell restart does not restart tray, clipboard or notification services. Check the service that owns the missing feature, then read its journal:
 

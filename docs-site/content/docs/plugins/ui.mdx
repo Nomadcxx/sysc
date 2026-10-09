@@ -6,13 +6,13 @@ description: Build semantic views and check them at the sizes sysc-shell uses.
 
 Plugins send a declarative node tree. sysc-shell owns rendering, focus, theme colors and layout. Build from `plugin/v1.Node` kinds and semantic tones instead of sending renderer objects or fixed colors.
 
-## Give every control an accessible identity
+## Accessible controls
 
 Interactive nodes need a stable `ID`, a useful `Name`, a `Role` and at least one supported event. A placeholder or icon does not replace the accessible name. Declare only events the node can emit. For example, a button can emit `activate`; a text input can emit `change` and `submit`.
 
 `v1.Validate` checks node structure, IDs, event kinds, accessibility fields and view-specific rules. It does not check whether children fit the available rectangle. A tree can pass validation and still be refused during layout.
 
-## Test the host's geometry
+## Test view geometry
 
 Use the same linter as sysc-shell. `lint.Tree` runs validation, conversion and the host layout check, then reports all findings for that view size.
 

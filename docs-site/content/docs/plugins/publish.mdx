@@ -18,7 +18,7 @@ For example, `cat-v1.0.1` releases `plugins/cat` version `1.0.1`. The release wo
 
 Pure-Go plugins build with `CGO_ENABLED=0`. Calendar is the current CGO exception. It needs `libecal2.0-dev` and a native runner for each architecture. Do not assume every plugin uses a static Go build.
 
-## Check the package shape
+## Package layout
 
 Each asset is named `<id>-<version>-linux-<arch>.tar.gz`. It contains one top-level directory named for the plugin ID, the unchanged manifest, plugin data files and the built executable at the manifest's `exec` path. The package tool excludes Go source, tests, source `bin/` files, `screenshot.png` and `thumbnail.webp`.
 
@@ -28,7 +28,7 @@ The same tagged commit produces the same archive bytes. Use the repository packa
 go run ./tools/catalog package -plugin <dir> -arch amd64 -out dist
 ```
 
-## Validate catalog metadata
+## Validate metadata
 
 `catalog-meta.json` requires a category and author. License, HTTPS homepage, long description and screenshot fields are optional in the schema. The `license` field stays optional for community proposals too.
 
