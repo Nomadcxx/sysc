@@ -57,12 +57,15 @@ func TestLockInstallsEnablesAndUninstalls(t *testing.T) {
 		Session struct {
 			Locker string `json:"locker"`
 		} `json:"session"`
+		Idle struct {
+			Lock string `json:"lock"`
+		} `json:"idle"`
 	}
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Session.Locker != "sysc-lock" {
-		t.Fatalf("locker=%q", cfg.Session.Locker)
+	if cfg.Session.Locker != "sysc-lock" || cfg.Idle.Lock != "5m0s" {
+		t.Fatalf("locker=%q idle.lock=%q, want sysc-lock locking after 5m", cfg.Session.Locker, cfg.Idle.Lock)
 	}
 	if _, err := Uninstall(opts); err != nil {
 		t.Fatal(err)

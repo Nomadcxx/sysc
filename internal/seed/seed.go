@@ -1,21 +1,27 @@
 // Package seed writes the sysc-shell configuration overlay the installer
 // chose: theme, wallpaper directory, recommended plugins, and a weather
-// widget on the default bar. The shell treats the file as a partial overlay
+// widget on the default bar, and the session locker when sysc-lock is
+// installed. The shell treats the file as a partial overlay
 // over its built-in defaults, but a bar section is replaced wholesale, so the
 // default right section is baked in alongside the weather item.
 package seed
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // Answers are the wizard choices that reach the shell configuration.
 type Answers struct {
-	Locker       string
+	Locker string
+	// IdleLock locks the session after this much inactivity; zero leaves
+	// idle locking off. It only applies alongside Locker.
+	IdleLock     time.Duration
 	Preset       string // standard, compact or expressive
 	Mode         string // dark or light
 	WallpaperDir string
@@ -84,6 +90,9 @@ func ConfigJSON(a Answers) ([]byte, error) {
 	}
 	if a.Locker != "" {
 		out["session"] = map[string]any{"locker": a.Locker}
+		if a.IdleLock > 0 {
+			out["idle"] = map[string]any{"lock": a.IdleLock.String()}
+		}
 	}
 	if a.WallpaperDir != "" {
 		out["wallpaper"] = map[string]any{"image_directory": a.WallpaperDir}
@@ -96,12 +105,13 @@ func ConfigJSON(a Answers) ([]byte, error) {
 
 // Write seeds the shell configuration at path. An existing file is never
 // overwritten: the user's shell configuration outlives installer updates.
+// The one addition it takes is the locker, through activateLocker.
 func Write(path string, a Answers) error {
 	if fi, err := os.Stat(path); err == nil {
 		if fi.IsDir() {
 			return fmt.Errorf("seed %s: path exists and is a directory", path)
 		}
-		return nil
+		return activateLocker(path, fi.Mode().Perm(), a)
 	} else if !os.IsNotExist(err) {
 		return err
 	}
@@ -112,6 +122,60 @@ func Write(path string, a Answers) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
+	return writeFile(path, data, 0o600)
+}
+
+// activateLocker makes a newly installed locker the session locker in a
+// configuration that names none, so installing sysc-lock over an earlier
+// setup takes effect without a trip to Settings. The idle lock comes with it
+// unless idle.lock is already set: without a locker the shell cannot offer
+// idle locking, so no earlier idle choice is being replaced. A configuration
+// that already names a locker, or that does not parse, is left untouched.
+func activateLocker(path string, perm os.FileMode, a Answers) error {
+	if a.Locker == "" {
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var cfg map[string]any
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if dec.Decode(&cfg) != nil || cfg == nil {
+		return nil
+	}
+	session, _ := cfg["session"].(map[string]any)
+	if locker, _ := session["locker"].(string); locker != "" {
+		return nil
+	}
+	if session == nil {
+		session = map[string]any{}
+	}
+	session["locker"] = a.Locker
+	cfg["session"] = session
+	if a.IdleLock > 0 {
+		idle, _ := cfg["idle"].(map[string]any)
+		if idle == nil {
+			idle = map[string]any{}
+		}
+		if _, set := idle["lock"]; !set {
+			idle["lock"] = a.IdleLock.String()
+			cfg["idle"] = idle
+		}
+	}
+	var out bytes.Buffer
+	enc := json.NewEncoder(&out)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(cfg); err != nil {
+		return err
+	}
+	return writeFile(path, out.Bytes(), perm)
+}
+
+// writeFile replaces path atomically with data at perm.
+func writeFile(path string, data []byte, perm os.FileMode) error {
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".config-*")
 	if err != nil {
 		return err
@@ -120,6 +184,11 @@ func Write(path string, a Answers) error {
 		tmp.Close()
 		os.Remove(tmp.Name())
 		return fmt.Errorf("seed %s: %w", path, err)
+	}
+	if err := tmp.Chmod(perm); err != nil {
+		tmp.Close()
+		os.Remove(tmp.Name())
+		return err
 	}
 	if err := tmp.Close(); err != nil {
 		os.Remove(tmp.Name())

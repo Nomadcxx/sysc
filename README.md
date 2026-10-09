@@ -143,7 +143,11 @@ The installer does not yet install
 disabled until a user unit is wired. sysc-greet is a separate greeter project.
 
 The installer enables `sysc-lock-session.service`. Starting the service does
-not lock your screen. New shell configs select `sysc-lock` as the locker.
+not lock your screen. The installer makes `sysc-lock` the shell's locker, in a
+new shell config or an existing one that names no locker, and sets it to lock
+after 5 minutes idle unless sysc-walls is installed too (the screensaver then
+keeps idle; Settings → When idle switches between them). A locker you already
+chose is left alone.
 
 ### Distro support
 
