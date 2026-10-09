@@ -102,3 +102,16 @@ func TestEnabledCompanionFixtureValidates(t *testing.T) {
 		t.Errorf("%s: missing from fixture", id)
 	}
 }
+
+func TestNativePackagePinsRequireHTTPSAndSHA(t *testing.T) {
+	for _, asset := range []string{
+		`{"url":"https://example.invalid/gslapper.deb","sha256":""}`,
+		`{"url":"http://example.invalid/gslapper.deb","sha256":"` + strings.Repeat("a", 64) + `"}`,
+		`{"url":"https://example.invalid/gslapper.deb","sha256":"not-a-hash"}`,
+	} {
+		data := `{"release":"v1","recommended":["a"],"gslapper":{"package":"gslapper","assets":{"debian13":{"amd64":` + asset + `}}}}`
+		if _, err := Decode([]byte(data)); err == nil {
+			t.Fatalf("accepted unverified native package: %s", asset)
+		}
+	}
+}

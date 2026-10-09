@@ -1,10 +1,13 @@
 package ui
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/Nomadcxx/sysc/internal/i18n"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 )
 
 func TestBannerContainsCowboyLine(t *testing.T) {
@@ -63,5 +66,28 @@ func TestNavPageAccurate(t *testing.T) {
 	done := Nav(i18n.EN, PageTheme, StepDone)
 	if !strings.Contains(done, i18n.T(i18n.EN, "nav.close")) {
 		t.Fatalf("done nav = %q", done)
+	}
+}
+
+func TestCanvasBackgroundIsPureBlack(t *testing.T) {
+	previous := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	defer lipgloss.SetColorProfile(previous)
+	out := View(i18n.EN, "Theme", "body", PageTheme, StepWizard, 80, 24, nil)
+	if !strings.Contains(out, "48;2;0;0;0") {
+		t.Fatal("black canvas background was not set")
+	}
+	backgrounds := regexp.MustCompile(`48;2;(\d+);(\d+);(\d+)`).FindAllStringSubmatch(out, -1)
+	for _, rgb := range backgrounds {
+		if rgb[1] != "0" || rgb[2] != "0" || rgb[3] != "0" {
+			t.Fatalf("non-black background: %v", rgb)
+		}
+	}
+	beams := NewBeamsTextEffect(80, BannerHeight(), Banner())
+	beams.Update()
+	for _, rgb := range regexp.MustCompile(`48;2;(\d+);(\d+);(\d+)`).FindAllStringSubmatch(beams.Render(), -1) {
+		if rgb[1] != "0" || rgb[2] != "0" || rgb[3] != "0" {
+			t.Fatalf("non-black banner background: %v", rgb)
+		}
 	}
 }

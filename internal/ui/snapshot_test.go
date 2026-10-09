@@ -14,11 +14,8 @@ var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
 func stripANSI(s string) string { return ansiPattern.ReplaceAllString(s, "") }
 
-// TestChromeFitsOneScreen locks the one-screen contract (#28 b, i) at the two
-// reference sizes: the output is exactly as tall as the terminal, never wider,
-// always keeps a rounded body box and the page footer, and the beams region
-// above the title stays BannerHeight() rows (deterministic before the first
-// animation tick).
+// TestChromeFitsOneScreen checks the frame, advice, and navigation at compact
+// and tall sizes. The large banner appears only when forms have enough room.
 func TestChromeFitsOneScreen(t *testing.T) {
 	pages := []Page{PageTheme, PageWallpaper, PagePlugins, PageWeather, PageConflicts, PageConfirm}
 	steps := []Step{StepWizard, StepInstalling, StepDone, StepFailed}
@@ -45,23 +42,23 @@ func TestChromeFitsOneScreen(t *testing.T) {
 				if !strings.Contains(out, Nav(i18n.EN, page, step)) {
 					t.Fatalf("%dx%d %v/%v: footer missing from view", width, height, page, step)
 				}
-				stripped := strings.Split(stripANSI(out), "\n")
-				for i := 0; i < BannerHeight(); i++ {
-					if strings.TrimSpace(stripped[i]) != "" {
-						t.Fatalf("%dx%d %v/%v: beams row %d not blank: %q", width, height, page, step, i, stripped[i])
-					}
+				stripped := stripANSI(out)
+				if !strings.Contains(stripped, "[?]") {
+					t.Fatal("contextual advice is missing")
 				}
-				if got := strings.TrimSpace(stripped[BannerHeight()]); got != "T" {
-					t.Fatalf("%dx%d %v/%v: title expected after %d beams rows, got %q", width, height, page, step, BannerHeight(), got)
+				if height == 24 && strings.Contains(stripped, "SEE YOU IN SPACE COWBOY") {
+					t.Fatal("large banner obscures compact forms")
 				}
+				if height >= 38 && !strings.Contains(stripped, "SEE YOU IN SPACE COWBOY") {
+					t.Fatal("tall screen lost its banner")
+				}
+
 			}
 		}
 	}
 }
 
-// TestChromeTallBodyKeepsBoxOnOneScreen covers the real install screen, whose
-// task list can overflow the shortest supported terminal: the body must be
-// truncated with a marker instead of clipping the box border off screen.
+// Long content keeps its frame and advertises keyboard scrolling.
 func TestChromeTallBodyKeepsBoxOnOneScreen(t *testing.T) {
 	width, height := 80, 24
 	beams := NewBeamsTextEffect(width, BannerHeight(), Banner())
@@ -74,7 +71,7 @@ func TestChromeTallBodyKeepsBoxOnOneScreen(t *testing.T) {
 	if !strings.Contains(out, "╰") {
 		t.Fatalf("bottom border clipped on a tall body:\n%s", stripANSI(out))
 	}
-	if !strings.Contains(out, "…") {
-		t.Fatalf("tall body was not truncated")
+	if !strings.Contains(out, "↓") {
+		t.Fatalf("tall body has no scroll indicator")
 	}
 }

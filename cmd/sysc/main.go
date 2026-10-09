@@ -10,11 +10,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/Nomadcxx/sysc/internal/conflict"
 	"github.com/Nomadcxx/sysc/internal/fetch"
@@ -74,7 +78,7 @@ func parseUninstall(args []string, out io.Writer) (options, error) {
 	fs.SetOutput(out)
 	fs.BoolVar(&o.Yes, "yes", false, "no prompts")
 	fs.BoolVar(&o.Purge, "purge", false, "also remove user config")
-	fs.BoolVar(&o.RemoveGSlapper, "remove-gslapper", false, "also remove gSlapper via the AUR helper")
+	fs.BoolVar(&o.RemoveGSlapper, "remove-gslapper", false, "also remove gSlapper with the package manager")
 	fs.StringVar(&o.Lang, "lang", "", "installer language (en, zh-Hans, de, fr)")
 	if err := fs.Parse(args); err != nil {
 		return o, err
@@ -101,7 +105,7 @@ func runUninstall(args []string, in io.Reader, out io.Writer, home string) int {
 			fmt.Fprintln(out, "The user config under ~/.config/sysc-shell is removed too (--purge).")
 		}
 		if o.RemoveGSlapper {
-			fmt.Fprintln(out, "gSlapper is removed with the AUR helper (--remove-gslapper).")
+			fmt.Fprintln(out, "gSlapper is removed with the package manager (--remove-gslapper).")
 		}
 		fmt.Fprint(out, "Proceed? [y/N] ")
 		if !confirm(in) {
@@ -109,7 +113,8 @@ func runUninstall(args []string, in io.Reader, out io.Writer, home string) int {
 			return 1
 		}
 	}
-	opts := installOptions(home, p, seed.Answers{}, true, i18n.Match(o.Lang))
+	osr, _ := os.ReadFile("/etc/os-release")
+	opts := installOptions(home, p, seed.Answers{}, o.Yes, i18n.Match(o.Lang), osr, runPackage)
 	opts.Purge = o.Purge
 	opts.RemoveGSlapper = o.RemoveGSlapper
 	res, err := install.Uninstall(opts)
@@ -180,24 +185,42 @@ func aurHelper() string {
 	return ""
 }
 
-func installOptions(home string, p pin.Pin, a seed.Answers, yes bool, loc i18n.Locale) install.Options {
+func installOptions(home string, p pin.Pin, a seed.Answers, yes bool, loc i18n.Locale, osRelease []byte, run func(*exec.Cmd) error) install.Options {
 	opts := install.Options{Home: home, Pin: p, Answers: a, Yes: yes, Loc: &loc, Client: fetch.NewClient()}
-	if h := aurHelper(); h != "" {
-		opts.InstallPkg = func(pkg string) error {
-			return exec.Command(h, "-S", "--noconfirm", pkg).Run()
-		}
-		opts.RemovePkg = func(pkg string) error {
-			return exec.Command(h, "-Rns", "--noconfirm", pkg).Run()
-		}
-	}
+	wirePackages(&opts, osRelease, runtime.GOARCH, run)
 	return opts
 }
+
+// The AUR helper builds as the user and elevates only its package-manager step.
+func packageCommand(helper, action, pkg string, yes bool) *exec.Cmd {
+	args := []string{action}
+	if action == "-S" {
+		args = append(args, "--needed")
+	}
+	if yes {
+		args = append(args, "--noconfirm")
+	}
+	return exec.Command(helper, append(args, "--", pkg)...)
+}
+
+func runPackage(cmd *exec.Cmd) error {
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	return cmd.Run()
+}
+
+type packageRequestMsg struct {
+	cmd   *exec.Cmd
+	reply chan error
+}
+
+type packageFinishedMsg struct{}
 
 type tickMsg time.Time
 
 type guessMsg struct {
 	place geo.Place
 	err   error
+	query string
 }
 
 type progressMsg struct{ tasks []install.Task }
@@ -208,19 +231,22 @@ type installDoneMsg struct {
 }
 
 type model struct {
-	w           ui.Wizard
-	recommended []string
-	beams       *ui.BeamsTextEffect
-	input       textinput.Model
-	width       int
-	height      int
-	step        ui.Step
-	tasks       []install.Task
-	installRes  install.Result
-	installErr  error
-	logPath     string
-	frame       int
-	note        string
+	w            ui.Wizard
+	beams        *ui.BeamsTextEffect
+	input        textinput.Model
+	width        int
+	height       int
+	step         ui.Step
+	tasks        []install.Task
+	installRes   install.Result
+	installErr   error
+	logPath      string
+	frame        int
+	note         string
+	scroll       int
+	lookingUp    bool
+	weatherQuery string
+	weatherNote  string
 
 	// send is wired to the running tea program in main; installer is the
 	// injectable seam for tests (never call the real install.Run in tests).
@@ -231,19 +257,26 @@ type model struct {
 func newModel(loc i18n.Locale, recommended []string, plainNiri bool) model {
 	in := textinput.New()
 	in.Placeholder = i18n.T(loc, "weather.place")
-	in.CharLimit = 80
+	in.CharLimit = 1024
+	in.Width = ui.ContentWidth(ui.MinWidth) - 6
+	in.Prompt = "› "
+	in.TextStyle = lipgloss.NewStyle().Foreground(ui.White).Background(ui.Black)
+	in.PromptStyle = in.TextStyle
+	in.PlaceholderStyle = lipgloss.NewStyle().Foreground(ui.Muted).Background(ui.Black)
+	in.Cursor.Style = in.TextStyle
 	w := ui.NewWizard(loc, recommended)
 	w.PlainNiri = plainNiri
 	m := model{
-		w:           w,
-		recommended: recommended,
-		input:       in,
-		width:       ui.MinWidth,
-		height:      ui.MinHeight,
-		step:        ui.StepWizard,
-		logPath:     filepath.Join(stateHome(), "sysc", "installer.log"),
+		w:       w,
+		input:   in,
+		width:   ui.MinWidth,
+		height:  ui.MinHeight,
+		step:    ui.StepWizard,
+		logPath: filepath.Join(stateHome(), "sysc", "installer.log"),
 	}
-	m.beams = ui.NewBeamsTextEffect(m.width, ui.BannerHeight(), ui.Banner())
+	if os.Getenv("NO_COLOR") == "" && os.Getenv("SYSC_REDUCED_MOTION") == "" {
+		m.beams = ui.NewBeamsTextEffect(min(m.width-4, 100), ui.BannerHeight(), ui.Banner())
+	}
 	return m
 }
 
@@ -267,7 +300,7 @@ func searchCmd(name string) tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		p, err := geo.Search(ctx, nil, geo.DefaultGeocodeEndpoint, name)
-		return guessMsg{place: p, err: err}
+		return guessMsg{place: p, err: err, query: name}
 	}
 }
 
@@ -275,8 +308,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		m.input.Width = max(1, ui.ContentWidth(msg.Width)-6)
 		if m.beams != nil {
-			m.beams.Resize(msg.Width, ui.BannerHeight())
+			m.beams.Resize(max(1, min(msg.Width-4, 100)), ui.BannerHeight())
 		}
 	case tickMsg:
 		m.frame++
@@ -285,26 +319,59 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, tick()
 	case guessMsg:
+		m.lookingUp = false
 		if msg.err != nil {
-			m.note = msg.err.Error()
+			m.weatherNote = msg.err.Error()
 		} else {
-			m.w.Latitude, m.w.Longitude, m.w.Location = msg.place.Latitude, msg.place.Longitude, msg.place.City
-			m.input.SetValue("")
-			m.note = ""
+			candidate := m.w
+			candidate.Latitude, candidate.Longitude, candidate.Location = msg.place.Latitude, msg.place.Longitude, msg.place.City
+			if strings.IndexFunc(candidate.Location, unicode.IsControl) >= 0 {
+				m.weatherNote = i18n.T(m.w.Locale, "weather.invalid")
+			} else if _, err := seed.ConfigJSON(candidate.Answers()); err != nil {
+				m.weatherNote = err.Error()
+			} else {
+				m.w = candidate
+				if msg.query != "" && strings.TrimSpace(m.weatherQuery) == msg.query {
+					m.weatherQuery = ""
+					if m.w.Page == ui.PageWeather {
+						m.input.SetValue("")
+					}
+				}
+				m.weatherNote = ""
+			}
 		}
+		if m.w.Page == ui.PageWeather {
+			m.note = m.weatherNote
+		}
+	case packageRequestMsg:
+		return m, tea.ExecProcess(msg.cmd, func(err error) tea.Msg {
+			msg.reply <- err
+			return packageFinishedMsg{}
+		})
 	case progressMsg:
 		if m.step == ui.StepInstalling {
 			m.tasks = msg.tasks
 		}
 	case installDoneMsg:
+		m.scroll = 0
 		m.installRes = msg.res
 		m.installErr = msg.err
-		if msg.err != nil {
+		if msg.err != nil || anyFailed(msg.res.Tasks) {
 			m.step = ui.StepFailed
 		} else {
 			m.step = ui.StepDone
 		}
 	case tea.KeyMsg:
+		if msg.String() == "pgup" || msg.String() == "pgdown" {
+			delta := max(3, m.height/3)
+			if msg.String() == "pgup" {
+				delta = -delta
+			}
+			_, body, help := m.content()
+			limit := ui.ScrollLimit(m.w.Locale, body, help, m.w.Page, m.step, m.width, m.height, m.beams)
+			m.scroll = min(max(0, min(m.scroll, limit)+delta), limit)
+			return m, nil
+		}
 		if m.step == ui.StepInstalling {
 			if msg.Type == tea.KeyCtrlC {
 				return m, tea.Quit
@@ -324,36 +391,55 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "f9":
 			m.w = m.w.CycleLocale()
 			m.input.Placeholder = i18n.T(m.w.Locale, "weather.place")
+			if m.w.Page == ui.PageWallpaper {
+				m.input.Placeholder = i18n.T(m.w.Locale, "wallpaper.directory")
+			}
 		case "esc":
 			m.w = m.w.Back()
+			m.focusPage()
 		case "q":
-			if m.w.Page == ui.PageWeather {
-				var cmd tea.Cmd
-				m.input, cmd = m.input.Update(msg)
-				return m, cmd
+			if m.w.Page != ui.PageWeather && m.w.Page != ui.PageWallpaper {
+				return m, tea.Quit
 			}
-			return m, tea.Quit
+			return m, m.editInput(msg)
 		case "enter":
 			switch m.w.Page {
+			case ui.PageWallpaper:
+				path := strings.TrimSpace(m.input.Value())
+				if strings.IndexFunc(path, unicode.IsControl) >= 0 || !(filepath.IsAbs(path) || path == "~" || strings.HasPrefix(path, "~/")) {
+					m.note = i18n.T(m.w.Locale, "wallpaper.invalid")
+					return m, nil
+				}
+				m.w.WallpaperDir = path
+				m.w = m.w.Next()
+				m.focusPage()
 			case ui.PageWeather:
-				if m.input.Value() != "" {
-					return m, searchCmd(m.input.Value())
+				if m.lookingUp {
+					return m, nil
+				}
+				if query := strings.TrimSpace(m.input.Value()); query != "" {
+					m.lookingUp = true
+					m.note, m.weatherNote = "", ""
+					return m, searchCmd(query)
 				}
 				if m.w.Location == "" {
+					m.lookingUp = true
+					m.note, m.weatherNote = "", ""
 					return m, guessCmd()
 				}
 				m.w = m.w.Next()
+				m.focusPage()
 			case ui.PageConfirm:
 				m.step = ui.StepInstalling
+				m.scroll = 0
 				go m.runInstall()
 				return m, nil
 			default:
 				m.w = m.w.Next()
-				if m.w.Page == ui.PageWeather {
-					m.input.Focus()
-					if m.w.Location == "" {
-						return m, guessCmd()
-					}
+				m.focusPage()
+				if m.w.Page == ui.PageWeather && m.w.Location == "" && !m.lookingUp {
+					m.lookingUp = true
+					return m, guessCmd()
 				}
 			}
 		case "left", "right":
@@ -361,22 +447,54 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.w = m.w.CycleMode()
 			} else if m.w.Page == ui.PageConflicts {
 				m.w = m.w.CycleChoice(msg.String() == "right")
-			} else if m.w.Page == ui.PageWeather {
-				var cmd tea.Cmd
-				m.input, cmd = m.input.Update(msg)
-				return m, cmd
+			} else {
+				return m, m.editInput(msg)
 			}
 		case "up", "down":
 			m.cycle(msg.String() == "down")
-		default:
-			if m.w.Page == ui.PageWeather {
-				var cmd tea.Cmd
-				m.input, cmd = m.input.Update(msg)
-				return m, cmd
+		case " ":
+			if m.w.Page == ui.PagePlugins {
+				m.w = m.w.TogglePlugin()
+			} else {
+				return m, m.editInput(msg)
 			}
+		default:
+			return m, m.editInput(msg)
 		}
 	}
+
 	return m, nil
+}
+
+func (m *model) focusPage() {
+	m.scroll, m.note = 0, ""
+	m.input.Blur()
+	if m.w.Page == ui.PageWallpaper {
+		m.input.SetValue(m.w.WallpaperDir)
+		m.input.Placeholder = i18n.T(m.w.Locale, "wallpaper.directory")
+		m.input.Focus()
+	}
+	if m.w.Page == ui.PageWeather {
+		m.input.SetValue(m.weatherQuery)
+		m.note = m.weatherNote
+		m.input.Placeholder = i18n.T(m.w.Locale, "weather.place")
+		m.input.Focus()
+	}
+}
+
+func (m *model) editInput(msg tea.KeyMsg) tea.Cmd {
+	if m.w.Page != ui.PageWallpaper && m.w.Page != ui.PageWeather {
+		return nil
+	}
+	var cmd tea.Cmd
+	m.input, cmd = m.input.Update(msg)
+	if m.w.Page == ui.PageWallpaper {
+		m.w.WallpaperDir = m.input.Value()
+		m.note = ""
+	} else {
+		m.weatherQuery = m.input.Value()
+	}
+	return cmd
 }
 
 func (m *model) cycle(down bool) {
@@ -388,13 +506,40 @@ func (m *model) cycle(down bool) {
 	case ui.PageTheme:
 		m.w.Preset = cycle([]string{"standard", "compact", "expressive"}, m.w.Preset, step)
 	case ui.PagePlugins:
-		if len(m.w.Plugins) > 0 {
-			m.w.Plugins = nil
-		} else {
-			m.w.Plugins = append([]string(nil), m.recommended...)
-		}
+		m.w = m.w.MovePlugin(step)
 	case ui.PageConflicts:
 		m.w = m.w.MoveConflict(boolToDelta(down))
+	}
+	if m.w.Page == ui.PagePlugins || m.w.Page == ui.PageConflicts {
+		m.keepChoiceVisible()
+	}
+}
+
+// Keep the focused control visible using rendered rows, including wrapping.
+func (m *model) keepChoiceVisible() {
+	_, body, help := m.content()
+	lines := strings.Split(ansi.Wrap(body, ui.ContentWidth(m.width), ""), "\n")
+	limit := ui.ScrollLimit(m.w.Locale, body, help, m.w.Page, m.step, m.width, m.height, m.beams)
+	rows := len(lines) - limit
+	for i, line := range lines {
+		if !strings.Contains(ansi.Strip(line), "> ") {
+			continue
+		}
+		end := i + 1
+		if m.w.Page == ui.PageConflicts {
+			end = len(lines) - 1 // Exclude the control's bottom border.
+			if next := m.w.ConflictRow + 1; next < len(m.w.Findings) {
+				for j := i + 1; j < len(lines); j++ {
+					if strings.Contains(ansi.Strip(lines[j]), m.w.Findings[next].Name) {
+						end = j
+						break
+					}
+				}
+			}
+		}
+		end = min(end, i+rows)
+		m.scroll = min(limit, max(0, max(min(m.scroll, i), end-rows)))
+		break
 	}
 }
 
@@ -491,41 +636,50 @@ func reason(r string) string {
 	return " (" + r + ")"
 }
 
-func (m model) View() string {
-	title, body := m.w.Title(), m.w.Body()
+func (m model) content() (string, string, string) {
+	title, body, help := m.w.Title(), m.w.BodyWidth(max(1, ui.ContentWidth(m.width))), m.w.Help()
 	switch m.step {
 	case ui.StepInstalling:
 		title = i18n.T(m.w.Locale, "install.title")
-		body = i18n.T(m.w.Locale, "install.blurb")
-		if len(m.tasks) > 0 {
-			body += "\n\n" + taskLines(m.tasks, m.frame)
+		body = i18n.T(m.w.Locale, "install.blurb") + "\n\n" + taskLines(m.tasks, m.frame)
+		help = i18n.T(m.w.Locale, "help.install")
+	case ui.StepDone, ui.StepFailed:
+		prefix := "done"
+		if m.step == ui.StepFailed {
+			prefix = "failed"
 		}
-	case ui.StepDone:
-		title = i18n.T(m.w.Locale, "done.title")
-		body = i18n.T(m.w.Locale, "done.blurb") + "\n\n" + taskLines(m.installRes.Tasks, 0) +
-			"\n\n" + i18n.T(m.w.Locale, "install.log") + ": " + m.logPath
-		if len(m.installRes.Warnings) > 0 {
-			body += "\n\n" + strings.Join(m.installRes.Warnings, "\n")
-		}
-	case ui.StepFailed:
-		title = i18n.T(m.w.Locale, "failed.title")
-		body = i18n.T(m.w.Locale, "failed.blurb")
-		if lines := taskLines(m.installRes.Tasks, 0); lines != "" {
-			body += "\n\n" + lines
-		}
+		title, help = i18n.T(m.w.Locale, prefix+".title"), i18n.T(m.w.Locale, "help."+prefix)
+		body = i18n.T(m.w.Locale, prefix+".blurb") + "\n\n" + taskLines(m.installRes.Tasks, 0)
 		if m.installErr != nil {
 			body += "\n\n" + m.installErr.Error()
 		}
+		if m.installRes.SessionWarning != "" {
+			body += "\n\n" + m.installRes.SessionWarning
+		}
 		body += "\n\n" + i18n.T(m.w.Locale, "install.log") + ": " + m.logPath
+		if len(m.installRes.Warnings) > 0 {
+			body += "\n\n" + strings.Join(m.installRes.Warnings, "\n")
+		}
 	default:
+		if m.w.Page == ui.PageWallpaper {
+			body = ui.Control(i18n.T(m.w.Locale, "wallpaper.directory"), m.input.View(), ui.ContentWidth(m.width), true)
+		}
 		if m.w.Page == ui.PageWeather {
-			body += "\n\n" + m.input.View()
-			if m.note != "" {
-				body += "\n" + m.note
+			body += "\n" + ui.Control(i18n.T(m.w.Locale, "weather.city"), m.input.View(), ui.ContentWidth(m.width), true)
+			if m.lookingUp {
+				body += "\n" + spinnerFrames[m.frame%len(spinnerFrames)] + " " + i18n.T(m.w.Locale, "weather.searching")
 			}
 		}
+		if (m.w.Page == ui.PageWeather || m.w.Page == ui.PageWallpaper) && m.note != "" {
+			body += "\n! " + m.note
+		}
 	}
-	return ui.View(m.w.Locale, title, body, m.w.Page, m.step, m.width, m.height, m.beams)
+	return title, body, help
+}
+
+func (m model) View() string {
+	title, body, help := m.content()
+	return ui.ViewWithHelp(m.w.Locale, title, body, help, m.w.Page, m.step, m.width, m.height, m.beams, m.scroll)
 }
 
 // newInstallProgram wires send and the installer before the program copies
@@ -584,7 +738,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		opts := installOptions(home, p, a, true, loc)
+		opts := installOptions(home, p, a, true, loc, osr, runPackage)
 		opts.InNiriSession = inNiri
 		opts.Findings = findings
 		opts.Conflicts = choices
@@ -594,12 +748,21 @@ func main() {
 			os.Exit(1)
 		}
 		printTasks(os.Stdout, res)
+		if anyFailed(res.Tasks) {
+			os.Exit(1)
+		}
 		return
 	}
 
 	plainNiri := inNiri && !graphicalSessionActive()
+	var prog *tea.Program
 	installer := func(a seed.Answers, progress func([]install.Task)) (install.Result, error) {
-		opts := installOptions(home, p, a, false, loc)
+		opts := installOptions(home, p, a, false, loc, osr, func(cmd *exec.Cmd) error {
+			reply := make(chan error, 1)
+			prog.Send(packageRequestMsg{cmd: cmd, reply: reply})
+			return <-reply
+		})
+
 		opts.InNiriSession = inNiri
 		opts.Progress = progress
 		opts.Findings = findings
@@ -609,7 +772,30 @@ func main() {
 	m := newModel(loc, p.Recommended, plainNiri)
 	m.w.Findings = findings
 	m.w.Choices = choices
-	prog := newInstallProgram(m, installer, tea.WithAltScreen())
+	for _, c := range p.Components {
+		if !c.Disabled {
+			m.w.Suite = append(m.w.Suite, c.ID)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(configHome(home), "sysc-shell", "config.json")); err == nil {
+		m.w.ExistingConfig = true
+	}
+	m.w.PackageAdviceKey = "confirm.system"
+	m.w.PackageManager, _ = gslapperManager(osr)
+	if _, err := exec.LookPath("gslapper"); err == nil {
+		m.w.PackageAdviceKey = "confirm.system.present"
+	} else {
+		if m.w.PackageManager == "" {
+			m.w.PackageAdviceKey = "confirm.system.missing"
+		}
+		if m.w.PackageManager == "apt-get" || m.w.PackageManager == "dnf" {
+			if _, err := gslapperAsset(osr, p, runtime.GOARCH); err != nil {
+				m.w.PackageAdviceKey = "confirm.system.missing"
+			}
+		}
+	}
+
+	prog = newInstallProgram(m, installer, tea.WithAltScreen())
 	final, err := prog.Run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -619,8 +805,10 @@ func main() {
 	if !ok {
 		return
 	}
-	if fm.installErr != nil {
-		fmt.Fprintln(os.Stderr, fm.installErr)
+	if fm.installErr != nil || anyFailed(fm.installRes.Tasks) {
+		if fm.installErr != nil {
+			fmt.Fprintln(os.Stderr, fm.installErr)
+		}
 		os.Exit(1)
 	}
 }
@@ -646,15 +834,16 @@ func printTasks(out io.Writer, res install.Result) {
 	}
 }
 
-// niriConfigPath is the compositor config conflicts are detected against,
-// following the same XDG rule as the installer.
-func niriConfigPath(home string) string {
-	base := os.Getenv("XDG_CONFIG_HOME")
-	if !filepath.IsAbs(base) {
-		base = filepath.Join(home, ".config")
+// configHome follows the same XDG rule as the installer.
+func configHome(home string) string {
+	if base := os.Getenv("XDG_CONFIG_HOME"); filepath.IsAbs(base) {
+		return base
 	}
-	return filepath.Join(base, "niri", "config.kdl")
+	return filepath.Join(home, ".config")
 }
+
+// niriConfigPath is the compositor config conflicts are detected against.
+func niriConfigPath(home string) string { return filepath.Join(configHome(home), "niri", "config.kdl") }
 
 func graphicalSessionActive() bool {
 	return units.GraphicalSessionActive(func(args ...string) error {

@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Nomadcxx/sysc/internal/conflict"
@@ -25,10 +27,16 @@ type Wizard struct {
 	Locale i18n.Locale
 	Page   Page
 
-	Preset       string
-	Mode         string
-	WallpaperDir string
-	Plugins      []string
+	Preset           string
+	Mode             string
+	WallpaperDir     string
+	Plugins          []string
+	AvailablePlugins []string
+	PluginRow        int
+	Suite            []string
+	PackageAdviceKey string
+	PackageManager   string
+	ExistingConfig   bool
 
 	Latitude  float64
 	Longitude float64
@@ -49,12 +57,13 @@ type Wizard struct {
 // NewWizard starts on the theme page with the guided defaults.
 func NewWizard(loc i18n.Locale, recommended []string) Wizard {
 	return Wizard{
-		Locale:       loc,
-		Page:         PageTheme,
-		Preset:       "standard",
-		Mode:         "dark",
-		WallpaperDir: "~/Pictures/wallpapers",
-		Plugins:      append([]string(nil), recommended...),
+		Locale:           loc,
+		Page:             PageTheme,
+		Preset:           "standard",
+		Mode:             "dark",
+		WallpaperDir:     "~/Pictures/wallpapers",
+		Plugins:          append([]string(nil), recommended...),
+		AvailablePlugins: append([]string(nil), recommended...),
 	}
 }
 
@@ -173,73 +182,150 @@ func (w Wizard) weatherSet() bool {
 
 // Title is the current page heading.
 func (w Wizard) Title() string {
-	switch w.Page {
-	case PageTheme:
-		return i18n.T(w.Locale, "theme.title")
-	case PageWallpaper:
-		return i18n.T(w.Locale, "wallpaper.title")
-	case PagePlugins:
-		return i18n.T(w.Locale, "plugins.title")
-	case PageWeather:
-		return i18n.T(w.Locale, "weather.title")
-	case PageConflicts:
-		return i18n.T(w.Locale, "conflicts.title")
-	default:
-		return i18n.T(w.Locale, "confirm.title")
+	index, count := int(w.Page)+1, 6
+	if len(w.Findings) == 0 {
+		count--
+		if w.Page > PageConflicts {
+			index--
+		}
 	}
+	return fmt.Sprintf("%02d / %02d  %s", index, count, i18n.T(w.Locale, pageKey(w.Page)+".title"))
 }
 
-// Body is the current page copy plus the collected value.
-func (w Wizard) Body() string {
+// MovePlugin moves focus without changing selection.
+func (w Wizard) MovePlugin(delta int) Wizard {
+	w.PluginRow = min(max(0, w.PluginRow+delta), max(0, len(w.AvailablePlugins)-1))
+	return w
+}
+
+func (w Wizard) TogglePlugin() Wizard {
+	if len(w.AvailablePlugins) == 0 {
+		return w
+	}
+	id := w.AvailablePlugins[w.PluginRow]
+	// Copy before editing: Bubble Tea models are value snapshots.
+	selected := append([]string(nil), w.Plugins...)
+	if i := slices.Index(selected, id); i >= 0 {
+		selected = slices.Delete(selected, i, i+1)
+	} else {
+		selected = append(selected, id)
+	}
+	w.Plugins = selected
+	return w
+}
+
+func (w Wizard) Help() string {
+	key := "help." + pageKey(w.Page)
+	if w.Page == PageTheme {
+		key = "help.preset." + w.Preset
+	}
+	if w.Page == PagePlugins && len(w.AvailablePlugins) > 0 {
+		switch w.AvailablePlugins[w.PluginRow] {
+		case "org.sysc.weather":
+			key = "help.plugin.weather"
+		case "org.sysc.media":
+			key = "help.plugin.media"
+		}
+	}
+	if w.Page == PageConflicts && len(w.Findings) > 0 {
+		return i18n.T(w.Locale, consequenceKey(w.choiceFor(w.Findings[w.ConflictRow].Name)))
+	}
+	if w.Page == PageConfirm && w.ExistingConfig {
+		return i18n.T(w.Locale, "help.existing")
+	}
+	return i18n.T(w.Locale, key)
+}
+
+func (w Wizard) Body() string { return w.BodyWidth(72) }
+
+// BodyWidth renders real selection state inside bordered controls.
+func (w Wizard) BodyWidth(width int) string {
 	switch w.Page {
 	case PageTheme:
-		return i18n.T(w.Locale, "theme.blurb") + "\n\n" + w.Preset + " • " + w.Mode
+		var rows []string
+		for _, preset := range []string{"standard", "compact", "expressive"} {
+			marker := "( )"
+			if w.Preset == preset {
+				marker = "(x)"
+			}
+			rows = append(rows, marker+"  "+i18n.T(w.Locale, "preset."+preset))
+		}
+		modes := "(x) " + i18n.T(w.Locale, "mode.dark") + "     ( ) " + i18n.T(w.Locale, "mode.light")
+		if w.Mode == "light" {
+			modes = "( ) " + i18n.T(w.Locale, "mode.dark") + "     (x) " + i18n.T(w.Locale, "mode.light")
+		}
+		return Control(i18n.T(w.Locale, "confirm.preset"), strings.Join(rows, "\n"), width, true) + "\n" + Control(i18n.T(w.Locale, "confirm.mode"), modes, width, true)
 	case PageWallpaper:
-		return i18n.T(w.Locale, "wallpaper.blurb") + "\n\n" + w.WallpaperDir
+		return i18n.T(w.Locale, "wallpaper.blurb") + "\n\n" + Control(i18n.T(w.Locale, "wallpaper.directory"), w.WallpaperDir, width, true)
 	case PagePlugins:
-		return i18n.T(w.Locale, "plugins.blurb") + "\n\n" + w.pluginsLabel()
+		var rows []string
+		for i, id := range w.AvailablePlugins {
+			cursor, marker := " ", "[ ]"
+			if i == w.PluginRow {
+				cursor = ">"
+			}
+			if slices.Contains(w.Plugins, id) {
+				marker = "[x]"
+			}
+			rows = append(rows, cursor+" "+marker+" "+w.pluginName(id))
+		}
+		if len(rows) == 0 {
+			rows = []string{i18n.T(w.Locale, "plugin.none")}
+		}
+		return i18n.T(w.Locale, "plugins.blurb") + "\n\n" + Control("", strings.Join(rows, "\n"), width, true)
 	case PageWeather:
 		place := w.Location
 		if place == "" {
-			place = i18n.T(w.Locale, "weather.place")
+			place = i18n.T(w.Locale, "weather.unset")
+		} else {
+			place += fmt.Sprintf("  %.4f, %.4f", w.Latitude, w.Longitude)
 		}
-		return i18n.T(w.Locale, "weather.blurb") + "\n\n" + place
+		return Control(i18n.T(w.Locale, "weather.selected"), place, width, false)
 	case PageConflicts:
-		return w.conflictsBody()
+		return w.conflictsBody(width)
 	default:
-		body := i18n.T(w.Locale, "confirm.blurb") + "\n" +
-			i18n.T(w.Locale, "confirm.preset") + ": " + w.Preset + "\n" +
-			i18n.T(w.Locale, "confirm.mode") + ": " + w.Mode + "\n" +
+		body := i18n.T(w.Locale, "confirm.preset") + ": " + i18n.T(w.Locale, "preset."+w.Preset) + "\n" +
+			i18n.T(w.Locale, "confirm.mode") + ": " + i18n.T(w.Locale, "mode."+w.Mode) + "\n" +
 			i18n.T(w.Locale, "confirm.wallpaper") + ": " + w.WallpaperDir + "\n" +
 			i18n.T(w.Locale, "confirm.plugins") + ": " + w.pluginsLabel() + "\n" +
-			i18n.T(w.Locale, "confirm.location") + ": " + w.Location + "\n" +
-			i18n.T(w.Locale, "confirm.files") + ": ~/.local/bin, ~/.config/systemd/user"
+			i18n.T(w.Locale, "confirm.location") + ": " + w.Location + "\n\n" +
+			i18n.T(w.Locale, "confirm.user") + "\n~/.local/bin • ~/.config/systemd/user\n"
+		if len(w.Suite) > 0 {
+			body += strings.Join(w.Suite, ", ") + "\n"
+		}
+		advice := i18n.T(w.Locale, w.PackageAdviceKey)
+		if w.PackageAdviceKey == "confirm.system" {
+			advice = fmt.Sprintf(advice, w.PackageManager)
+		}
+		body += "\n" + advice
 		if w.PlainNiri {
 			body += "\n\n" + i18n.T(w.Locale, "warn.niri_session")
 		}
-		handovers := w.handovers()
-		if len(handovers) > 0 {
+		if handovers := w.handovers(); len(handovers) > 0 {
 			body += "\n\n" + strings.Join(handovers, "\n")
 		}
 		return body
 	}
 }
 
-// conflictsBody lists each finding, its state and what the current choice does.
-func (w Wizard) conflictsBody() string {
-	lines := []string{i18n.T(w.Locale, "conflicts.blurb"), ""}
+func (w Wizard) conflictsBody(width int) string {
+	var rows []string
 	for i, f := range w.Findings {
 		cursor := " "
 		if i == w.ConflictRow {
-			cursor = "▸"
+			cursor = ">"
 		}
-		lines = append(lines,
-			cursor+" "+f.Name+" → "+choiceLabel(w.Locale, w.choiceFor(f.Name)),
-			"  "+strings.Join(stateLabels(w.Locale, f), ", "),
-			"  "+i18n.T(w.Locale, consequenceKey(w.choiceFor(f.Name))),
-		)
+		choices := make([]string, 0, 3)
+		for _, c := range []conflict.Choice{conflict.HandOver, conflict.KeepBoth, conflict.SkipSYSC} {
+			marker := "( )"
+			if w.choiceFor(f.Name) == c {
+				marker = "(x)"
+			}
+			choices = append(choices, marker+" "+choiceLabel(w.Locale, c))
+		}
+		rows = append(rows, cursor+" "+f.Name+" • "+strings.Join(stateLabels(w.Locale, f), ", "), strings.Join(choices, "  "))
 	}
-	return strings.Join(lines, "\n")
+	return Control("", strings.Join(rows, "\n"), width, true)
 }
 
 // handovers lists the chosen handovers for the confirm page.
@@ -300,5 +386,20 @@ func (w Wizard) pluginsLabel() string {
 	if len(w.Plugins) == 0 {
 		return i18n.T(w.Locale, "plugin.none")
 	}
-	return strings.Join(w.Plugins, ", ")
+	names := make([]string, 0, len(w.Plugins))
+	for _, id := range w.Plugins {
+		names = append(names, w.pluginName(id))
+	}
+	return strings.Join(names, ", ")
+}
+
+func (w Wizard) pluginName(id string) string {
+	switch id {
+	case "org.sysc.weather":
+		return i18n.T(w.Locale, "plugin.weather")
+	case "org.sysc.media":
+		return i18n.T(w.Locale, "plugin.media")
+	default:
+		return id
+	}
 }

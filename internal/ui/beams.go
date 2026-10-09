@@ -595,7 +595,7 @@ func (b *BeamsTextEffect) Render() string {
 	}
 
 	// Base style with background to prevent terminal bleed-through
-	bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1a1a1a"))
+	bgStyle := lipgloss.NewStyle().Background(Black)
 
 	var lines []string
 	for y := 0; y < b.height; y++ {
@@ -605,7 +605,7 @@ func (b *BeamsTextEffect) Render() string {
 			if char != ' ' && colors[y][x] != "" {
 				styled := lipgloss.NewStyle().
 					Foreground(lipgloss.Color(colors[y][x])).
-					Background(lipgloss.Color("#1a1a1a")).
+					Background(Black).
 					Render(string(char))
 				line.WriteString(styled)
 			} else {

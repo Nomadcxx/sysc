@@ -407,7 +407,7 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: reason})
 	} else if opts.InstallPkg == nil {
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped,
-			Reason: fmt.Sprintf("no AUR helper found; install gSlapper with yay or paru (package %q)", opts.Pin.GSlapper.Package)})
+			Reason: fmt.Sprintf("no package installer configured for gSlapper (package %q)", opts.Pin.GSlapper.Package)})
 	} else if err := opts.InstallPkg(opts.Pin.GSlapper.Package); err != nil {
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: err.Error()})
 	} else {

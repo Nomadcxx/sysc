@@ -38,6 +38,18 @@ cd sysc
 go run ./cmd/sysc
 ```
 
+Start the installer as your normal user. It writes suite binaries and services
+under your home directory. For gSlapper, it gives the package manager access to
+the terminal for its sudo prompt, then resumes. An unavailable package or
+failed package step appears as a skipped task; the rest of the suite can still
+install.
+
+Use the arrow keys to choose a theme, edit the wallpaper directory, and use
+Space to toggle each plugin checkbox. Each page includes advice for the
+current choice. PgUp/PgDn scrolls review details, task results, and warnings.
+The installer uses a black background in both desktop theme modes.
+Set `SYSC_REDUCED_MOTION=1` to show a static banner.
+
 ## What it installs
 
 | Component | Role |
@@ -56,6 +68,12 @@ named message. The installer enables `sysc-lock-session.service` and starts it
 when a graphical session is active. Starting the service does not lock the
 screen. New shell configs use `session.locker: "sysc-lock"`; existing configs
 remain unchanged.
+
+The gSlapper package layer includes Arch via yay/paru, Debian 13 and Ubuntu
+25.x via the Debian `.deb`, Ubuntu 24.04 via its own `.deb`, and Fedora 42+
+via `.rpm`. The native packages use apt-get or dnf after checksum verification.
+The suite's preflight still permits Arch-family systems only; enabling other
+distros also requires validation of the remaining components.
 
 ## Conflicts and handover
 

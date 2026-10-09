@@ -106,7 +106,27 @@
   "gslapper": {
     "family": "arch",
     "package": "gslapper",
-    "version": "1.5.1"
+    "version": "1.5.1",
+    "assets": {
+      "debian13": {
+        "amd64": {
+          "url": "https://github.com/Nomadcxx/gSlapper/releases/download/v1.5.1/gslapper_1.5.1_debian13_amd64.deb",
+          "sha256": "27adffbe597c9cfef4699c47b395e9bb40bf39e26596b6586d871dd5e0d5a010"
+        }
+      },
+      "ubuntu24.04": {
+        "amd64": {
+          "url": "https://github.com/Nomadcxx/gSlapper/releases/download/v1.5.1/gslapper_1.5.1_ubuntu24.04_amd64.deb",
+          "sha256": "a3e2d3fb3c22736adaab1b4ce89204c1170a0c7c66992a7625676553c7de3816"
+        }
+      },
+      "fedora42": {
+        "amd64": {
+          "url": "https://github.com/Nomadcxx/gSlapper/releases/download/v1.5.1/gslapper-1.5.1-1.fedora42.x86_64.rpm",
+          "sha256": "5bf2db2372bebf9f454780ea26042b18d47c357675da517f6c9f31db7c3e240f"
+        }
+      }
+    }
   },
   "recommended": [
     "org.sysc.weather",

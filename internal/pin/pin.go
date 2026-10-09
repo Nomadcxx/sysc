@@ -38,11 +38,13 @@ type Component struct {
 	Binaries []Binary `json:"binaries,omitempty"`
 }
 
-// GSlapper is the external video-wallpaper package slot for a distro family.
+// GSlapper pins the AUR package and native release packages by build target
+// and architecture. Family identifies the original AUR slot.
 type GSlapper struct {
-	Family  string `json:"family"`
-	Package string `json:"package"`
-	Version string `json:"version"`
+	Family  string                      `json:"family"`
+	Package string                      `json:"package"`
+	Version string                      `json:"version"`
+	Assets  map[string]map[string]Asset `json:"assets,omitempty"`
 }
 
 // Pin is one tested suite release.
@@ -69,9 +71,16 @@ func Decode(data []byte) (Pin, error) {
 		return Pin{}, fmt.Errorf("pin: recommended plugin list is empty")
 	}
 	// A gslapper row that declares a family or version must name a package;
-	// pins with no AUR slot at all are valid (non-arch distros).
-	if (p.GSlapper.Family != "" || p.GSlapper.Version != "") && strings.TrimSpace(p.GSlapper.Package) == "" {
+	// pins with no external package slot at all remain valid.
+	if (p.GSlapper.Family != "" || p.GSlapper.Version != "" || len(p.GSlapper.Assets) > 0) && strings.TrimSpace(p.GSlapper.Package) == "" {
 		return Pin{}, fmt.Errorf("pin: gslapper package name is empty")
+	}
+	for target, assets := range p.GSlapper.Assets {
+		for arch, asset := range assets {
+			if !strings.HasPrefix(asset.URL, "https://") || !shaRE.MatchString(asset.SHA256) {
+				return Pin{}, fmt.Errorf("pin: gslapper %s/%s needs an https URL and a 64-hex SHA256", target, arch)
+			}
+		}
 	}
 	seen := map[string]bool{}
 	for _, c := range p.Components {
