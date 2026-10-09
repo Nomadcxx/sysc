@@ -1,0 +1,31 @@
+---
+title: Interfaces and APIs
+description: Find versioned Go APIs and identify private session protocols.
+---
+
+
+Use each component's versioned API documentation with the source record for the commit described by this site. A successful site build does not establish compatibility between independently released modules.
+
+## Public Go packages
+
+- **Wayland client:** [sysc-wayland/client v0.3.1](https://pkg.go.dev/github.com/Nomadcxx/sysc-wayland@v0.3.1/client). One goroutine owns the context, proxies and dispatch loop. The [Wayland example](/docs/components/sysc-wayland) lists compositor globals.
+- **System metrics:** [sysc-metrics v0.7.1](https://pkg.go.dev/github.com/Nomadcxx/sysc-metrics@v0.7.1). Check each sample's Valid flag and Issues before presenting a value.
+- **Launcher engine:** [sysc-launch at the documented source revision](https://pkg.go.dev/github.com/Nomadcxx/sysc-launch@v0.2.1-0.20261007072322-c0c7ef2d4bbf). Queries and activation run asynchronously through a service.
+- **Clipboard client:** [sysc-clipboard/client v0.1.2](https://pkg.go.dev/github.com/Nomadcxx/sysc-clipboard@v0.1.2/client). sysc-shell uses this package to read and restore history.
+- **Notification protocol:** [sysc-notify/protocol v0.1.0](https://pkg.go.dev/github.com/Nomadcxx/sysc-notify@v0.1.0/protocol).
+- **Tray protocol:** [sysc-tray/protocol v0.1.1](https://pkg.go.dev/github.com/Nomadcxx/sysc-tray@v0.1.1/protocol).
+- **Plugin wire types:** [sysc-shell/plugin/v1 v0.1.0](https://pkg.go.dev/github.com/Nomadcxx/sysc-shell@v0.1.0/plugin/v1).
+
+The module links name explicit versions. Check the component release tag before replacing a suite pin or copying a newer API.
+
+## Session protocols
+
+- **Notifications:** org.freedesktop.Notifications uses the D-Bus session bus. sysc-notify also streams presentation state through $XDG_RUNTIME_DIR/sysc-notify/presenter.v1.sock. One daemon owns the D-Bus name.
+- **Tray:** sysc-tray owns StatusNotifierItem and DBusMenu traffic, then sends presenter state over $XDG_RUNTIME_DIR/sysc-tray/presenter.v1.sock.
+- **Clipboard:** sysc-clipboard reads Wayland data-control selections and serves shell requests through its versioned control socket.
+- **Shell IPC:** sysc-shell ipc talks to the running shell. Internal IPC method names and wallpaper child sockets are implementation interfaces; use the documented command examples, not an assumed long-term wire contract.
+- **Wayland:** sysc-wayland connects through WAYLAND_SOCKET or WAYLAND_DISPLAY under XDG_RUNTIME_DIR. Run the connection and all proxy operations on one goroutine.
+
+These interface descriptions follow the current default-branch commits in the [source record](/docs/reference/sources). The pkg.go.dev links name explicit published versions and can lag the current source. The SYSC v0.1.1 suite pins older releases for several processes, so compare the installed version when debugging a mixed-version session.
+
+For process ownership, socket diagnostics and D-Bus handover, see the [service integration guide](/docs/guides/service-integration).

@@ -1,0 +1,38 @@
+---
+title: Plugin manifest
+description: Declare a plugin's identity, runtime, requirements, capabilities and views.
+---
+
+
+Put `manifest.json` in the plugin directory. The host reads it before starting the executable. The repository's strict validator rejects unknown fields and checks the manifest against the host's accepted shape.
+
+## Required identity and runtime fields
+
+| Field | Purpose |
+|---|---|
+| `schema` | Must be `1` for the current format. |
+| `id` | Unique reverse-domain identifier, such as `org.example.clock`. |
+| `name`, `description`, `version` | User-facing identity and release version. |
+| `protocol` | Protocol major and minor required by the plugin. Current plugins use major `1`. |
+| `exec` | Relative path to the executable inside the installed plugin directory. |
+| `capabilities` | Host APIs the plugin requests. |
+| `requires.commands` | External commands the plugin expects on the user's system. |
+| `widgets`, `panels`, `settings` | Views and user-configurable values the host can expose. |
+
+The validator requires a non-empty name, description, version and executable path. It rejects duplicate or malformed IDs, unsupported protocol majors, unknown capabilities and absolute or parent-traversing executable paths. The `exec` path must stay inside the plugin directory.
+
+The [Cat manifest](https://github.com/Nomadcxx/sysc-plugins/blob/b6323d6f131bc8fa2d814942b271faecd045522a/plugins/cat/manifest.json) shows a complete example. It declares a bar widget, a 340×440 panel, settings, and the `panels` and `settings` capabilities. Use its structure as a reference; choose your own ID, version, dimensions and settings.
+
+## Keep catalog data separate
+
+`manifest.json` describes what the runtime needs. `catalog-meta.json` supplies listing metadata such as category and author. The release tool combines these inputs into `catalog.json` and checks catalog identity, protocol, capabilities and required commands against the manifest in the tagged release.
+
+The catalog's `license` field is optional. Do not add a manifest field for catalog-only data. See [release packaging](../publish) for the catalog metadata fields and checks.
+
+Run the repository validator after changing a manifest:
+
+```sh
+go run ./tools/validate-manifests
+```
+
+This validates repository manifests and required media. It does not replace the catalog check against a published tag.

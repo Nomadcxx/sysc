@@ -1,0 +1,44 @@
+---
+title: sysc-walls
+description: Inspect the idle screensaver service managed by the SYSC shell.
+---
+
+
+sysc-walls watches for idle activity and starts a multi-monitor screensaver. It renders sysc-Go animations in fullscreen Kitty terminals. It is an idle screensaver, not the desktop wallpaper process.
+
+**Source:** [default-branch commit f7ec3a72](https://github.com/Nomadcxx/sysc-walls/commit/f7ec3a72d7e198881a06956861e63f45bc947340) · **SYSC v0.1.1 pin:** sysc-walls v1.0.2.
+
+## Control from the shell
+
+SYSC installs a user service and sysc-shell discovers it for the Screensaver settings. Use the shell settings to change the idle behavior. The default idle timeout in the documented source is five minutes.
+
+Check the unit and its startup log as the installing user:
+
+~~~sh
+systemctl --user --no-pager status sysc-walls.service
+journalctl --user -u sysc-walls.service -b --no-pager
+~~~
+
+The service should be active in the graphical session. The log can show whether the daemon found a supported compositor and started a display. Follow [Niri session startup](/docs/guides/niri-session) if the graphical-session.target is inactive.
+
+## Install ownership and limits
+
+The standalone upstream installer can place programs in /usr/local/bin and needs administrator access. SYSC v0.1.1 uses its pinned daemon and installs it under the user's prefix. Use the SYSC installer to update or remove the suite copy; do not overwrite it with a standalone install.
+
+The current upstream README lists Niri, Hyprland, Sway and X11 support. That list describes standalone sysc-walls; it does not expand SYSC's Niri and Arch-family support qualification. The display uses Kitty, and sysc-Go provides its effects.
+
+## Standalone configuration
+
+The standalone source documents `~/.config/sysc-walls/daemon.conf` for its daemon. Its `[idle]` section sets `timeout` and `min_duration`; `[animation]` selects an effect, theme and optional effect cycling; `[datetime]` controls the clock; `[terminal]` selects Kitty; and `[daemon]` enables debug logging. The source defaults the idle timeout to five minutes.
+
+These standalone settings describe the current upstream project. The suite pin may expose a different set of controls through sysc-shell's Screensaver settings. Use the shell UI for a suite-managed copy so you do not edit a version-specific file behind the shell's back.
+
+When you install sysc-walls on its own, the upstream test mode can check its renderer without waiting for idle time:
+
+~~~sh
+sysc-walls-daemon -test -debug
+~~~
+
+The standalone installation also documents `-demo` for cycling through effects. It uses Kitty for the display process. Confirm the configured terminal and user service before diagnosing an idle timeout; a working wallpaper backend does not confirm that the screensaver service can open its own output.
+
+[Standalone source instructions](https://github.com/Nomadcxx/sysc-walls/blob/f7ec3a72d7e198881a06956861e63f45bc947340/README.md) · [Report an issue](https://github.com/Nomadcxx/sysc-walls/issues)

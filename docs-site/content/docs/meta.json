@@ -1,0 +1,13 @@
+{
+  "title": "SYSC",
+  "pages": [
+    "index",
+    "start",
+    "guides",
+    "components",
+    "developers",
+    "plugins",
+    "!reference",
+    "!troubleshooting"
+  ]
+}

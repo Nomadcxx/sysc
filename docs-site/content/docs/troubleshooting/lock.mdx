@@ -1,0 +1,20 @@
+---
+title: Lock service
+description: Inspect sysc-lock service status without acquiring or bypassing a lock.
+---
+
+## Diagnose sysc-lock
+
+These checks read the user service and its current-boot log. They do not acquire a lock:
+
+```sh
+systemctl --user --no-pager status sysc-lock-session.service
+journalctl --user -u sysc-lock-session.service -b --no-pager
+systemctl --user is-active graphical-session.target
+```
+
+Run them from the same Niri user session that owns the service. If the user bus is unavailable from a TTY, sign in as the same user through the normal login path and inspect the service there.
+
+The unit needs the Niri session environment and graphical-session.target. If the target is inactive, use [Niri session startup](/docs/guides/niri-session). If the service failed, keep the status and journal output for the report.
+
+Running sysc-lock requests a lock. Do not use it as a status check. Do not kill or disable the owner, alter PAM or search for an unlock bypass. Keep an alternate system-administrator recovery path before testing a lock service. See [the sysc-lock manual](/docs/components/sysc-lock) for its documented security model and requirements.

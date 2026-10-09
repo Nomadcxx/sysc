@@ -1,0 +1,47 @@
+---
+title: sysc-notify
+description: Resolve notification service ownership and inspect notification delivery.
+---
+
+
+sysc-notify owns org.freedesktop.Notifications on the session bus. It sends notification state to sysc-shell, which draws popups and history.
+
+**Source:** [default-branch commit f44a247e](https://github.com/Nomadcxx/sysc-notify/commit/f44a247e01c18d582b7e8eca42372588d9f85a7b) · **SYSC v0.1.1 pin:** sysc-notify v0.1.0. Check the pinned release notes when you need behavior specific to that version.
+
+## One notification owner
+
+Only one daemon can own org.freedesktop.Notifications. If mako, dunst, swaync or another provider already owns the name, notifications may continue going to that provider. SYSC's conflict flow can stop and disable a detected user service and record the change for uninstall recovery. Review [conflict handling](/docs/guides/conflicts) before handing it over.
+
+The suite runs sysc-notify as a systemd user service. Check the service, bus owner and logs without changing session state:
+
+~~~sh
+systemctl --user --no-pager status sysc-notify.service
+busctl --user status org.freedesktop.Notifications
+journalctl --user -u sysc-notify.service -b --no-pager
+~~~
+
+The bus status should identify the process that owns the notification name. If that process is not sysc-notify, resolve the conflict before troubleshooting the shell panel.
+
+## Delivery and limits
+
+The daemon connects to sysc-shell at $XDG_RUNTIME_DIR/sysc-notify/presenter.v1.sock. The current source implements notification spec 1.3 actions and replacement IDs, image hints, urgency and inline replies. It keeps up to 100 closed notifications for seven days in `$XDG_STATE_HOME/sysc-notify/history.json`, falling back to `~/.local/state/sysc-notify/history.json` when XDG_STATE_HOME is unset ([history store](https://github.com/Nomadcxx/sysc-notify/blob/f44a247e01c18d582b7e8eca42372588d9f85a7b/internal/history/store.go)). Transient notifications and notifications with the boolean `x-sysc-private` hint set to true stay out of history ([hint handling](https://github.com/Nomadcxx/sysc-notify/blob/f44a247e01c18d582b7e8eca42372588d9f85a7b/internal/notify/normalize.go)).
+
+The [v0.1.0 protocol API](https://pkg.go.dev/github.com/Nomadcxx/sysc-notify@v0.1.0/protocol) documents the suite-pinned package. For socket ownership and service handoff, see the [service integration guide](/docs/guides/service-integration).
+
+## Follow a notification
+
+Applications send notifications to the session bus name `org.freedesktop.Notifications`. sysc-notify owns that name and forwards presenter state over its private Unix socket to sysc-shell. The shell draws the popup and history panel. A running shell cannot receive events from a daemon that lost the bus name, and a running daemon cannot draw a popup when its presenter is absent.
+
+Start with the bus owner and unit status when delivery stops:
+
+~~~sh
+busctl --user status org.freedesktop.Notifications
+systemctl --user --no-pager status sysc-notify.service
+journalctl --user -u sysc-notify.service -b --no-pager
+~~~
+
+If another notification service owns the D-Bus name, stop the conflict through the recorded installer choice or follow the [conflict recovery guide](/docs/guides/conflicts). Two daemons cannot own the same bus name at once.
+
+The current source retains at most 100 closed notifications for seven days. Transient notifications and notifications with `x-sysc-private=true` stay out of saved history. The history file can contain notification text, application names and image data; treat it as user data when you back up or inspect it.
+
+[Source code](https://github.com/Nomadcxx/sysc-notify/tree/f44a247e01c18d582b7e8eca42372588d9f85a7b) · [Report an issue](https://github.com/Nomadcxx/sysc-notify/issues)

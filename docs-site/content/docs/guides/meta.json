@@ -1,0 +1,14 @@
+{
+  "title": "Guides",
+  "pages": [
+    "index",
+    "conflicts",
+    "upgrade",
+    "uninstall",
+    "service-integration",
+    "themes",
+    "wallpapers",
+    "niri-session",
+    "[Troubleshooting](/docs/troubleshooting)"
+  ]
+}

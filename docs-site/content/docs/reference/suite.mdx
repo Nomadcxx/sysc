@@ -1,0 +1,28 @@
+---
+title: Suite pins
+description: Component releases, user units and architecture in the SYSC v0.1.1 installer pin.
+---
+
+## SYSC v0.1.1 suite pins
+
+The installer embeds this component set in its v0.1.1 binary. It downloads the listed amd64 release assets over HTTPS and verifies their SHA-256 values from the [pin manifest](https://github.com/Nomadcxx/sysc/blob/v0.1.1/internal/pin/pin.json).
+
+## Enabled user services
+
+- **sysc-shell v0.1.0:** sysc-shell.service
+- **sysc-clipboard v0.1.2:** sysc-clipboard.service
+- **sysc-walls v1.0.2:** sysc-walls.service
+- **sysc-notify v0.1.0:** sysc-notify.service
+- **sysc-tray v0.1.1:** sysc-tray.service
+- **sysc-lock v0.1.0:** sysc-lock-session.service
+
+## Disabled and optional entries
+
+- **sysc-terminal:** disabled because v0.1.1 has no user unit template.
+- **gSlapper v1.5.1:** an optional package; SYSC installs it only when it is missing.
+
+All enabled component binary assets in this pin are amd64. SYSC also publishes an arm64 installer executable, but the installer refuses to install this suite on arm64.
+
+gSlapper has an Arch package route through yay or paru, plus pinned amd64 packages for Debian 13, Ubuntu 24.04, Ubuntu 25.x and Fedora 42+. These routes cover gSlapper only. SYSC preflight still gates the complete suite to the Arch family.
+
+sysc-greet is a separate greeter project. sysc-wayland, sysc-metrics and sysc-launch are libraries or tools that the installer does not install. The [source record](/docs/reference/sources) shows current default-branch commits for these projects separately from the suite release pins.

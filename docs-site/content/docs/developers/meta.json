@@ -1,0 +1,11 @@
+{
+  "title": "Developers",
+  "pages": [
+    "index",
+    "architecture",
+    "build",
+    "interfaces",
+    "releases",
+    "documentation"
+  ]
+}

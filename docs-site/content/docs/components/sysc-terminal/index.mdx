@@ -1,0 +1,55 @@
+---
+title: sysc-terminal
+description: Run Niri terminal effects as a per-output wallpaper process.
+---
+
+
+sysc-terminal renders sysc-Go effects on Niri's background layer. It runs one process per output. sysc-shell can supervise those processes when Terminal Art is available.
+
+**Source:** [default-branch commit 3f24ca08](https://github.com/Nomadcxx/sysc-terminal/commit/3f24ca081bfc97f790147889d32ed08b31882960) · **SYSC v0.1.1 status:** disabled in the installer manifest; the suite does not install a binary or unit.
+
+## Install the documented source
+
+This source needs Go 1.26 or later and CGO disabled. The command below installs the exact source revision recorded on the [source page](/docs/reference/sources):
+
+~~~sh
+GOBIN="$HOME/.local/bin" CGO_ENABLED=0 go install github.com/Nomadcxx/sysc-terminal/cmd/sysc-terminal@v0.1.1-0.20261008172809-3f24ca081bfc
+export PATH="$HOME/.local/bin:$PATH"
+sysc-terminal --list
+~~~
+
+The list command prints effect IDs and themes from the current sysc-Go registry. sysc-shell discovers the binary by running sysc-terminal --list on its own service PATH. The export command above only changes the current terminal; check the user manager's PATH with `systemctl --user show-environment | grep '^PATH='`. If it omits ~/.local/bin, run the following from this terminal, where the earlier export has added that directory:
+
+~~~sh
+systemctl --user import-environment PATH
+systemctl --user restart sysc-shell.service
+~~~
+
+The v0.1.1 installer does not manage this binary, so this manual install remains separate from suite upgrades and removal.
+
+At this source commit, go.mod pins sysc-Go v1.0.6-0.20261008172414-1ff1f6c3c8d0 and sysc-wayland v0.3.1. The [README build note](https://github.com/Nomadcxx/sysc-terminal/blob/3f24ca081bfc97f790147889d32ed08b31882960/README.md#build) still says sysc-Go v1.0.4; the install command follows go.mod. The [pinned sysc-Go commit](https://github.com/Nomadcxx/sysc-Go/commit/1ff1f6c3c8d0860f2fcd9f0d89349d491619dc6d) identifies the animation source used by this binary.
+
+## Run one output
+
+Use Niri to find the output connector. A manual invocation starts a wallpaper process:
+
+~~~sh
+niri msg outputs
+sysc-terminal --output "$OUTPUT" --effect fire --theme nord --ipc-socket "$XDG_RUNTIME_DIR/sysc-terminal.sock"
+~~~
+
+Set OUTPUT to one connector from the first command. Use a different socket for each output. The renderer uses a monospace font with braille coverage, draws through wl_shm and caps output at 20 frames per second. CPU use varies with the effect, font, output size and hardware.
+
+If the shell manages Terminal Art for an output, do not start another sysc-terminal process for that same output. For wallpaper ownership across the shell, sysc-terminal, sysc-walls and gSlapper, see the [wallpaper guide](/docs/guides/wallpapers).
+
+## Effect discovery and controls
+
+Run `sysc-terminal --list` after installing the binary to see effect IDs and themes from the sysc-Go registry linked into that build. Use one process and one IPC socket per output. The shell controls those processes when you choose an effect through Terminal Art; a direct command remains yours to stop.
+
+The IPC socket accepts `query`, `pause`, `resume`, `change effect <id> theme <theme> [file <path>]`, `reset` and `stop`. A paused process keeps its last frame. The CLI's `--file` option supplies text art to text effects. A font without braille glyphs can render an empty or broken-looking image; use `--font /path/to/font.ttf` to select a font that covers them.
+
+The SYSC v0.1.1 installer does not install a sysc-terminal executable or service. If the shell cannot find an optional manual install, check the user manager's `PATH` with `systemctl --user show-environment`; exporting `PATH` in one terminal does not change the service environment. See the [install steps above](#install-the-documented-source) for the user-manager command.
+
+The documented source repository's README names an older sysc-Go build dependency than its committed `go.mod`. The source record uses the `go.mod` version for the recorded build. Check the exact dependency before comparing effect IDs or output with another release.
+
+[CLI source at the documented commit](https://github.com/Nomadcxx/sysc-terminal/blob/3f24ca081bfc97f790147889d32ed08b31882960/cmd/sysc-terminal/main.go) · [Source code](https://github.com/Nomadcxx/sysc-terminal/tree/3f24ca081bfc97f790147889d32ed08b31882960) · [Report an issue](https://github.com/Nomadcxx/sysc-terminal/issues)

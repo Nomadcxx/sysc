@@ -1,0 +1,32 @@
+---
+title: Requirements
+description: Supported SYSC v0.1.1 install route, terminal size, session and network needs.
+---
+
+## Before you install
+
+SYSC v0.1.1 installs the desktop suite on an Arch-family x86_64 system. It targets Niri and systemd user services. The installer refuses root and non-Arch-family distributions.
+
+SYSC's release workflow also publishes an arm64 installer, but the v0.1.1 component pin has amd64 assets only. That binary does not provide a complete arm64 suite. SYSC has not published a qualification matrix for every Arch derivative, machine or desktop configuration. See [compatibility](/docs/reference/compatibility).
+
+## Prepare the session
+
+- Configure Niri and make sure the Niri config exists. By default that is ~/.config/niri/config.kdl; an absolute XDG_CONFIG_HOME moves it.
+- Use a terminal at least 80 columns wide and 24 rows high.
+- Have internet access for the installer and component downloads.
+- Start Niri with niri-session when you want systemd to start the user services in the current login.
+- Install yay or paru if you want SYSC to try its Arch package route for gSlapper. SYSC continues if that optional package step is skipped.
+
+The installer can run from SSH or a TTY without a Wayland session. It enables the suite's user units but cannot start them there. Log in through the Niri session afterward; see [session startup](/docs/guides/niri-session).
+
+## Weather and location
+
+The installer seeds the shell's weather widget and requires coordinates even when you turn off the Weather plugin checkbox.
+
+Automatic location lookup sends a request to ipapi.co to estimate coordinates from the network address. Searching a city sends the city name to Open-Meteo's geocoding API. Supplying both latitude and longitude avoids those location lookups. The shell stores the selected coordinates and location label in its config and uses the coordinates for weather requests.
+
+For the request endpoints, see the [SYSC location lookup source](https://github.com/Nomadcxx/sysc/blob/v0.1.1/internal/geo/geo.go) and the [sysc-shell v0.1.0 README](https://github.com/Nomadcxx/sysc-shell/blob/v0.1.0/README.md).
+
+## Other components
+
+SYSC installs the releases listed in the [suite reference](/docs/reference/suite). A greeter is a separate system-level project. Libraries and standalone components can have different operating-system and runtime requirements from the SYSC installer.

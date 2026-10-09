@@ -1,0 +1,26 @@
+---
+title: Submit a plugin
+description: Propose official inclusion through a pull request to sysc-plugins.
+---
+
+
+Propose official inclusion with a pull request to [Nomadcxx/sysc-plugins](https://github.com/Nomadcxx/sysc-plugins). The repository has no separate intake form. Maintainers decide whether to accept each proposal, and they do not promise a review time.
+
+## Include what reviewers need
+
+- Add the plugin under `plugins/<dir>/`, with its manifest, implementation, command and focused tests.
+- Add it to the repository's `PLUGINS` list and plugin directory in the README.
+- State the exact release tag, protocol version, supported architectures and required commands or system packages.
+- List each requested capability and explain which user action needs it. Describe credentials, files, network access and user data the plugin reads or changes.
+- Add fixture-driven screenshot and thumbnail files. Keep their data fictional, and include attribution for assets you did not create.
+- Add catalog metadata. License metadata is optional in the current schema; include it when available, but a missing `license` field does not block the catalog validator.
+- Include output from manifest, unit, geometry, thumbnail and catalog checks. Explain any check that needs a maintainer environment.
+- Describe install, update and removal behavior, including cleanup of files or services the plugin creates.
+
+The release workflow builds the binaries and opens the catalog update pull request after the tagged release. Do not commit downloaded release archives as source. If you maintain the plugin in another repository, explain that source and release layout in the proposal; users can also add a compatible independent source in sysc-shell's Plugins → Sources settings.
+
+## Explain the trust boundary
+
+The host grants only requested capabilities it supports, and plugin updates that add capabilities or required commands need renewed user consent. Users can remove a managed plugin; removal deletes its installed versions but leaves its settings and placements. Make permission changes and cleanup visible in the review notes.
+
+The plugin still runs as a same-user process. Host capabilities constrain calls through the shell API, but they do not sandbox filesystem, process or network access available to that user. A matching checksum confirms downloaded bytes; it does not endorse the code. Maintainer review and catalog inclusion do not replace the user's choice to install it.

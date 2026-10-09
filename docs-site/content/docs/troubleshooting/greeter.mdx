@@ -1,0 +1,29 @@
+---
+title: Greeter recovery
+description: Check greetd without restarting the login service from your only session.
+---
+
+## Diagnose sysc-greet and greetd
+
+Keep a working TTY login before changing the greeter. The source installer writes system-level greetd configuration and enables greetd.service. It can also replace the display-manager.service link.
+
+From a TTY or another administrator session, inspect the service, boot log and config:
+
+```sh
+sudo systemctl --no-pager status greetd.service
+sudo journalctl -u greetd.service -b --no-pager
+sudo sed -n '1,160p' /etc/greetd/config.toml
+sudo ls -l /etc/greetd/config.toml*
+```
+
+Check that the configured greeter account and compositor command exist. Redact usernames, host paths and other private details before sharing logs.
+
+If the installer saved a prior config and you want to restore it, first read both files from the TTY. Then copy the backup over the active config:
+
+```sh
+sudo cp -a /etc/greetd/config.toml.bak /etc/greetd/config.toml
+```
+
+The source installer's Uninstall option disables greetd and removes sysc-greet files, but does not restore that config or the previous display-manager.service link. Follow your distribution's display-manager recovery instructions and keep the TTY open until you have confirmed a working login.
+
+Do not restart greetd from the only usable graphical or shell session. A restart can end the session that would have let you repair the config. See [sysc-greet install and rollback](/docs/components/sysc-greet).

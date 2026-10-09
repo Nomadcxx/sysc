@@ -1,0 +1,87 @@
+---
+title: sysc-launch
+description: Search desktop entries and activate Niri applications from Go.
+---
+
+
+sysc-launch scans desktop entries, ranks text queries and activates applications through Niri. It is a Go library and diagnostic CLI; it does not draw a launcher panel or run a daemon. sysc-shell owns that interface.
+
+**Source:** [default-branch commit c0c7ef2d](https://github.com/Nomadcxx/sysc-launch/commit/c0c7ef2d4bbf0a4ab78bc6d837304488016f80f2) · **SYSC v0.1.1 status:** library/CLI source, not a separately installed suite component.
+
+## Query from Go
+
+Add the module version tied to this source:
+
+~~~sh
+go get github.com/Nomadcxx/sysc-launch@v0.2.1-0.20261007072322-c0c7ef2d4bbf
+~~~
+
+NewService starts the desktop scan asynchronously. Wait for the first result before querying, then wait for the query result:
+
+~~~go
+package main
+
+import (
+    "fmt"
+    "log"
+    "time"
+
+    launcher "github.com/Nomadcxx/sysc-launch"
+)
+
+func main() {
+    service := launcher.NewService(launcher.ServiceConfig{
+        History: launcher.DefaultHistory(log.Printf),
+        Logf:    log.Printf,
+    })
+    defer service.Close()
+
+    wait := func() ([]launcher.Result, error) {
+        select {
+        case results := <-service.Results():
+            return results, nil
+        case <-time.After(5 * time.Second):
+            return nil, fmt.Errorf("timed out waiting for launcher results")
+        }
+    }
+
+    if _, err := wait(); err != nil {
+        log.Print(err)
+        return
+    }
+    service.Query("terminal")
+    results, err := wait()
+    if err != nil {
+        log.Print(err)
+        return
+    }
+    fmt.Println(results)
+}
+~~~
+
+Desktop scanning uses XDG application directories and filters entries hidden by desktop-entry rules. Successful launches update local history, which can reveal application habits. The example creates the default history store.
+
+## CLI and activation
+
+The CLI accepts:
+
+~~~sh
+sysc-launch query terminal
+sysc-launch launch DESKTOP_ID ACTION_ID
+~~~
+
+Query writes a JSON result list. Copy the desktop ID and optional action ID from that result before launching. Activation needs Niri in PATH; desktop scanning and query do not. The launcher passes the desktop entry's argument vector without a shell.
+
+See the [versioned Go API](https://pkg.go.dev/github.com/Nomadcxx/sysc-launch@v0.2.1-0.20261007072322-c0c7ef2d4bbf) and the [source record](/docs/reference/sources) for the exact module snapshot. SYSC v0.1.1's sysc-shell v0.1.0 uses an earlier dependency listed there.
+
+## Discovery and ranking
+
+The scanner reads `.desktop` files from `$XDG_DATA_HOME/applications` and the `applications` directories under `$XDG_DATA_DIRS`. User entries take precedence. Hidden or `NoDisplay` entries, entries excluded by `OnlyShowIn` or `NotShowIn`, and entries with a missing `TryExec` do not appear. A `Terminal=true` entry needs a terminal from `$TERMINAL` or one of the supported fallback names.
+
+Search matches application names, generic names, keywords, commands, comments and categories. Successful activation adds a history boost capped at 25 points. That history lives under `$XDG_STATE_HOME/sysc-launch/history.gob` and records desktop IDs and query prefixes. Delete that file to reset the library's ranking history. sysc-shell opens a separate legacy history path, so the two files do not merge.
+
+The CLI's `query` command emits JSON without opening an interface. Copy a result's desktop ID and optional action ID into `launch` to activate it. Niri must be in `PATH` for activation. The library passes the parsed argument vector to Niri rather than evaluating the desktop command through a shell.
+
+Applications can add providers for routes such as `/calc`. Prefixes must be unique and begin with `/`; `/apps` belongs to the desktop application provider. Provider callbacks run on the service goroutine, so keep them short and do not call back into the same service from a callback.
+
+[Source code](https://github.com/Nomadcxx/sysc-launch/tree/c0c7ef2d4bbf0a4ab78bc6d837304488016f80f2) · [Report an issue](https://github.com/Nomadcxx/sysc-launch/issues)

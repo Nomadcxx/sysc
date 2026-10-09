@@ -1,0 +1,20 @@
+---
+title: Troubleshooting
+description: Collect read-only system and user-service details before recovery.
+---
+
+
+Run these checks as your normal user. They read system details and user-service status without restarting services or changing configuration.
+
+For a failed install or upgrade, start with [installer recovery](/docs/troubleshooting/installer). For an active user service, see [service troubleshooting](/docs/troubleshooting/services).
+
+```sh
+uname -m
+cat /etc/os-release
+printf 'WAYLAND_DISPLAY=%s\nNIRI_SOCKET=%s\n' "$WAYLAND_DISPLAY" "$NIRI_SOCKET"
+systemctl --user --no-pager status sysc-shell.service
+```
+
+If the shell unit does not exist, use the exact unit name listed by the SYSC release you installed. Include the command output and your SYSC release when you ask for help. Do not prefix systemctl --user with sudo.
+
+See [greeter troubleshooting](/docs/troubleshooting/greeter) for greetd and [lock troubleshooting](/docs/troubleshooting/lock) for sysc-lock. Check [compatibility](/docs/reference/compatibility) before changing the install route.

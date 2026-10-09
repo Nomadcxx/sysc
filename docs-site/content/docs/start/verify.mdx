@@ -1,0 +1,26 @@
+---
+title: Verify the install
+description: Confirm the SYSC install stamp and user services after installation.
+---
+
+
+Read the final task list before closing the installer. A skipped gSlapper package task does not prevent the rest of the suite from installing. A failed component or service task needs follow-up.
+
+Run these checks as the account that installed SYSC, from its active Niri session:
+
+```sh
+systemctl --user is-active graphical-session.target
+systemctl --user --no-pager --failed
+systemctl --user --no-pager status sysc-shell.service
+journalctl --user -u sysc-shell.service -b --no-pager
+```
+
+The session target should report active. The shell service should show active (running); an empty failed-unit list means systemd has no failed user units. The journal command shows this boot's shell messages.
+
+The v0.1.1 suite also enables sysc-clipboard.service, sysc-notify.service, sysc-tray.service, sysc-walls.service and sysc-lock-session.service. Check each service by its exact name if the corresponding feature is missing. sysc-terminal is disabled in the installer manifest and has no suite unit.
+
+The lock-owner service starts with the session; it does not lock the screen by itself. New sysc-shell configs set `session.locker: "sysc-lock"`, while existing configs remain unchanged. Running sysc-lock requests a lock, so only run it when you are ready to lock the current session and can authenticate. See the [v0.1.1 shell defaults](https://github.com/Nomadcxx/sysc/blob/4cb1899fe678ce5afe0cf032d102a17475969a5d/README.md#L66-L70).
+
+If you installed from SSH or a TTY, the installer can enable services but cannot start them. Log in through Niri and check again. If a unit fails, begin with the read-only [service checks](/docs/troubleshooting/services). Do not run systemctl --user through sudo.
+
+The default install record is ~/.local/state/sysc/installed.json. An absolute XDG_STATE_HOME changes that location. The record lists the SYSC release, component versions, whether the units started, and any provider handovers.

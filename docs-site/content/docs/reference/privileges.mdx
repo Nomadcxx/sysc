@@ -1,0 +1,18 @@
+---
+title: Privileges
+description: Which SYSC installation and service commands run as a user or system administrator.
+---
+
+## Privilege boundaries
+
+| Operation | Who runs it and why |
+|---|---|
+| Install, upgrade or uninstall the SYSC suite | Run as a normal user. SYSC writes binaries, config and user units in that account, and refuses to run as root. |
+| Run systemctl --user for SYSC | Run as the normal user that owns the session. The units belong to that user's systemd manager and session bus. |
+| Install gSlapper through the SYSC wizard | Run the wizard as a normal user. The package manager may request administrator authentication to install a system package; AUR helpers run as the user and elevate their package step. |
+| Install or remove standalone sysc-greet | Run as a system administrator. The greeter configures greetd, writes under /etc and enables a system service. |
+| Build standalone sysc-lock | Build as a normal user. Development packages may need administrator access. The build uses PAM headers and the installed binary needs system runtime libraries. The standalone installer does not use sudo or modify PAM. |
+
+Do not prefix systemctl --user with sudo. That targets root's user manager, not the desktop session. The suite's user services start with graphical-session.target; [Niri session startup](/docs/guides/niri-session) explains that boundary.
+
+The sysc-greet system service and the SYSC user services have different owners and lifecycles. The suite does not install sysc-greet. See [compatibility](/docs/reference/compatibility) and the [greeter manual](/docs/components/sysc-greet) before changing the login path.

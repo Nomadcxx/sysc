@@ -1,0 +1,12 @@
+{
+  "title": "Start",
+  "pages": [
+    "index",
+    "requirements",
+    "install",
+    "wizard",
+    "verify",
+    "[Compatibility](/docs/reference/compatibility)",
+    "[Source record](/docs/reference/sources)"
+  ]
+}

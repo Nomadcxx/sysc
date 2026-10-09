@@ -1,0 +1,72 @@
+---
+title: sysc-metrics
+description: Sample Linux telemetry and distinguish valid zero readings from missing data.
+---
+
+
+sysc-metrics reads Linux telemetry from procfs and sysfs. It exposes snapshots and samplers for CPU, memory, filesystems, network, temperature, battery, GPU and processes. It starts no background goroutines.
+
+**Source:** [default-branch commit 0ceba66c](https://github.com/Nomadcxx/sysc-metrics/commit/0ceba66ccb36044fb4b2e98f554ee356badcf8c5) · **SYSC v0.1.1 status:** library linked by sysc-shell, not a separately installed service.
+
+## Sample CPU usage
+
+Add the version for the documented source:
+
+~~~sh
+go get github.com/Nomadcxx/sysc-metrics@v0.7.2-0.20261008035906-0ceba66ccb36
+~~~
+
+CPU usage is a rate, so the first sample establishes a baseline. Check Valid before treating Fraction as a reading:
+
+~~~go
+package main
+
+import (
+    "fmt"
+    "log"
+    "time"
+
+    "github.com/Nomadcxx/sysc-metrics"
+)
+
+func main() {
+    sampler := metrics.NewCPUSampler()
+    ticker := time.NewTicker(time.Second)
+    defer ticker.Stop()
+
+    for range ticker.C {
+        sample, err := sampler.Sample()
+        if err != nil {
+            log.Print(err)
+            continue
+        }
+        if sample.Usage.Valid {
+            fmt.Printf("cpu: %.0f%%\n", sample.Usage.Fraction*100)
+        }
+    }
+}
+~~~
+
+The first sample can produce no usage line. A later line such as cpu: 14% depends on the machine and current load. A valid zero means the sampler measured an idle CPU; Valid false means it could not produce a rate yet.
+
+## Hardware limits
+
+A single snapshot can include partial values and explain unreadable sensors in Issues. A missing battery is a valid absence, not an error. Close a GPUSampler when its polling loop ends; samplers keep prior readings and one caller must own each sampler.
+
+AMD usage comes from sysfs. NVIDIA usage calls nvidia-smi when a card exists. Intel i915 usage uses PMU counters when permitted, then falls back to per-process DRM counters. The fallback cannot observe another user's GPU clients. The newer Intel xe driver has no support in this source.
+
+The [v0.7.1 API reference](https://pkg.go.dev/github.com/Nomadcxx/sysc-metrics@v0.7.1) covers the latest stable module. The current source snapshot is newer than the `v0.7.0` dependency in sysc-shell v0.1.0; the [source record](/docs/reference/sources) lists that installed-shell version.
+
+## Choose snapshots or samplers
+
+Use a snapshot for a value that comes from one filesystem read, such as memory, filesystems, thermal zones, batteries, uptime or GPU identity. A snapshot can return useful values alongside entries in `Issues`; inspect those issues before treating a missing field as a zero.
+
+Use a sampler for a rate. CPU, disk, network and process rates compare counters with the previous sample. The first sample establishes that baseline, so `Valid` stays false until a later sample. Poll on an application-owned ticker and keep one sampler per caller. Close a GPU sampler when the loop ends because it may hold device counters open.
+
+## Read GPU results with their limits
+
+`ReadGPU` reports vendor and device information. Usage comes from `GPUSampler`: AMD reads sysfs, NVIDIA runs `nvidia-smi` when an NVIDIA card exists, and Intel i915 prefers PMU counters before a per-process DRM fallback. The fallback sees clients from the current user only. Intel xe usage is unsupported in this source. Permission or driver gaps produce an invalid reading rather than a fabricated zero.
+
+The library reads system telemetry. It does not change power settings, kill processes or control hardware. The consuming application decides how often to sample and how to display partial readings.
+
+[Source code](https://github.com/Nomadcxx/sysc-metrics/tree/0ceba66ccb36044fb4b2e98f554ee356badcf8c5) · [Report an issue](https://github.com/Nomadcxx/sysc-metrics/issues)
