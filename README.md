@@ -2,107 +2,214 @@
   <img src="assets/banner.svg?v=2" alt="SYSC">
 </div>
 
-Guided installer for the SYSC desktop on [Niri](https://github.com/YaLTeR/niri), written in Go with the Bubble Tea framework.
+Guided installer for the SYSC desktop on [Niri](https://github.com/YaLTeR/niri).
+Choose your desktop defaults, review existing bars and notification daemons,
+then install the suite into your user account.
 
-One binary installs a tested set of components into the user session
-(`~/.local/bin`, systemd --user) and walks first-run defaults: theme, wallpaper
-directory, recommended bar plugins, and weather location.
+[Install](#install) · [Wizard guide](#wizard-guide) · [Sudo and install locations](#sudo-and-install-locations) · [Uninstall](#uninstall) · [Troubleshooting](#troubleshooting)
 
-## Installation
+## Before you start
 
-### Quick Install
+- Use an **Arch-family Linux system on x86_64/amd64**. The current suite
+  rejects other distros and architectures, even though we publish an arm64
+  installer binary.
+- Have Niri configured at `~/.config/niri/config.kdl` and systemd user services
+  available. Run the installer from a Niri session for immediate startup.
+  Start Niri with `niri-session` so its systemd session target is active.
+- Use a terminal of at least **80 × 24** and have internet access for downloads
+  and weather lookup.
+- Have `yay` or `paru` available if you want the installer to add gSlapper.
+  Without either helper, it skips gSlapper and continues with the suite.
 
-Install the latest release with:
+**Run as your normal user. Do not prefix the installer with `sudo`.**
+The installer requests package-manager privileges when needed.
+
+## Install
+
+### Release binary: no Go required
+
+Download the [latest release](https://github.com/Nomadcxx/sysc/releases/latest),
+verify its checksum, and keep the installer for future reruns or uninstall:
 
 ```sh
-f=$(mktemp); trap 'rm -f "$f"' EXIT; curl -fsSL https://github.com/Nomadcxx/sysc/releases/latest/download/sysc-linux-amd64 -o "$f" && chmod 700 "$f" && "$f"
+download_dir=$(mktemp -d)
+curl -fsSL https://github.com/Nomadcxx/sysc/releases/latest/download/sysc-linux-amd64 -o "$download_dir/sysc-linux-amd64" &&
+curl -fsSL https://github.com/Nomadcxx/sysc/releases/latest/download/SHA256SUMS -o "$download_dir/SHA256SUMS" &&
+(cd "$download_dir" && sha256sum -c --ignore-missing SHA256SUMS) &&
+mkdir -p "$HOME/.local/bin" &&
+install -m 755 "$download_dir/sysc-linux-amd64" "$HOME/.local/bin/sysc" &&
+"$HOME/.local/bin/sysc"
 ```
 
-`install.sh` in this repository is the same fetcher: it detects the
-architecture, verifies the release checksum, and runs the installer. A
-non-interactive shell runs it with `--yes`.
+Only continue after the checksum reports `sysc-linux-amd64: OK`. To choose a
+specific release, replace `latest/download` in both URLs with
+`download/v0.1.1`. Add `~/.local/bin` to your `PATH` to use `sysc` directly;
+the commands below use its full path.
 
-### Build from Source
-
-Build and run the installer from source with one line:
+### Source one-liner: requires Go 1.26+ and git
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Nomadcxx/sysc/main/.install | sh
 ```
 
-Or clone and run it yourself:
+This builds current `main` in a temporary directory, opens the wizard when a
+terminal is available, and removes the temporary build afterward. It does not
+keep a `sysc` installer command. Without a terminal, it uses `--yes`.
+
+For a source checkout you can keep and rerun:
 
 ```sh
-git clone https://github.com/Nomadcxx/sysc
+git clone https://github.com/Nomadcxx/sysc.git
 cd sysc
-go run ./cmd/sysc
+go build -p 2 -o sysc ./cmd/sysc
+./sysc
 ```
 
-Start the installer as your normal user. It writes suite binaries and services
-under your home directory. For gSlapper, it gives the package manager access to
-the terminal for its sudo prompt, then resumes. An unavailable package or
-failed package step appears as a skipped task; the rest of the suite can still
-install.
+## Wizard guide
 
-Use the arrow keys to choose a theme, edit the wallpaper directory, and use
-Space to toggle each plugin checkbox. Each page includes advice for the
-current choice. PgUp/PgDn scrolls review details, task results, and warnings.
-The installer uses a black background in both desktop theme modes.
-Set `SYSC_REDUCED_MOTION=1` to show a static banner.
+Each page includes advice for the current choice. Use **Enter** to continue
+and **Esc** to return to the previous page.
 
-## What it installs
-
-| Component | Role |
+| Page | What to do |
 |---|---|
-| [sysc-shell](https://github.com/Nomadcxx/sysc-shell) | Desktop shell (bar, panels, plugins) |
-| [sysc-clipboard](https://github.com/Nomadcxx/sysc-clipboard) | Clipboard history daemon |
-| [sysc-terminal](https://github.com/Nomadcxx/sysc-terminal) | Terminal-effect wallpaper engine |
-| [sysc-walls](https://github.com/Nomadcxx/sysc-walls) | Idle screensaver (not wallpaper) |
-| [sysc-notify](https://github.com/Nomadcxx/sysc-notify) | Notifications daemon (enabled when its first release ships) |
-| [sysc-tray](https://github.com/Nomadcxx/sysc-tray) | StatusNotifierItem tray (enabled in installer `v0.1.1`) |
-| [gSlapper](https://github.com/Nomadcxx/gslapper) | Video wallpaper, only if missing |
-| [sysc-lock](https://github.com/Nomadcxx/sysc-lock) | Session locker (enabled by default) |
+| Theme | Use **↑/↓** to choose Standard, Compact, or Expressive. Use **←/→** for the desktop's light/dark mode. The installer stays pure black in either mode. |
+| Wallpaper | Type a directory such as `~/Pictures/wallpapers`, then press **Enter**. Use an absolute path or a path beginning with `~/`. |
+| Plugins | Use **↑/↓** to focus Weather or Media; **Space** toggles that checkbox independently. |
+| Weather | Check the automatic location or type a city and press **Enter** to search. Once the location is correct, press **Enter** with the input empty to accept it. The built-in weather widget needs a location even if you untick the Weather plugin. |
+| Conflicts | When another provider is detected, use **↑/↓** to select it and **←/→** to choose how to handle it. See [conflict choices](#conflict-choices). |
+| Review | Check the component list, paths, and package-manager advice. Press **Enter** to begin installation. |
 
-Niri first. Arch-family distros in v1; others are detected and refused with a
-named message. The installer enables `sysc-lock-session.service` and starts it
-when a graphical session is active. Starting the service does not lock the
-screen. New shell configs use `session.locker: "sysc-lock"`; existing configs
-remain unchanged.
+**PgUp/PgDn** scrolls long pages, task results, and warnings. **F9** cycles
+English, German, French, and Simplified Chinese. **Ctrl+C** quits; **q** also
+quits outside text-entry pages. Set `SYSC_REDUCED_MOTION=1` for a static banner.
 
-The gSlapper package layer includes Arch via yay/paru, Debian 13 and Ubuntu
-25.x via the Debian `.deb`, Ubuntu 24.04 via its own `.deb`, and Fedora 42+
-via `.rpm`. The native packages use apt-get or dnf after checksum verification.
-The suite's preflight still permits Arch-family systems only; enabling other
-distros also requires validation of the remaining components.
+If you already have a shell configuration, the installer preserves it. Wizard
+defaults apply when creating a new configuration.
 
-## Conflicts and handover
+### Conflict choices
 
-An install that finds an existing provider (mako, dunst, swaync, fnott,
-waybar, Noctalia, Quickshell shells, DMS) offers a handover on a Conflicts
-wizard page: **Hand over**, **Keep both**, or **Skip SYSC component**. Handing
-over stops and disables the provider and comments its niri
-`spawn-at-startup` line with a `// sysc-handover: ` marker; each step is
-recorded in the install stamp before it runs. When sysc-notify is enabled,
-SYSC also writes
-`$XDG_DATA_HOME/dbus-1/services/org.freedesktop.Notifications.service` so a
-packaged daemon cannot win the bus name.
+The installer detects providers such as mako, dunst, swaync, fnott, Waybar,
+Noctalia, Quickshell shells, and DMS.
 
-`--yes` hands over notification daemons and keeps bars and shells (with a
-warning per kept conflict); `--keep-conflicts` keeps everything;
-`--handover=all` hands everything over. The last two are mutually exclusive.
+| Choice | Effect |
+|---|---|
+| Hand over | Stop the existing provider, disable its user unit where present, and comment its Niri startup lines so SYSC can take over. |
+| Keep both | Leave the existing provider enabled. Review warnings about duplicate bars or competing notification daemons. |
+| Skip SYSC component | Leave the corresponding SYSC service disabled and stopped. Its binary still downloads with the suite. |
 
-`sysc uninstall` reverses exactly what the stamp recorded: restores commented
-lines byte-for-byte, re-enables units that were enabled before, and puts back
-a displaced activation file.
+Uninstall restores recorded startup lines and previously enabled units, plus
+any notification activation file the installer displaced.
 
-## Flags
+## Sudo and install locations
 
-`--yes` installs with defaults, `--city` or `--lat`/`--lon` set the weather
-location without prompts, and `--lang` picks the installer language (`en`,
-`zh-Hans`, `de`, `fr`). Without a location flag, `--yes` guesses from the
-network; if that fails it refuses and names the flags. `--keep-conflicts` and
-`--handover=all` control conflict handover as described above.
+The suite runs as your user. gSlapper is a system package, so its package
+manager may request your sudo password. The wizard hands over the terminal
+for that prompt and resumes afterward. On Arch, yay/paru builds as your user
+and elevates its package-manager step.
 
-## Status
+If gSlapper is already available on `PATH`, the installer leaves it alone.
+If its package install fails or no compatible installer is available, the
+result lists gSlapper as skipped; the rest of the suite can still install.
+`--yes` skips the wizard but does not bypass sudo authentication.
 
-Ready to run from the latest release or a source checkout.
+| Location | Contents |
+|---|---|
+| `~/.local/bin` | Suite executables |
+| `~/.config/systemd/user` | User service units |
+| `~/.config/sysc-shell/config.json` | Desktop configuration; preserved if it exists |
+| `~/.config/niri/sysc.kdl` | SYSC startup configuration included from Niri's config |
+| `~/.local/state/sysc` | Install stamp and staging files; guided installer log |
+
+Config, state, and data paths follow absolute `XDG_CONFIG_HOME`,
+`XDG_STATE_HOME`, and `XDG_DATA_HOME` overrides. Binaries stay in `~/.local/bin`.
+
+## What the current release installs
+
+The embedded [suite pin](internal/pin/pin.json) records component versions and
+checksums. Installer `v0.1.1` includes:
+
+| Component | Version | Role |
+|---|---|---|
+| [sysc-shell](https://github.com/Nomadcxx/sysc-shell) | v0.1.0 | Desktop bar, panels, and plugins |
+| [sysc-clipboard](https://github.com/Nomadcxx/sysc-clipboard) | v0.1.2 | Clipboard history |
+| [sysc-walls](https://github.com/Nomadcxx/sysc-walls) | v1.0.2 | Idle screensaver |
+| [sysc-notify](https://github.com/Nomadcxx/sysc-notify) | v0.1.0 | Notifications |
+| [sysc-tray](https://github.com/Nomadcxx/sysc-tray) | v0.1.1 | StatusNotifierItem tray |
+| [sysc-lock](https://github.com/Nomadcxx/sysc-lock) | v0.1.0 | Session lock owner |
+| [gSlapper](https://github.com/Nomadcxx/gSlapper) | External package | Video wallpaper; install only when missing |
+
+The installer does not yet install
+[sysc-terminal](https://github.com/Nomadcxx/sysc-terminal); its suite entry is
+disabled until a user unit is wired. sysc-greet is a separate greeter project.
+
+The installer enables `sysc-lock-session.service`. Starting the service does
+not lock your screen. New shell configs select `sysc-lock` as the locker.
+
+### Distro support
+
+The complete suite currently supports Arch-family systems only. The gSlapper
+package code also has checksum-pinned routes for Debian 13, Ubuntu 24.04,
+Ubuntu 25.x, and Fedora 42+, using apt-get or dnf. Those routes prepare for
+future suite support; they do not enable installation on those distros today.
+
+## Command-line installation
+
+Skip the wizard and choose a weather city:
+
+```sh
+"$HOME/.local/bin/sysc" --yes --city "Melbourne"
+```
+
+Or supply both coordinates:
+
+```sh
+"$HOME/.local/bin/sysc" --yes --lat=-37.8136 --lon=144.9631
+```
+
+| Flag | Use |
+|---|---|
+| `--yes` | Use Standard, dark mode, `~/Pictures/wallpapers`, and recommended plugins. Without location flags, attempt a public-IP weather lookup. |
+| `--city "Berlin"` | Look up a weather city; requires network access. |
+| `--lat=… --lon=…` | Supply both weather coordinates without a location lookup. |
+| `--lang en` | Choose `en`, `de`, `fr`, or `zh-Hans`. |
+| `--keep-conflicts` | Keep existing providers. |
+| `--handover=all` | Hand over detected notification, bar, and shell providers. |
+
+By default, `--yes` hands over notification daemons and keeps bars and shells,
+with warnings for kept conflicts. `--keep-conflicts` and `--handover=all` are
+mutually exclusive. In a source checkout, substitute `./sysc` for the path.
+
+## Uninstall
+
+Remove suite binaries and user units, restore recorded handovers, and keep
+your shell configuration:
+
+```sh
+"$HOME/.local/bin/sysc" uninstall
+```
+
+Add `--purge` to also remove the `sysc-shell` configuration directory.
+Add `--remove-gslapper` to remove gSlapper **only if SYSC installed it**; its
+package manager may request sudo. Add `--yes` to skip the uninstall confirmation.
+
+If you used the source checkout, run `./sysc uninstall` there. If you used only
+the source one-liner, download the installer as described above and run its
+`uninstall` command instead of starting an installation.
+
+## Troubleshooting
+
+| Symptom | Next step |
+|---|---|
+| Root, distro, or architecture refusal | Run as your normal user on an Arch-family x86_64 system. Other suite targets are not enabled yet. |
+| Missing Niri configuration | Configure Niri first and ensure `~/.config/niri/config.kdl` exists, accounting for your XDG config override. |
+| Weather lookup fails | Retry a city search; for command-line installs, supply both `--lat` and `--lon`. |
+| gSlapper is skipped | Read its task reason. Install yay/paru if missing, or resolve the package error and rerun. |
+| Services enabled but not started | From SSH/TTY, log into Niri. If the installer reports an inactive session target, start Niri with `niri-session` and rerun. |
+| A guided install fails | Read the final task results and `~/.local/state/sysc/installer.log`, or the corresponding XDG state path. |
+
+To inspect the desktop shell service:
+
+```sh
+systemctl --user status sysc-shell.service
+journalctl --user -u sysc-shell.service -b
+```
