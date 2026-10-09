@@ -27,7 +27,7 @@ func TestEmbeddedPinIsPublishable(t *testing.T) {
 			continue
 		}
 		enabled++
-		if _, ok := unitForID(c.ID); !ok {
+		if _, ok := unitForName(c.Unit); !ok {
 			t.Errorf("%s: no matching unit template", c.ID)
 		}
 		if c.Tag == "" || len(c.Binaries) == 0 {
@@ -47,14 +47,14 @@ func TestEmbeddedPinIsPublishable(t *testing.T) {
 			}
 		}
 	}
-	if enabled != 5 {
-		t.Errorf("enabled components = %d, want 5", enabled)
+	if enabled != 6 {
+		t.Errorf("enabled components = %d, want 6", enabled)
 	}
 }
 
-func unitForID(id string) (units.Unit, bool) {
+func unitForName(name string) (units.Unit, bool) {
 	for _, u := range units.All {
-		if strings.TrimSuffix(u.Name, ".service") == id {
+		if u.Name == name {
 			return u, true
 		}
 	}

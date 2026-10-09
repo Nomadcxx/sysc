@@ -55,8 +55,7 @@ type Pin struct {
 
 // Decode parses and validates a pin file. It rejects a missing SHA, a missing
 // amd64 asset, a malformed or non-https asset, a binary name that is not a
-// plain file name, an unknown or duplicate unit, an empty tag, an enabled
-// sysc-lock, a disabled row without a reason, an empty recommended plugin
+// plain file name, an unknown or duplicate unit, an empty tag, a disabled row without a reason, an empty recommended plugin
 // list, and a gslapper row without a package name.
 func Decode(data []byte) (Pin, error) {
 	var p Pin
@@ -85,9 +84,6 @@ func Decode(data []byte) (Pin, error) {
 				return Pin{}, fmt.Errorf("pin: component %q is disabled without a reason", c.ID)
 			}
 			continue
-		}
-		if c.ID == "sysc-lock" {
-			return Pin{}, fmt.Errorf("pin: sysc-lock must stay disabled until it ships")
 		}
 		if len(c.Binaries) == 0 {
 			return Pin{}, fmt.Errorf("pin: component %q has no binaries", c.ID)

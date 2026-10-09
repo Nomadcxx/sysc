@@ -15,6 +15,7 @@ import (
 
 // Answers are the wizard choices that reach the shell configuration.
 type Answers struct {
+	Locker       string
 	Preset       string // standard, compact or expressive
 	Mode         string // dark or light
 	WallpaperDir string
@@ -80,6 +81,9 @@ func ConfigJSON(a Answers) ([]byte, error) {
 			"location":  a.Location,
 		},
 		"bar": map[string]any{"items": map[string]any{"right": right}},
+	}
+	if a.Locker != "" {
+		out["session"] = map[string]any{"locker": a.Locker}
 	}
 	if a.WallpaperDir != "" {
 		out["wallpaper"] = map[string]any{"image_directory": a.WallpaperDir}

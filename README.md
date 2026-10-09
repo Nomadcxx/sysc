@@ -49,10 +49,13 @@ go run ./cmd/sysc
 | [sysc-notify](https://github.com/Nomadcxx/sysc-notify) | Notifications daemon (enabled when its first release ships) |
 | [sysc-tray](https://github.com/Nomadcxx/sysc-tray) | StatusNotifierItem tray (enabled when its first release ships) |
 | [gSlapper](https://github.com/Nomadcxx/gslapper) | Video wallpaper, only if missing |
-| [sysc-lock](https://github.com/Nomadcxx/sysc-lock) | Session lock, when it ships |
+| [sysc-lock](https://github.com/Nomadcxx/sysc-lock) | Session locker (enabled by default) |
 
 Niri first. Arch-family distros in v1; others are detected and refused with a
-named message. sysc-lock stays out until that product is finished.
+named message. The installer enables `sysc-lock-session.service` and starts it
+when a graphical session is active. Starting the service does not lock the
+screen. New shell configs use `session.locker: "sysc-lock"`; existing configs
+remain unchanged.
 
 ## Conflicts and handover
 

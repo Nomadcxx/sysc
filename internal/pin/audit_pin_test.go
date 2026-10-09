@@ -78,7 +78,7 @@ func TestAuditDecodeDocumentedRejectionsHold(t *testing.T) {
 		{"disabled without reason", func(d map[string]any) {
 			d["components"].([]any)[1].(map[string]any)["reason"] = ""
 		}},
-		{"enabled sysc-lock", func(d map[string]any) {
+		{"enabled lock without binaries", func(d map[string]any) {
 			d["components"].([]any)[1].(map[string]any)["disabled"] = false
 			d["components"].([]any)[1].(map[string]any)["id"] = "sysc-lock"
 		}},
