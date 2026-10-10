@@ -10,6 +10,7 @@ import (
 
 	"github.com/Nomadcxx/sysc/internal/fetch"
 	"github.com/Nomadcxx/sysc/internal/stamp"
+	"github.com/Nomadcxx/sysc/internal/units"
 )
 
 func safetyOptions(t *testing.T) Options {
@@ -147,5 +148,49 @@ func TestConcurrentInstallRefusesSecondRun(t *testing.T) {
 	}
 	if err == nil || !strings.Contains(err.Error(), "in progress") {
 		t.Fatalf("second run error=%v, want lock refusal", err)
+	}
+}
+
+func TestPackagedComponentAllowsRecordedLegacyUpgrade(t *testing.T) {
+	o := safetyOptions(t)
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "pacman"), "#!/bin/sh\ncase \"$3\" in sysc-walls) exit 0;; *) exit 1;; esac\n")
+	if err := os.Chmod(filepath.Join(dir, "pacman"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+	o.CheckOwnership = CheckOwnership
+	// A fresh install must not take over the packaged service.
+	if _, err := Run(context.Background(), o); err == nil {
+		t.Fatal("accepted new package takeover")
+	}
+	binary := filepath.Join(o.binDir(), "sysc-walls-daemon")
+	writeFile(t, binary, "existing local build")
+	writeFile(t, binary+".bak", "earlier recovery copy")
+	unit := filepath.Join(o.unitDir(), "sysc-walls.service")
+	for _, u := range units.All {
+		if u.Name == "sysc-walls.service" {
+			data, err := units.Content(u)
+			if err != nil {
+				t.Fatal(err)
+			}
+			writeFile(t, unit, string(data))
+		}
+	}
+	writeFile(t, unit+".sysc.bak", "original user service")
+	if err := stamp.Write(o.stateDir(), stamp.Stamp{Components: map[string]string{"sysc-walls": "older-version"}}, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Run(context.Background(), o); err != nil {
+		t.Fatal("recorded rerun refused:", err)
+	}
+	if _, err := Uninstall(o); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]string{binary: "existing local build", binary + ".bak.legacy": "earlier recovery copy", unit: "original user service"} {
+		got, err := os.ReadFile(path)
+		if err != nil || string(got) != want {
+			t.Fatalf("lost original %s: %q %v", path, got, err)
+		}
 	}
 }

@@ -290,7 +290,7 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		return res, fmt.Errorf("read existing installation: %w", prevErr)
 	}
 	if prevErr == nil && prev.Files == nil {
-		prev.Files, err = legacyFiles(opts, prev)
+		prev.Files, err = legacyFiles(opts, prev, true)
 		if err != nil {
 			return res, err
 		}
@@ -699,7 +699,7 @@ func Uninstall(opts Options) (Result, error) {
 		return res, fmt.Errorf("no SYSC installation found: %w", err)
 	}
 	if st.Files == nil {
-		st.Files, err = legacyFiles(opts, st)
+		st.Files, err = legacyFiles(opts, st, false)
 		if err != nil {
 			return res, err
 		}

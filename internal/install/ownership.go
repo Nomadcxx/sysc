@@ -38,7 +38,7 @@ func lockState(dir string) (*os.File, error) {
 	return f, nil
 }
 
-// CheckOwnership refuses to shadow an existing package-managed installation.
+// CheckOwnership refuses a new package takeover, but allows recorded user installs to upgrade.
 // The CLI wires this read-only guard before install mutations.
 func CheckOwnership(home string, components []pin.Component) error {
 	if _, err := exec.LookPath("pacman"); err != nil {
@@ -50,6 +50,19 @@ func CheckOwnership(home string, components []pin.Component) error {
 		}
 		out, err := exec.Command("pacman", "-Qq", "--", c.ID).CombinedOutput()
 		if err == nil {
+			o := Options{Home: home}
+			st, readErr := stamp.Read(o.stateDir())
+			if readErr == nil && st.Components[c.ID] != "" && len(c.Binaries) > 0 {
+				local := true
+				for _, b := range c.Binaries {
+					if _, err := regularData(filepath.Join(o.binDir(), b.Name)); err != nil {
+						local = false
+					}
+				}
+				if local {
+					continue
+				} // Run validates or backs up these recorded user files.
+			}
 			return fmt.Errorf("%s is managed by pacman; update it with your AUR helper. To change install methods, follow https://nomadcxx.github.io/sysc/docs/start/install/", c.ID)
 		}
 		var exit *exec.ExitError
@@ -156,7 +169,7 @@ func planFile(st *stamp.Stamp, path string, data []byte, unit string, systemctl 
 
 // legacyFiles upgrades the old component-only record without claiming files
 // for skipped components or disabling system-wide services.
-func legacyFiles(o Options, st stamp.Stamp) ([]stamp.File, error) {
+func legacyFiles(o Options, st stamp.Stamp, upgrading bool) ([]stamp.File, error) {
 	files := []stamp.File{}
 	for _, c := range o.Pin.Components {
 		if _, owned := st.Components[c.ID]; !owned {
@@ -170,6 +183,37 @@ func legacyFiles(o Options, st stamp.Stamp) ([]stamp.File, error) {
 			}
 			if err != nil {
 				return nil, err
+			}
+			if upgrading {
+				// Old stamps have no file hashes. Preserve current bytes as the
+				// upgrade baseline rather than claiming an unverifiable binary.
+				inventory := stamp.Stamp{Files: files}
+				if err := planFile(&inventory, path, data, "", o.systemctl()); err != nil {
+					return nil, err
+				}
+				files = inventory.Files
+				old, err := regularData(path + ".bak")
+				if err == nil {
+					saved := path + ".bak.legacy"
+					if err := os.Link(path+".bak", saved); err != nil {
+						if !os.IsExist(err) {
+							return nil, err
+						}
+						prior, err := regularData(saved)
+						if err != nil {
+							return nil, err
+						}
+						if fileHash(prior) != fileHash(old) {
+							return nil, fmt.Errorf("preserving conflicting legacy backups %s and %s.bak", saved, path)
+						}
+					}
+					if err := os.Remove(path + ".bak"); err != nil {
+						return nil, err
+					}
+				} else if !os.IsNotExist(err) {
+					return nil, err
+				}
+				continue
 			}
 			a, ok := b.Assets["amd64"]
 			if !ok || c.Tag != st.Components[c.ID] || !strings.EqualFold(fileHash(data), a.SHA256) {
@@ -190,6 +234,14 @@ func legacyFiles(o Options, st stamp.Stamp) ([]stamp.File, error) {
 			if err != nil {
 				return nil, err
 			}
+			if upgrading && string(data) != string(expected) {
+				inventory := stamp.Stamp{Files: files}
+				if err := planFile(&inventory, path, data, u.Name, o.systemctl()); err != nil {
+					return nil, err
+				}
+				files = inventory.Files
+				continue
+			}
 			if string(data) != string(expected) {
 				return nil, fmt.Errorf("legacy SYSC unit %s has user changes; preserve it before uninstalling", path)
 			}
@@ -208,6 +260,10 @@ func legacyFiles(o Options, st stamp.Stamp) ([]stamp.File, error) {
 		if err == nil {
 			f.Backup = f.Path + ".sysc.bak"
 			f.BackupSHA256 = fileHash(saved)
+			if upgrading && f.Unit != "" {
+				f.WasEnabled = o.systemctl()("is-enabled", "--quiet", f.Unit) == nil
+				f.WasActive = o.systemctl()("is-active", "--quiet", f.Unit) == nil
+			}
 		} else if !os.IsNotExist(err) {
 			return nil, err
 		}
