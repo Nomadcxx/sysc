@@ -12,6 +12,7 @@ import (
 
 	"github.com/Nomadcxx/sysc/internal/distro"
 	"github.com/Nomadcxx/sysc/internal/fetch"
+	"github.com/Nomadcxx/sysc/internal/i18n"
 	"github.com/Nomadcxx/sysc/internal/install"
 	"github.com/Nomadcxx/sysc/internal/pin"
 )
@@ -146,6 +147,43 @@ func wirePackages(opts *install.Options, osRelease []byte, arch string, run func
 		// not need a compatible release asset or a fresh download.
 		return run(nativePackageCommand(manager, "remove", pkg, opts.Yes))
 	}
+	opts.CJKFont = cjkFontPackage(manager)
+	opts.InstallSystemPkg = func(pkg string) error {
+		if managerErr != nil {
+			return managerErr
+		}
+		if manager == "yay" || manager == "paru" {
+			return run(packageCommand(manager, "-S", pkg, opts.Yes))
+		}
+		return run(nativePackageCommand(manager, "install", pkg, opts.Yes))
+	}
+	opts.HasCJKFont = cjkFontPresent
+}
+
+// cjkFontPackage maps the detected package manager to the distro's Noto CJK
+// package; one package covers zh/ja/ko glyphs. "" means no known package.
+func cjkFontPackage(manager string) string {
+	switch manager {
+	case "apt-get":
+		return "fonts-noto-cjk"
+	case "dnf":
+		return "google-noto-sans-cjk-ttc-fonts"
+	case "yay", "paru":
+		return "noto-fonts-cjk"
+	}
+	return ""
+}
+
+// cjkFontPresent asks fontconfig whether any installed font covers the
+// locale script. ponytail: fc-list missing counts as absent, so the
+// distro package install pulls fontconfig itself.
+func cjkFontPresent(locale i18n.Locale) bool {
+	lang := map[i18n.Locale]string{i18n.JA: "ja", i18n.KO: "ko", i18n.ZH: "zh"}[locale]
+	if lang == "" {
+		return true
+	}
+	out, err := exec.Command("fc-list", ":lang="+lang).Output()
+	return err == nil && len(strings.TrimSpace(string(out))) > 0
 }
 
 func nativePackageCommand(manager, action, pkg string, yes bool) *exec.Cmd {
