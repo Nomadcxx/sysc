@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { Video } from '@/components/video';
 import { basePath } from '@/lib/shared';
 
 const actions = [
@@ -68,6 +69,15 @@ export function DocsHome() {
         </h1>
         <p>Install, configure, troubleshoot, develop, and extend SYSC.</p>
       </header>
+
+      <figure className="docs-home-demo">
+        <Video
+          src="/media/shell-tour.mp4"
+          poster="/media/shell-tour-poster.png"
+          label="Settings, Bar settings and the system monitor opening over a static wallpaper, with the bar in view"
+        />
+        <figcaption>The SYSC desktop: sysc-shell with its bar, settings and system monitor.</figcaption>
+      </figure>
 
       <nav className="docs-home-actions" aria-label="Documentation tasks">
         {actions.map((action) => (

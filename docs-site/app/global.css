@@ -141,7 +141,7 @@ pre,
 .sysc-brand-label {
   color: #a3a3a3;
   font-family: 'IBM Plex Sans Variable', system-ui, sans-serif;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 500;
   line-height: 1;
 }
@@ -323,9 +323,21 @@ a[data-active='true'] {
   line-height: 1.15;
 }
 
+.docs-home-demo {
+  width: min(100%, 560px);
+  margin: 0 auto 2rem;
+}
+
+.docs-home-demo figcaption {
+  margin-top: 0.5rem;
+  color: #a3a3a3;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
 .docs-home-logo {
   display: block;
-  width: clamp(120px, 18vw, 180px);
+  width: clamp(96px, 12vw, 132px);
   height: auto;
 }
 
@@ -520,6 +532,24 @@ a[data-active='true'] {
 
 .prose :where(pre) {
   border: 1px solid #292929;
+  /* leave room for the copy button so it never sits on the first characters */
+  padding-inline-end: 2.75rem;
+}
+
+/* Headings read as foreground text; the red stays on links and the slash bars. */
+.prose :where(h1, h2, h3, h4) > a[data-card] {
+  color: #f1f1f1;
+}
+
+.sysc-figure {
+  margin: 1.5rem 0;
+}
+
+.sysc-figure figcaption {
+  margin-top: 0.5rem;
+  color: #a3a3a3;
+  font-size: 0.85rem;
+  line-height: 1.45;
 }
 
 .prose :where(th) {
