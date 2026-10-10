@@ -49,16 +49,19 @@ type Options struct {
 	Purge          bool
 	RemoveGSlapper bool
 
-	Client         *http.Client
-	Download       func(ctx context.Context, staging string, assets []fetch.Asset) error
-	Swap           func(binDir, staging string, names []string) error
-	LookPath       func(string) (string, error)
-	InstallPkg     func(pkg string) error
-	RemovePkg      func(pkg string) error
-	Systemctl      func(args ...string) error
-	Now            time.Time
-	CheckRuntime   func(staging string, names []string) ([]string, error)
-	CheckOwnership func(home string, components []pin.Component) error
+	Client           *http.Client
+	Download         func(ctx context.Context, staging string, assets []fetch.Asset) error
+	Swap             func(binDir, staging string, names []string) error
+	LookPath         func(string) (string, error)
+	InstallPkg       func(pkg string) error
+	RemovePkg        func(pkg string) error
+	CJKFont          string
+	InstallSystemPkg func(pkg string) error
+	HasCJKFont       func(i18n.Locale) bool
+	Systemctl        func(args ...string) error
+	Now              time.Time
+	CheckRuntime     func(staging string, names []string) ([]string, error)
+	CheckOwnership   func(home string, components []pin.Component) error
 
 	// Progress receives a detached snapshot of the task list every time it
 	// changes: pending/skipped rows after download, done after swap, the
@@ -518,6 +521,9 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		}
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Done})
 	}
+	if t := cjkFontTask(opts); t != nil {
+		res.Tasks = append(res.Tasks, *t)
+	}
 	emit(res.Tasks)
 
 	startNames := []string{}
@@ -837,4 +843,31 @@ func Uninstall(opts Options) (Result, error) {
 		return res, err
 	}
 	return res, nil
+}
+
+// cjkFontTask installs the host's CJK font package when the selected
+// installer language needs glyphs the system lacks; a localized UI without
+// fonts is tofu. Returns nil when no row applies. Font failure never fails
+// the install; the reason tells the user what to install manually.
+// ponytail: one distro Noto package covers zh/ja/ko; no fontconfig means
+// "absent" so the install path pulls it; fonts are never removed on uninstall.
+func cjkFontTask(opts Options) *Task {
+	if opts.Loc == nil {
+		return nil
+	}
+	switch *opts.Loc {
+	case i18n.JA, i18n.KO, i18n.ZH:
+	default:
+		return nil
+	}
+	if opts.CJKFont == "" || opts.InstallSystemPkg == nil {
+		return &Task{Name: "cjk-font", Status: Skipped, Reason: "no package installer configured for CJK fonts"}
+	}
+	if opts.HasCJKFont != nil && opts.HasCJKFont(*opts.Loc) {
+		return &Task{Name: "cjk-font", Status: Skipped, Reason: "CJK font already installed"}
+	}
+	if err := opts.InstallSystemPkg(opts.CJKFont); err != nil {
+		return &Task{Name: "cjk-font", Status: Skipped, Reason: err.Error()}
+	}
+	return &Task{Name: "cjk-font", Status: Done}
 }
