@@ -21,9 +21,14 @@ const (
 	ZH Locale = "zh-Hans"
 	DE Locale = "de"
 	FR Locale = "fr"
+	ES Locale = "es"
+	PT Locale = "pt"
+	JA Locale = "ja"
+	KO Locale = "ko"
+	RU Locale = "ru"
 )
 
-var order = []Locale{EN, ZH, DE, FR}
+var order = []Locale{EN, ZH, DE, FR, ES, PT, JA, KO, RU}
 
 var messages = map[Locale]map[string]string{}
 
@@ -63,6 +68,16 @@ func Match(lang string) Locale {
 		return DE
 	case "fr":
 		return FR
+	case "es":
+		return ES
+	case "pt":
+		return PT
+	case "ja":
+		return JA
+	case "ko":
+		return KO
+	case "ru":
+		return RU
 	default:
 		return EN
 	}
@@ -75,6 +90,9 @@ func T(loc Locale, key string) string {
 	}
 	return messages[EN][key]
 }
+
+// Locales returns the supported locales in F9 cycle order.
+func Locales() []Locale { return append([]Locale{}, order...) }
 
 // Next returns the next locale in the F9 cycle.
 func Next(loc Locale) Locale {

@@ -61,7 +61,7 @@ func TestWallpaperInputEditsAndValidates(t *testing.T) {
 
 // All screens must retain advice/actions within one screen, including CJK text.
 func TestInstallerScreensFit(t *testing.T) {
-	for _, loc := range []i18n.Locale{i18n.EN, i18n.ZH, i18n.DE, i18n.FR} {
+	for _, loc := range i18n.Locales() {
 		for _, size := range [][2]int{{80, 24}, {100, 30}, {120, 40}} {
 			for page := ui.PageTheme; page <= ui.PageConfirm; page++ {
 				for step := ui.StepWizard; step <= ui.StepFailed; step++ {
@@ -201,7 +201,7 @@ func TestLateWeatherErrorDoesNotReplaceWallpaperError(t *testing.T) {
 }
 
 func TestFocusedConflictStaysVisible(t *testing.T) {
-	for _, loc := range []i18n.Locale{i18n.EN, i18n.ZH, i18n.DE, i18n.FR} {
+	for _, loc := range i18n.Locales() {
 		m := newModel(loc, nil, false)
 		m.w.Page = ui.PageConflicts
 		for i := 0; i < 12; i++ {

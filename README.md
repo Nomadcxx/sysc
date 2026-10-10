@@ -122,7 +122,8 @@ and **Esc** to return to the previous page.
 | Review | Check the component list, paths, and package-manager advice. Press **Enter** to begin installation. |
 
 **PgUp/PgDn** scrolls long pages, task results, and warnings. **F9** cycles
-English, German, French, and Simplified Chinese. **Ctrl+C** quits; **q** also
+English, Simplified Chinese, German, French, Spanish, Portuguese, Japanese,
+Korean, and Russian. **Ctrl+C** quits; **q** also
 quits outside text-entry pages. Set `SYSC_REDUCED_MOTION=1` for a static banner.
 
 If you already have a shell configuration, the installer preserves it. Wizard
@@ -226,7 +227,7 @@ Or supply both coordinates:
 | `--yes` | Use Standard, dark mode, and `~/Pictures/wallpapers`. Without location flags, attempt a public-IP weather lookup. Add plugins later through the shell's catalog. |
 | `--city "Berlin"` | Look up a weather city; requires network access. |
 | `--lat=… --lon=…` | Supply both weather coordinates without a location lookup. |
-| `--lang en` | Choose `en`, `de`, `fr`, or `zh-Hans`. |
+| `--lang en` | Choose `en`, `zh-Hans`, `de`, `fr`, `es`, `pt`, `ja`, `ko`, or `ru`. |
 | `--keep-conflicts` | Keep existing providers. |
 | `--handover=all` | Hand over detected notification, bar, and shell providers. |
 
