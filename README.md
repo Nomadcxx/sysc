@@ -5,6 +5,12 @@
   </picture>
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/status-alpha-orange?style=for-the-badge" alt="alpha" />
+  <img src="https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux" />
+  <img src="https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go" />
+</p>
+
 Guided installer for the SYSC desktop on [Niri](https://github.com/YaLTeR/niri).
 Choose your desktop defaults, review existing bars and notification daemons,
 then install the suite into your user account.
