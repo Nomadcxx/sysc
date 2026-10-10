@@ -12,15 +12,15 @@ then install the suite into your user account.
 [Documentation](https://nomadcxx.github.io/sysc/docs/) · [Install](#install) · [Wizard guide](#wizard-guide) · [Sudo and install locations](#sudo-and-install-locations) · [Uninstall](#uninstall) · [Troubleshooting](#troubleshooting)
 
 <p align="center">
-  <img src="assets/tour.webp" alt="The SYSC desktop: Terminal Art, Settings and the control centre opening over a live terminal-art wallpaper" width="800"><br>
-  <sub>The desktop the installer sets up, with <a href="https://github.com/Nomadcxx/sysc-shell">sysc-shell</a> over a live <a href="https://github.com/Nomadcxx/sysc-terminal">sysc-terminal</a> wallpaper. <a href="assets/tour.mp4">Full-quality video</a></sub>
+  <img src="assets/tour.webp" alt="The SYSC desktop: Settings, Bar settings and the system monitor opening over a static wallpaper, with the bar in view" width="900"><br>
+  <sub>The desktop the installer sets up, with <a href="https://github.com/Nomadcxx/sysc-shell">sysc-shell</a>, bar included. <a href="assets/tour.mp4">Full-quality video</a></sub>
 </p>
 
 ## What you get
 
 <table>
   <tr>
-    <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-shell"><img src="assets/suite-shell.webp" alt="The sysc-shell control centre" width="300"></a><br><b><a href="https://github.com/Nomadcxx/sysc-shell">sysc-shell</a></b><br><sub>Bars, panels, launcher and settings</sub></td>
+    <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-shell"><img src="assets/suite-shell.png" alt="The sysc-shell control centre" width="300"></a><br><b><a href="https://github.com/Nomadcxx/sysc-shell">sysc-shell</a></b><br><sub>Bars, panels, launcher and settings</sub></td>
     <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-lock"><img src="assets/suite-lock.webp" alt="The sysc-lock lock screen with the fire effect" width="300"></a><br><b><a href="https://github.com/Nomadcxx/sysc-lock">sysc-lock</a></b><br><sub>Compositor-enforced lock screen</sub></td>
     <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-terminal"><img src="assets/suite-terminal.webp" alt="sysc-terminal fire effect as the desktop wallpaper" width="300"></a><br><b><a href="https://github.com/Nomadcxx/sysc-terminal">sysc-terminal</a></b><br><sub>Live terminal-art wallpaper</sub></td>
   </tr>
