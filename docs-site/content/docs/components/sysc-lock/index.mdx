@@ -10,7 +10,7 @@ New sysc-shell configs set `session.locker: "sysc-lock"`. SYSC leaves an existin
 
 Starting the owner service does not acquire a lock. Running sysc-lock requests a lock, so do that only when you are ready to lock the current session and can authenticate.
 
-![Four lock screen themes: fire, matrix, aquarium and sonar](/media/lock-tour.webp)
+![The lock screen with the fire effect and the Eldritch palette, rendered with --preview at 1920x1080](/media/lock-fire-eldritch.png)
 
 ## Security requirements
 
@@ -42,9 +42,7 @@ printf '%s' '{"config":{"effect":"none","palette":"nord"},"width":960,"height":5
   | sysc-lock --preview > lock-preview.png
 ~~~
 
-![Fire effect, Eldritch palette, rendered with --preview](/media/lock-fire-eldritch.webp)
-
-![Beams effect, Dracula palette, rendered with --preview](/media/lock-beams-dracula.webp)
+![Beams effect, Dracula palette, rendered with --preview](/media/lock-beams-dracula.png)
 
 Shell Settings → Lock Screen uses the same installed renderer and applies changes on the next lock. The config file lives at `$XDG_CONFIG_HOME/sysc-lock/config.json`, defaulting to `~/.config/sysc-lock/config.json`. The lock screen can also follow the named palette committed by sysc-shell. Choose a palette in the locker's options or set `follow_shell` to `false` to keep an independent palette.
 
