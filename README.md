@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/wordmark-white.png">
-    <img src="assets/wordmark-black.png" alt="SYSC" width="420">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-white.png">
+    <img src="assets/logo-black.png" alt="SYSC" height="180">
   </picture>
 </p>
 

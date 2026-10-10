@@ -127,15 +127,14 @@ pre,
 }
 
 .sysc-brand {
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 0.15rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .sysc-brand-logo {
   display: block;
-  width: 96px;
+  width: 34px;
   height: auto;
 }
 
@@ -326,7 +325,7 @@ a[data-active='true'] {
 
 .docs-home-logo {
   display: block;
-  width: clamp(200px, 28vw, 320px);
+  width: clamp(120px, 18vw, 180px);
   height: auto;
 }
 
