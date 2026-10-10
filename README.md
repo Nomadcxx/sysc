@@ -9,12 +9,27 @@ Guided installer for the SYSC desktop on [Niri](https://github.com/YaLTeR/niri).
 Choose your desktop defaults, review existing bars and notification daemons,
 then install the suite into your user account.
 
-[Install](#install) · [Wizard guide](#wizard-guide) · [Sudo and install locations](#sudo-and-install-locations) · [Uninstall](#uninstall) · [Troubleshooting](#troubleshooting)
+[Documentation](https://nomadcxx.github.io/sysc/docs/) · [Install](#install) · [Wizard guide](#wizard-guide) · [Sudo and install locations](#sudo-and-install-locations) · [Uninstall](#uninstall) · [Troubleshooting](#troubleshooting)
 
 <p align="center">
   <img src="assets/tour.webp" alt="The SYSC desktop: Terminal Art, Settings and the control centre opening over a live terminal-art wallpaper" width="800"><br>
   <sub>The desktop the installer sets up, with <a href="https://github.com/Nomadcxx/sysc-shell">sysc-shell</a> over a live <a href="https://github.com/Nomadcxx/sysc-terminal">sysc-terminal</a> wallpaper. <a href="assets/tour.mp4">Full-quality video</a></sub>
 </p>
+
+## What you get
+
+<table>
+  <tr>
+    <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-shell"><img src="assets/suite-shell.webp" alt="The sysc-shell control centre" width="300"></a><br><b><a href="https://github.com/Nomadcxx/sysc-shell">sysc-shell</a></b><br><sub>Bars, panels, launcher and settings</sub></td>
+    <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-lock"><img src="assets/suite-lock.webp" alt="The sysc-lock lock screen with the fire effect" width="300"></a><br><b><a href="https://github.com/Nomadcxx/sysc-lock">sysc-lock</a></b><br><sub>Compositor-enforced lock screen</sub></td>
+    <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-terminal"><img src="assets/suite-terminal.webp" alt="sysc-terminal fire effect as the desktop wallpaper" width="300"></a><br><b><a href="https://github.com/Nomadcxx/sysc-terminal">sysc-terminal</a></b><br><sub>Live terminal-art wallpaper</sub></td>
+  </tr>
+</table>
+
+Plus notifications ([sysc-notify](https://github.com/Nomadcxx/sysc-notify)), clipboard history
+([sysc-clipboard](https://github.com/Nomadcxx/sysc-clipboard)), a system tray
+([sysc-tray](https://github.com/Nomadcxx/sysc-tray)) and
+[16 official plugins](https://github.com/Nomadcxx/sysc-plugins). Screenshots use fixture data.
 
 ## Before you start
 
@@ -163,6 +178,14 @@ The complete suite currently supports Arch-family systems only. The gSlapper
 package code also has checksum-pinned routes for Debian 13, Ubuntu 24.04,
 Ubuntu 25.x, and Fedora 42+, using apt-get or dnf. Those routes prepare for
 future suite support; they do not enable installation on those distros today.
+
+| Platform | Status |
+|---|---|
+| Arch-family, x86_64 | Supported |
+| AUR packages | Planned. Nothing is published to the AUR yet. |
+| Debian 13, Ubuntu 24.04+ | Stub. Only the gSlapper package route exists. |
+| Fedora 42+ | Stub. Only the gSlapper package route exists. |
+| Other distributions and architectures | Not supported. The installer refuses to run. |
 
 ## Command-line installation
 

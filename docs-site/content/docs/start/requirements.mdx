@@ -9,6 +9,17 @@ SYSC v0.1.1 installs the desktop suite on an Arch-family x86_64 system. It targe
 
 SYSC's release workflow also publishes an arm64 installer, but the v0.1.1 component pin has amd64 assets only. That binary does not provide a complete arm64 suite. SYSC has not published a qualification matrix for every Arch derivative, machine or desktop configuration. See [compatibility](/docs/reference/compatibility).
 
+## Other distributions
+
+Only Arch-family systems are supported. The rest are stubs while that work continues:
+
+| Platform | Status |
+|---|---|
+| AUR packages | Planned. Nothing is published to the AUR yet. |
+| Debian 13, Ubuntu 24.04+ | Stub. Only the gSlapper package route exists. |
+| Fedora 42+ | Stub. Only the gSlapper package route exists. |
+| Other distributions and architectures | Not supported. The installer refuses to run. |
+
 ## Prepare the session
 
 - Configure Niri and make sure the Niri config exists. By default that is ~/.config/niri/config.kdl; an absolute XDG_CONFIG_HOME moves it.
