@@ -59,10 +59,10 @@ export function DocsHome() {
         <h1>
           <Image
             className="docs-home-logo"
-            src={`${basePath}/sysc-logo.svg`}
+            src={`${basePath}/sysc-logo.png`}
             alt="SYSC"
-            width={1024}
-            height={1024}
+            width={873}
+            height={140}
             priority
           />
           <span>Documentation</span>

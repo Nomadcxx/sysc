@@ -134,7 +134,7 @@ pre,
 
 .sysc-brand-logo {
   display: block;
-  width: 34px;
+  width: 96px;
   height: auto;
 }
 
@@ -337,7 +337,7 @@ a[data-active='true'] {
 
 .docs-home-logo {
   display: block;
-  width: clamp(96px, 12vw, 132px);
+  width: clamp(220px, 28vw, 340px);
   height: auto;
 }
 

@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/logos/sysc-inverse-transparent.svg">
-    <img src="assets/brand/logos/sysc-primary-transparent.svg" alt="SYSC" height="180">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo.png">
+    <img src="assets/logo-light.png" alt="SYSC" width="420">
   </picture>
 </p>
 
