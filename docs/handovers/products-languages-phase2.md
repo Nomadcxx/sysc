@@ -29,10 +29,13 @@ installer (e.g. select default language might also be made)."
 
 bd issues closed: sysc-1094/1096/1097/1098/1100/1101/1102/1103.
 
-**PR truth: NO i18n PRs exist yet for any of the product repos** (verified via
-`gh pr list` + `git ls-remote`; earlier notes claiming created PRs were false —
-concurrent history rewrites killed those branches). `git fetch` per repo
-before acting.
+**PR truth (updated 11 Oct, this session): all six i18n PRs are now OPEN** —
+sysc-shell #179, sysc-lock #51 (base `master`), sysc-launch #9,
+sysc-terminal #20, sysc-clipboard #3, sysc-plugins #149. Earlier notes
+claiming created PRs were false (concurrent history rewrites killed those
+branches); these were re-pushed from `/tmp/*-i18n` worktrees and verified via
+`gh pr list --state all` at creation. `git fetch` + re-verify before acting;
+this cluster still rewrites history.
 
 ## Job 1 — sysc-shell PR (resume point, prepared)
 
@@ -145,14 +148,32 @@ language picker. Wire it to:
    the wizard is owner-driven work, this repo line only supplies the seam.
 
 **Installer default-language (owner: "changes the installer (e.g. select
-default language might also be made)")**: verified `internal/install` writes
-the Niri autostart entry, NOT `~/.config/sysc-shell/config.json` — no
-shell-config write seam exists in the installer today (confirm with
-`rg 'config.json|sysc-shell' internal/install cmd/sysc` before designing).
-Two honest options: (a) wizard captures language at first run — zero
-installer-contract change (preferred); (b) add an installer→config write —
-needs owner approval, plus pin/asset implications. The installer TUI itself
+default language might also be made)")**: CORRECTED 11 Oct — the earlier
+"no shell-config write seam" claim is FALSE. The installer DOES write
+`~/.config/sysc-shell/config.json`: `seed.Write(opts.configPath(),
+opts.Answers)` at `internal/install/install.go:442` (path helper
+`configPath()` ~:123), and the seeded JSON already contains a `session`
+object (`{"session": {"locker": ...}}`, `internal/seed/seed.go`
+`ConfigJSON`). `Write` never overwrites an existing config (rerun-safe).
+So installer default-language is a SMALL change, not a new seam: add
+`Language` to `seed.Answers`, emit it inside the existing `session` map
+(validated against the shell codes en/es/pt/ja/ko/ru — reuse the shipped
+installer code list + shell-side validation as authority), and wire the
+question into the TUI/answers flow. Option (a) wizard-captures-language at
+first run remains zero-contract-change and still preferred while the
+wizard ships; option (b) is now cheap but still owner-approval territory
+(install contract + pin/asset implications). The installer TUI itself
 already speaks all nine locales (`-lang`, `LANG`, F9 cycle).
+
+**CJK font in the installer (owner: not an AUR dependency)**: DONE 11 Oct —
+sysc PR #57 open (`i18n/installer-cjk-font`, commit `e48852e` on `main`).
+When the resolved installer locale is zh-Hans/ja/ko and `fc-list :lang=<script>`
+finds no font, one `cjk-font` task installs the distro Noto package
+(`fonts-noto-cjk` apt / `google-noto-sans-cjk-ttc-fonts` dnf / `noto-fonts-cjk`
+yay/paru via new generic `InstallSystemPkg` seam in `wirePackages`). Skipped
+with reason on any failure — never fails the install; never removed on
+uninstall. No PKGBUILD/`depends` change. Session `language` (shell-side) is
+orthogonal and not gated here.
 
 ## Invariants (never break)
 
