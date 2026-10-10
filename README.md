@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo.png">
-    <img src="assets/logo-light.png" alt="SYSC" width="420">
+    <img src="assets/logo-light.png" alt="SYSC" width="873">
   </picture>
 </p>
 
