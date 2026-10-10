@@ -47,13 +47,39 @@ The installer requests package-manager privileges when needed.
 
 ## Install
 
-Use the guided installer for your first setup, or the AUR if you want pacman to
-manage the desktop. Start with sysc-shell; its companions come with it.
+### Quick install
 
-### Guided Go installer: no Go required (recommended)
+Needs Go 1.26+ and git:
 
-Download the [latest release](https://github.com/Nomadcxx/sysc/releases/latest),
-verify its checksum, and keep the installer for future reruns or uninstall:
+```sh
+curl -fsSL https://raw.githubusercontent.com/Nomadcxx/sysc/main/.install | sh
+```
+
+This builds current `main` in a temporary directory and opens the wizard. It
+keeps no `sysc` command, so use a manual install below if you want to rerun or
+uninstall later. Without a terminal it uses `--yes`.
+
+### AUR
+
+On Arch, install [sysc-shell](https://aur.archlinux.org/packages/sysc-shell).
+Your AUR helper pulls in the companions (sysc-lock, sysc-clipboard, sysc-notify
+and sysc-tray). Stop existing bars and notification daemons first:
+
+```sh
+yay -S sysc-shell
+systemctl --user enable --now sysc-shell.service
+```
+
+Run the service command inside a Niri session started with `niri-session`.
+Optional extras: `sysc-terminal` (terminal-art wallpapers), `sysc-plugins-git`
+(official plugins) and `sysc-launch` (standalone launcher CLI). Coming from the
+guided installer? Read the [installation guide](https://nomadcxx.github.io/sysc/docs/start/install/)
+first.
+
+### Manual
+
+Release binary, no Go required. It verifies the checksum and keeps the
+installer for later reruns or uninstall:
 
 ```sh
 download_dir=$(mktemp -d)
@@ -65,64 +91,14 @@ install -m 755 "$download_dir/sysc-linux-amd64" "$HOME/.local/bin/sysc" &&
 "$HOME/.local/bin/sysc"
 ```
 
-Only continue after the checksum reports `sysc-linux-amd64: OK`. To choose a
-specific release, replace `latest/download` in both URLs with
-`download/v0.1.1`. Add `~/.local/bin` to your `PATH` to use `sysc` directly;
-the commands below use its full path.
-
-The published v0.1.1 binary predates the current source improvements. It does
-not install sysc-terminal, and its Weather/Media plugin choices do not install
-those plugins. Use the shell's catalog to add plugins. The source route below
-includes terminal wallpapers, seeds tray presentation for a new config, and
-skips the empty plugin-selection page. It also protects existing files during
-upgrades and keeps failed uninstall steps available for retry.
-
-### AUR: package-managed desktop
-
-On Arch, install [sysc-shell](https://aur.archlinux.org/packages/sysc-shell).
-Your AUR helper pulls in the required companions. Stop existing bars and
-notification daemons before starting the shell:
-
-```sh
-yay -S sysc-shell
-systemctl --user enable --now sysc-shell.service
-```
-
-Run the service command inside a Niri session started with `niri-session`.
-The shell package pulls in sysc-lock, sysc-clipboard, sysc-notify and sysc-tray,
-and its user service starts the companions before the shell. On first start,
-it creates a missing config with sysc-lock selected and tray presentation enabled.
-Use your AUR helper for subsequent updates.
-
-Add extras when you want them:
-
-| Package | Purpose |
-|---|---|
-| `sysc-terminal` | Live terminal-art wallpapers |
-| `sysc-plugins-git` | The official plugin collection; you can also choose plugins in the shell's catalog |
-| `sysc-launch` | Standalone launcher CLI; the shell already includes its launcher |
-
-For wallpapers and the plugin collection: `yay -S sysc-terminal sysc-plugins-git`.
-The [installation guide](https://nomadcxx.github.io/sysc/docs/start/install/)
-explains the required companions and optional wallpaper tools.
-
-For migration from the guided installer, review user units and binaries that
-shadow the packaged files. See the [setup and migration guide](https://nomadcxx.github.io/sysc/docs/)
-and `/usr/share/doc/sysc-shell/first-run.md`.
-
-### Source one-liner: requires Go 1.26+ and git
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/Nomadcxx/sysc/main/.install | sh
-```
-
-This builds current `main` in a temporary directory, opens the wizard when a
-terminal is available, and removes the temporary build afterward. It does not
-keep a `sysc` installer command. Without a terminal, it uses `--yes`.
+Continue only if the checksum reports `sysc-linux-amd64: OK`. Replace
+`latest/download` with `download/v0.1.1` to pin a release. The published v0.1.1
+binary predates the current source: it does not install sysc-terminal or the
+Weather and Media plugins. The commands below use `~/.local/bin/sysc`.
 
 ### Manual source checkout
 
-For a source checkout you can keep and rerun:
+To keep a build you can rerun:
 
 ```sh
 git clone https://github.com/Nomadcxx/sysc.git
