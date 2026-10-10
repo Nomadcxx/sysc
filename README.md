@@ -48,7 +48,7 @@ The installer requests package-manager privileges when needed.
 
 ## Install
 
-### Release binary: no Go required
+### Guided Go installer: no Go required (recommended)
 
 Download the [latest release](https://github.com/Nomadcxx/sysc/releases/latest),
 verify its checksum, and keep the installer for future reruns or uninstall:
@@ -77,6 +77,29 @@ curl -fsSL https://raw.githubusercontent.com/Nomadcxx/sysc/main/.install | sh
 This builds current `main` in a temporary directory, opens the wizard when a
 terminal is available, and removes the temporary build afterward. It does not
 keep a `sysc` installer command. Without a terminal, it uses `--yes`.
+
+### AUR: package-managed desktop
+
+On Arch, use your AUR helper to install
+[sysc-shell](https://aur.archlinux.org/packages/sysc-shell) and optional wallpaper
+and plugin packages. Stop existing bars and notification daemons before starting the shell:
+
+```sh
+yay -S sysc-shell sysc-terminal sysc-plugins-git
+systemctl --user enable --now sysc-shell.service
+```
+
+Run the service command inside a Niri session started with `niri-session`.
+The shell package pulls in sysc-lock, sysc-clipboard, sysc-notify and sysc-tray,
+and its user service starts the companions before the shell. On first start,
+it creates a missing config with sysc-lock selected and tray presentation enabled.
+Use your AUR helper for subsequent updates.
+
+For migration from the guided installer, review user units and binaries that
+shadow the packaged files. See the [setup and migration guide](https://nomadcxx.github.io/sysc/docs/)
+and `/usr/share/doc/sysc-shell/first-run.md`.
+
+### Manual source checkout
 
 For a source checkout you can keep and rerun:
 
