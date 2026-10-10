@@ -7,6 +7,7 @@ import (
 
 	"github.com/Nomadcxx/sysc/internal/i18n"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/cellbuf"
 	"github.com/muesli/termenv"
 )
 
@@ -73,6 +74,20 @@ func TestCanvasStaysBlackAndGuidanceHasOwnBackground(t *testing.T) {
 	previous := lipgloss.ColorProfile()
 	lipgloss.SetColorProfile(termenv.TrueColor)
 	defer lipgloss.SetColorProfile(previous)
+	for _, size := range [][2]int{{80, 24}, {120, 44}, {60, 12}} {
+		width, height := size[0], size[1]
+		view := View(i18n.EN, "01/04 Theme", Control("Preset", "Standard", 60, true), PageTheme, StepWizard, width, height, nil)
+		buf := cellbuf.NewBuffer(width, height)
+		cellbuf.SetContent(buf, view)
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				cell := buf.Cell(x, y)
+				if cell == nil || cell.Style.Bg == nil {
+					t.Fatalf("%dx%d: terminal background exposed at (%d,%d)", width, height, x, y)
+				}
+			}
+		}
+	}
 	out := View(i18n.EN, "Theme", "body", PageTheme, StepWizard, 80, 24, nil)
 	if !strings.Contains(out, "48;2;0;0;0") {
 		t.Fatal("black canvas background was not set")

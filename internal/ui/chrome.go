@@ -134,7 +134,7 @@ func ScrollLimit(loc i18n.Locale, body, help string, page Page, step Step, width
 // ViewWithHelp scrolls long content inside a frame; help/actions stay visible.
 func ViewWithHelp(loc i18n.Locale, title, body, help string, page Page, step Step, width, height int, beams *BeamsTextEffect, offset int) string {
 	if width < MinWidth || height < MinHeight {
-		return baseStyle.Width(max(1, width)).Height(max(1, height)).Render(ansi.Wrap(i18n.T(loc, "ui.enlarge"), max(1, width), ""))
+		return opaqueCanvas(baseStyle.Width(max(1, width)).Height(max(1, height)).Render(ansi.Wrap(i18n.T(loc, "ui.enlarge"), max(1, width), "")))
 	}
 	f := measure(loc, page, step, width, height, beams, help)
 	lines := strings.Split(ansi.Wrap(body, f.contentWidth, ""), "\n")
@@ -152,7 +152,19 @@ func ViewWithHelp(loc i18n.Locale, title, body, help string, page Page, step Ste
 		}
 	}
 	screen := lipgloss.JoinVertical(lipgloss.Center, f.header, titleStyle.Render(title), "", pane, f.advice, f.actions, f.nav, scroll)
-	return baseStyle.Width(width).Height(height).Align(lipgloss.Center).Render(screen)
+	return opaqueCanvas(baseStyle.Width(width).Height(height).Align(lipgloss.Center).Render(screen))
+}
+
+// Nested styles reset the parent background before the layout's padding.
+// Restore black after those resets, retaining explicit panel backgrounds.
+func opaqueCanvas(view string) string {
+	color := lipgloss.ColorProfile().Color(string(Black))
+	if color == nil || color.Sequence(true) == "" {
+		return view
+	}
+	background := "\x1b[" + color.Sequence(true) + "m"
+	return strings.NewReplacer(ansi.ResetStyle, ansi.ResetStyle+background,
+		"\x1b[0m", "\x1b[0m"+background).Replace(view) + ansi.ResetStyle
 }
 
 func pageKey(page Page) string {
