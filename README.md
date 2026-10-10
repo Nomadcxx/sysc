@@ -5,15 +5,15 @@
   </picture>
 </p>
 
+https://github.com/user-attachments/assets/7cadf7b9-6fe5-4d53-b7d6-757e4082b68a
+
+<p align="center"><sub>The desktop the installer sets up, with <a href="https://github.com/Nomadcxx/sysc-shell">sysc-shell</a>, bar included. <a href="assets/tour.mp4">Download the 1080p file</a> (19 s).</sub></p>
+
 Guided installer for the SYSC desktop on [Niri](https://github.com/YaLTeR/niri).
 Choose your desktop defaults, review existing bars and notification daemons,
 then install the suite into your user account.
 
 [Documentation](https://nomadcxx.github.io/sysc/docs/) · [Install](#install) · [Wizard guide](#wizard-guide) · [Sudo and install locations](#sudo-and-install-locations) · [Uninstall](#uninstall) · [Troubleshooting](#troubleshooting)
-
-https://github.com/user-attachments/assets/7cadf7b9-6fe5-4d53-b7d6-757e4082b68a
-
-<p align="center"><sub>The desktop the installer sets up, with <a href="https://github.com/Nomadcxx/sysc-shell">sysc-shell</a>, bar included. <a href="assets/tour.mp4">Download the 1080p file</a> (19 s).</sub></p>
 
 ## What you get
 
