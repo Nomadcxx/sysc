@@ -57,7 +57,7 @@ func parseFlags(args []string, out io.Writer) (options, error) {
 	fs.StringVar(&o.City, "city", "", "weather city name")
 	fs.Float64Var(&o.Lat, "lat", 0, "weather latitude")
 	fs.Float64Var(&o.Lon, "lon", 0, "weather longitude")
-	fs.StringVar(&o.Lang, "lang", "", "installer language (en, zh-Hans, de, fr)")
+	fs.StringVar(&o.Lang, "lang", "", "installer language (en, zh-Hans, de, fr, es, pt, ja, ko, ru)")
 	fs.BoolVar(&o.KeepConflicts, "keep-conflicts", false, "keep every detected notification daemon and bar running")
 	fs.StringVar(&o.Handover, "handover", "", "hand over conflicts: --handover=all")
 	if err := fs.Parse(args); err != nil {
@@ -82,7 +82,7 @@ func parseUninstall(args []string, out io.Writer) (options, error) {
 	fs.BoolVar(&o.Yes, "yes", false, "no prompts")
 	fs.BoolVar(&o.Purge, "purge", false, "also remove user config")
 	fs.BoolVar(&o.RemoveGSlapper, "remove-gslapper", false, "also remove gSlapper with the package manager")
-	fs.StringVar(&o.Lang, "lang", "", "installer language (en, zh-Hans, de, fr)")
+	fs.StringVar(&o.Lang, "lang", "", "installer language (en, zh-Hans, de, fr, es, pt, ja, ko, ru)")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
