@@ -7,10 +7,10 @@ export function Brand({ className, ...props }: ComponentProps<'span'>) {
     <span className={`sysc-brand ${className ?? ''}`} {...props}>
       <Image
         className="sysc-brand-logo"
-        src={`${basePath}/sysc-logo.png`}
+        src={`${basePath}/sysc-logo.svg`}
         alt=""
-        width={640}
-        height={620}
+        width={1024}
+        height={1024}
         priority
       />
       <span className="sysc-brand-label">Documentation</span>
