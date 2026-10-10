@@ -8,6 +8,8 @@ sysc-notify owns org.freedesktop.Notifications on the session bus. It sends noti
 
 **Source:** [default-branch commit f44a247e](https://github.com/Nomadcxx/sysc-notify/commit/f44a247e01c18d582b7e8eca42372588d9f85a7b) · **SYSC v0.1.1 pin:** sysc-notify v0.1.0. Check the pinned release notes when you need behavior specific to that version.
 
+![Three sysc-shell notification toasts](/media/notify-toasts.webp)
+
 ## One notification owner
 
 Only one daemon can own org.freedesktop.Notifications. If mako, dunst, swaync or another provider already owns the name, notifications may continue going to that provider. SYSC's conflict flow can stop and disable a detected user service and record the change for uninstall recovery. Review [conflict handling](/docs/guides/conflicts) before handing it over.

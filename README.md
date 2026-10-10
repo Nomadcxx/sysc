@@ -1,12 +1,20 @@
-<div align="center">
-  <img src="assets/banner.svg?v=2" alt="SYSC">
-</div>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/wordmark-white.png">
+    <img src="assets/wordmark-black.png" alt="SYSC" width="420">
+  </picture>
+</p>
 
 Guided installer for the SYSC desktop on [Niri](https://github.com/YaLTeR/niri).
 Choose your desktop defaults, review existing bars and notification daemons,
 then install the suite into your user account.
 
 [Install](#install) · [Wizard guide](#wizard-guide) · [Sudo and install locations](#sudo-and-install-locations) · [Uninstall](#uninstall) · [Troubleshooting](#troubleshooting)
+
+<p align="center">
+  <img src="assets/tour.webp" alt="The SYSC desktop: Terminal Art, Settings and the control centre opening over a live terminal-art wallpaper" width="800"><br>
+  <sub>The desktop the installer sets up, with <a href="https://github.com/Nomadcxx/sysc-shell">sysc-shell</a> over a live <a href="https://github.com/Nomadcxx/sysc-terminal">sysc-terminal</a> wallpaper. <a href="assets/tour.mp4">Full-quality video</a></sub>
+</p>
 
 ## Before you start
 

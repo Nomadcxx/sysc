@@ -10,6 +10,8 @@ New sysc-shell configs set `session.locker: "sysc-lock"`. SYSC leaves an existin
 
 Starting the owner service does not acquire a lock. Running sysc-lock requests a lock, so do that only when you are ready to lock the current session and can authenticate.
 
+![Four lock screen themes: fire, matrix, aquarium and sonar](/media/lock-tour.webp)
+
 ## Security requirements
 
 The v0.1.0 [security model](https://github.com/Nomadcxx/sysc-lock/blob/408570acaf540e19d5bf8e4aebb821ea165b5f08/README.md#L12-L17) describes locking through the compositor's ext-session-lock-v1 protocol and authentication through the system PAM login service. It describes compositor-enforced input sealing, with no unlock bypass flag, test-mode environment variable or IPC unlock path. PAM, the compositor and the installed release determine the actual security boundary; do not replace PAM configuration as a troubleshooting step.
@@ -39,6 +41,10 @@ Use the preview command to inspect a palette and effect without locking the sess
 printf '%s' '{"config":{"effect":"none","palette":"nord"},"width":960,"height":540}' \
   | sysc-lock --preview > lock-preview.png
 ~~~
+
+![Fire effect, Eldritch palette, rendered with --preview](/media/lock-fire-eldritch.webp)
+
+![Beams effect, Dracula palette, rendered with --preview](/media/lock-beams-dracula.webp)
 
 Shell Settings → Lock Screen uses the same installed renderer and applies changes on the next lock. The config file lives at `$XDG_CONFIG_HOME/sysc-lock/config.json`, defaulting to `~/.config/sysc-lock/config.json`. The lock screen can also follow the named palette committed by sysc-shell. Choose a palette in the locker's options or set `follow_shell` to `false` to keep an independent palette.
 
