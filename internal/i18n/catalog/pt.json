@@ -72,7 +72,7 @@
   "mode.dark": "Escuro",
   "mode.light": "Claro",
   "wallpaper.directory": "Diretório de papéis de parede",
-  "wallpaper.invalid": "Use um caminho absoluto ou ~/diretório. O caminho não pode ficar vazio.",
+  "wallpaper.invalid": "Use um caminho absoluto ou ~/diretório. O caminho não pode estar vazio.",
   "weather.unset": "Sem local ainda",
   "weather.selected": "Local selecionado",
   "weather.city": "Pesquisar uma cidade",
