@@ -33,6 +33,8 @@ var (
 	titleStyle = baseStyle.Bold(true)
 	boxStyle   = baseStyle.Border(lipgloss.RoundedBorder()).BorderForeground(Muted).
 			BorderBackground(Black).Padding(0, 1)
+	adviceStyle = boxStyle.Foreground(Muted).Background(lipgloss.Color("#161616")).
+			BorderBackground(lipgloss.Color("#161616"))
 )
 
 func ContentWidth(width int) int { return max(1, min(width-4, 100)-4) }
@@ -104,7 +106,7 @@ func measure(loc i18n.Locale, page Page, step Step, width, height int, beams *Be
 			}
 		}
 	}
-	f.advice = boxStyle.Width(f.width - 2).Render(mutedStyle.Render("[?] " + ansi.Wrap(help, max(1, f.contentWidth-4), "")))
+	f.advice = adviceStyle.Width(f.width - 2).Render("[?] " + ansi.Wrap(help, max(1, f.contentWidth-4), ""))
 	primary := i18n.T(loc, "nav.next")
 	if page == PageConfirm {
 		primary = i18n.T(loc, "nav.install")

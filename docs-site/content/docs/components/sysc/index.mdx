@@ -26,6 +26,8 @@ The installer preserves an existing `sysc-shell/config.json`. Its wizard choices
 
 The v0.1.1 manifest controls what this installer installs. It includes six user services and an optional gSlapper package. It leaves sysc-greet, sysc-wayland, sysc-metrics, sysc-launch and sysc-plugins outside the suite. sysc-terminal is disabled because the release has no unit template for it. A project page can describe a newer source feature; check its pin status before expecting that feature after installing v0.1.1.
 
+Current source also installs sysc-terminal v0.1.0 without a unit; sysc-shell manages its wallpaper processes. It enables tray presentation when seeding a new config with sysc-tray installed and directs you to the shell's catalog for plugins. The published v0.1.1 binary keeps its original behavior. See the [install routes](/docs/start/install) before choosing a binary or source build.
+
 The full suite supports Arch-family x86_64 on Niri. An arm64 installer asset exists, but the suite preflight rejects arm64. gSlapper package routes for other distributions do not qualify the rest of SYSC for those systems. See [compatibility](/docs/reference/compatibility) before installing on another platform.
 
 The installer source is in the [sysc repository](https://github.com/Nomadcxx/sysc). The v0.1.1 [README](https://github.com/Nomadcxx/sysc/blob/v0.1.1/README.md), [pin manifest](https://github.com/Nomadcxx/sysc/blob/v0.1.1/internal/pin/pin.json) and [install implementation](https://github.com/Nomadcxx/sysc/blob/v0.1.1/internal/install/install.go) define the release behavior described here.

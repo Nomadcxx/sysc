@@ -4,6 +4,9 @@
 package dbusact
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,60 +33,130 @@ func Path(dataHome string) string {
 	return filepath.Join(dataHome, "dbus-1", "services", ServiceName+".service")
 }
 
-// Write installs the activation file, backing up a foreign file first, and
-// returns the stamp record. The write is atomic: a crash leaves the old file.
-func Write(dataHome string) (stamp.Activation, error) {
+// Plan saves the first foreign activation file without replacing it. Persist
+// the returned record before Install so an interruption retains recovery data.
+func Plan(dataHome string) (stamp.Activation, error) {
 	path := Path(dataHome)
 	a := stamp.Activation{Path: path}
-	if data, err := os.ReadFile(path); err == nil {
-		if string(data) == string(Content()) {
-			// Already ours (a re-run). Backing this up would make Delete
-			// "restore" our own file and leave it behind after uninstall.
-			return a, nil
+	data, err := readRegular(path)
+	if err != nil && !os.IsNotExist(err) {
+		return a, err
+	}
+	saved, bakErr := readRegular(path + ".sysc.bak")
+	if bakErr == nil {
+		if bytes.Equal(saved, Content()) {
+			return a, fmt.Errorf("activation backup contains SYSC's own file: %s", path+".sysc.bak")
 		}
-		created, err := backup.FirstBak(path)
-		if err != nil {
-			return a, err
+		a.Backup = path + ".sysc.bak"
+		a.BackupSHA256 = digest(saved)
+	} else if !os.IsNotExist(bakErr) {
+		return a, bakErr
+	}
+	if os.IsNotExist(err) || bytes.Equal(data, Content()) {
+		return a, nil
+	}
+	if a.Backup != "" {
+		if !bytes.Equal(data, saved) {
+			return a, fmt.Errorf("activation changed since its first backup: %s", path)
 		}
-		if created {
-			a.Backup = path + ".sysc.bak"
-		}
-	} else if !os.IsNotExist(err) {
+		return a, nil
+	}
+	if _, err := backup.FirstBak(path); err != nil {
 		return a, err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return a, err
-	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, Content(), 0o644); err != nil {
-		os.Remove(tmp)
-		return a, err
-	}
-	if err := os.Rename(tmp, path); err != nil {
-		os.Remove(tmp)
-		return a, err
-	}
+	a.Backup = path + ".sysc.bak"
+	a.BackupSHA256 = digest(data)
 	return a, nil
+}
+
+func digest(data []byte) string {
+	return fmt.Sprintf("%x", sha256.Sum256(data))
+}
+
+// Write installs the activation file, preserving the first foreign backup.
+// The replacement is atomic: a crash leaves the previous file intact.
+func Write(dataHome string) (stamp.Activation, error) {
+	a, err := Plan(dataHome)
+	if err != nil {
+		return a, err
+	}
+	return a, writeAtomic(a.Path, Content())
+}
+
+func readRegular(path string) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("activation file is not a regular file: %s", path)
+	}
+	return os.ReadFile(path)
+}
+
+func writeAtomic(path string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".sysc-activation-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(0o644); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
 }
 
 // Delete removes the file Write placed, restoring a displaced foreign file
 // byte-for-byte when one was backed up.
 func Delete(a stamp.Activation) error {
+	current, err := readRegular(a.Path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	missing := os.IsNotExist(err)
 	if a.Backup != "" {
-		data, err := os.ReadFile(a.Backup)
+		if a.Backup != a.Path+".sysc.bak" {
+			return fmt.Errorf("unexpected activation backup path: %s", a.Backup)
+		}
+		data, err := readRegular(a.Backup)
 		if err != nil {
+			if os.IsNotExist(err) && !missing && a.BackupSHA256 != "" && digest(current) == a.BackupSHA256 {
+				return nil // Restoration completed before the stamp could be updated.
+			}
 			return err
 		}
-		if err := os.MkdirAll(filepath.Dir(a.Path), 0o755); err != nil {
-			return err
+		if a.BackupSHA256 != "" && digest(data) != a.BackupSHA256 {
+			return fmt.Errorf("activation backup changed after installation; preserving %s and %s; recover the original backup before retrying", a.Path, a.Backup)
 		}
-		if err := os.WriteFile(a.Path, data, 0o644); err != nil {
-			return err
+		if bytes.Equal(data, Content()) {
+			return fmt.Errorf("activation backup contains SYSC's own file: %s", a.Backup)
+		}
+		if !missing && !bytes.Equal(current, Content()) && !bytes.Equal(current, data) {
+			return fmt.Errorf("activation changed after installation; preserving %s and %s", a.Path, a.Backup)
+		}
+		if !bytes.Equal(current, data) || missing {
+			if err := writeAtomic(a.Path, data); err != nil {
+				return err
+			}
 		}
 		if err := os.Remove(a.Backup); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 		return nil
+	}
+	if !missing && !bytes.Equal(current, Content()) {
+		return fmt.Errorf("activation changed after installation; preserving %s", a.Path)
 	}
 	if err := os.Remove(a.Path); err != nil && !os.IsNotExist(err) {
 		return err

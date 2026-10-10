@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -54,6 +55,35 @@ func TestWeatherBlocksConfirm(t *testing.T) {
 	w.Longitude = 13.405
 	if w.Next().Page != PageConfirm {
 		t.Fatal("complete weather did not advance")
+	}
+}
+
+func TestWizardSkipsEmptyPluginPageAndCountsVisiblePages(t *testing.T) {
+	for _, findings := range [][]conflict.Finding{nil, {{Name: "mako"}}} {
+		w := NewWizard(i18n.EN, nil)
+		w.Findings = findings
+		w.Location, w.Latitude = "Berlin", 52.52
+		count := 4 + len(findings)
+		pages := []Page{PageTheme, PageWallpaper, PageWeather}
+		if len(findings) != 0 {
+			pages = append(pages, PageConflicts)
+		}
+		pages = append(pages, PageConfirm)
+		for i, page := range pages {
+			if w.Page != page || !strings.HasPrefix(w.Title(), fmt.Sprintf("%02d / %02d", i+1, count)) {
+				t.Fatalf("page %d: got %v %q", i+1, w.Page, w.Title())
+			}
+			w = w.Next()
+		}
+		if !strings.Contains(w.Body(), i18n.T(i18n.EN, "plugin.catalog")) {
+			t.Fatalf("confirmation omitted the shell catalog guidance: %s", w.Body())
+		}
+		for i := len(pages) - 1; i > 0; i-- {
+			w = w.Back()
+			if w.Page != pages[i-1] {
+				t.Fatalf("back landed on %v, want %v", w.Page, pages[i-1])
+			}
+		}
 	}
 }
 

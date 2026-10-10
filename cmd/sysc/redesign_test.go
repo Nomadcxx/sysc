@@ -54,7 +54,7 @@ func TestWallpaperInputEditsAndValidates(t *testing.T) {
 	m = next.(model)
 	next, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = next.(model)
-	if m.w.Page != ui.PagePlugins || m.w.WallpaperDir != "~/Pictures/custom" {
+	if m.w.Page != ui.PageWeather || m.w.WallpaperDir != "~/Pictures/custom" {
 		t.Fatalf("edited path was not saved: %+v", m.w)
 	}
 }

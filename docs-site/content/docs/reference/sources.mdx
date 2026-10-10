@@ -6,6 +6,8 @@ description: Current component source revisions and the exact releases installed
 
 Use the current default-branch commit for behavior guidance. Use the release tag for the version that SYSC v0.1.1 installs. A branch can move ahead of the suite pin. SYSC does not install projects that its manifest does not pin.
 
+The current sysc main branch adds sysc-terminal v0.1.0, seeds tray presentation in a new config, and removes plugin selections that did not install executables. These changes apply to source builds. The published v0.1.1 installer retains its original pins and behavior.
+
 We checked these default branch heads on 2026-10-09. Each source link opens a full commit. When behavior changes, update the affected article and this record together. These commits show which source the docs used; component development continues independently.
 
 | Project | Current source and SYSC v0.1.1 pin or status |
@@ -15,7 +17,7 @@ We checked these default branch heads on 2026-10-09. Each source link opens a fu
 | [sysc-lock](/docs/components/sysc-lock) | [master · 408570acaf54](https://github.com/Nomadcxx/sysc-lock/commit/408570acaf540e19d5bf8e4aebb821ea165b5f08) · sysc-lock v0.1.0 |
 | [sysc-shell](/docs/components/sysc-shell) | [main · 0b6840392e1e](https://github.com/Nomadcxx/sysc-shell/commit/0b6840392e1e80ca45f0a1284dfab8e6d8ac6960) · sysc-shell v0.1.0 |
 | [sysc-tray](/docs/components/sysc-tray) | [main · a7928ebd45aa](https://github.com/Nomadcxx/sysc-tray/commit/a7928ebd45aa1fd1253d6142bb1d98e4681e8126) · sysc-tray v0.1.1 |
-| [sysc-terminal](/docs/components/sysc-terminal) | [main · 3f24ca081bfc](https://github.com/Nomadcxx/sysc-terminal/commit/3f24ca081bfc97f790147889d32ed08b31882960) · disabled in the installer manifest; no binary pin |
+| [sysc-terminal](/docs/components/sysc-terminal) | [main · 3f24ca081bfc](https://github.com/Nomadcxx/sysc-terminal/commit/3f24ca081bfc97f790147889d32ed08b31882960) · released installer v0.1.1: disabled; current source installer: sysc-terminal v0.1.0, no standalone unit |
 | [sysc-clipboard](/docs/components/sysc-clipboard) | [main · 35194acabf8f](https://github.com/Nomadcxx/sysc-clipboard/commit/35194acabf8f2fad9e906678a94949a41d330f5a) · sysc-clipboard v0.1.2 |
 | [sysc-wayland](/docs/components/sysc-wayland) | [main · 74b83d8e2fb1](https://github.com/Nomadcxx/sysc-wayland/commit/74b83d8e2fb167701e5ce15fc326344e9f0f15db) · library, not installed by the suite |
 | [sysc-metrics](/docs/components/sysc-metrics) | [main · 0ceba66ccb36](https://github.com/Nomadcxx/sysc-metrics/commit/0ceba66ccb36044fb4b2e98f554ee356badcf8c5) · library, not installed by the suite |

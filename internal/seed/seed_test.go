@@ -82,6 +82,38 @@ func TestSeedRejectsEmptyWeather(t *testing.T) {
 	}
 }
 
+func TestSeedEnablesInstalledTrayAndPreservesExistingPreference(t *testing.T) {
+	a := Answers{Tray: true, Latitude: 1, Longitude: 2, Location: "X"}
+	data, err := ConfigJSON(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	tray, _ := cfg["tray"].(map[string]any)
+	if tray["enabled"] != true {
+		t.Fatalf("installed tray is not enabled: %s", data)
+	}
+	path := filepath.Join(t.TempDir(), "config.json")
+	existing := `{"tray":{"enabled":false}}`
+	if err := os.WriteFile(path, []byte(existing), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Write(path, a); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || string(got) != existing {
+		t.Fatalf("existing tray preference changed: %s (%v)", got, err)
+	}
+	data, err = ConfigJSON(Answers{Latitude: 1, Longitude: 2, Location: "X"})
+	if err != nil || strings.Contains(string(data), `"tray"`) {
+		t.Fatalf("uninstalled tray has an explicit preference: %s (%v)", data, err)
+	}
+}
+
 func TestSeedDoesNotClobberExistingConfig(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sysc-shell", "config.json")

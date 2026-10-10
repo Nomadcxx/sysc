@@ -37,6 +37,19 @@ func TestWarnNiriSessionNamesCommand(t *testing.T) {
 	}
 }
 
+func TestPackageGuidanceAndPlannedDistroSupport(t *testing.T) {
+	for _, loc := range order {
+		if !strings.Contains(T(loc, "help.confirm"), "sysc-shell") {
+			t.Errorf("%s confirmation guidance does not name the desktop", loc)
+		}
+		for _, text := range []string{"Debian", "Fedora", "https://nomadcxx.github.io/sysc/docs/"} {
+			if !strings.Contains(T(loc, "refuse.distro"), text) {
+				t.Errorf("%s distro guidance is missing %q", loc, text)
+			}
+		}
+	}
+}
+
 func TestMatchLANG(t *testing.T) {
 	cases := map[string]Locale{
 		"zh_CN.UTF-8": ZH,

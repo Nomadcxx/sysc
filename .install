@@ -15,6 +15,10 @@ main() {
   command -v git >/dev/null 2>&1 || { echo "git is required" >&2; exit 1; }
 
   TMP=$(mktemp -d)
+  trap 'rm -rf "$TMP"' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
   git clone --depth 1 https://github.com/Nomadcxx/sysc.git "$TMP/sysc"
   (cd "$TMP/sysc" && go build -o "$TMP/sysc-bin" ./cmd/sysc)
 
@@ -22,12 +26,15 @@ main() {
   if have_tty; then
     "$TMP/sysc-bin" "$@" </dev/tty
   else
-    "$TMP/sysc-bin" --yes "$@"
+    case "${1:-}" in
+      uninstall) shift; set -- uninstall --yes "$@" ;;
+      *) set -- --yes "$@" ;;
+    esac
+    "$TMP/sysc-bin" "$@"
   fi
   status=$?
   set -e
 
-  rm -rf "$TMP"
   exit "$status"
 }
 

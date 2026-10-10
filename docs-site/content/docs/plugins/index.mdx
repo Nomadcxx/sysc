@@ -6,6 +6,14 @@ description: Find the plugin catalog and propose official inclusion through sysc
 
 ![](/media/plugins-gallery.webp "Nine official sysc-shell plugin panels. Fixture data.")
 
+## Install plugins
+
+After setting up sysc-shell, choose extras from its plugin catalog. On Arch, you can also install the collection with `yay -S sysc-plugins-git`. Keep one installation source per plugin ID; duplicate catalog and packaged copies can prevent discovery. The installer configures the shell's built-in weather widget through its Weather page; that widget needs no weather plugin.
+
+The released installer v0.1.1 shows Weather/Media choices without downloading plugin executables. Current source skips that page and points you to the shell's catalog.
+
+## Develop plugins
+
 Authors can propose a plugin for the official source with a pull request to [sysc-plugins](https://github.com/Nomadcxx/sysc-plugins). Maintainers decide whether to accept each proposal. The project does not promise a review time.
 
 Browse the [published catalog snapshot](./catalog) or [author an independent source](./publish). The catalog schema keeps license metadata optional. A checksum confirms that downloaded content matches its catalog entry; it does not endorse the plugin. Host capabilities limit plugin API calls, but they do not sandbox a same-user executable.

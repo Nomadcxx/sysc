@@ -68,14 +68,14 @@ func NewWizard(loc i18n.Locale, recommended []string) Wizard {
 }
 
 // Next advances one page. The weather page refuses to advance without a place,
-// and the conflicts page is skipped when there is nothing to decide.
+// and empty plugin and conflicts pages are skipped.
 func (w Wizard) Next() Wizard {
 	if w.Page == PageWeather && !w.weatherSet() {
 		return w
 	}
 	for w.Page < PageConfirm {
 		w.Page++
-		if w.Page == PageConflicts && len(w.Findings) == 0 {
+		if w.Page == PageConflicts && len(w.Findings) == 0 || w.Page == PagePlugins && len(w.AvailablePlugins) == 0 {
 			continue
 		}
 		break
@@ -83,11 +83,11 @@ func (w Wizard) Next() Wizard {
 	return w
 }
 
-// Back returns one page, never past the first, skipping an empty conflicts page.
+// Back returns one page, never past the first, skipping empty optional pages.
 func (w Wizard) Back() Wizard {
 	for w.Page > PageTheme {
 		w.Page--
-		if w.Page == PageConflicts && len(w.Findings) == 0 {
+		if w.Page == PageConflicts && len(w.Findings) == 0 || w.Page == PagePlugins && len(w.AvailablePlugins) == 0 {
 			continue
 		}
 		break
@@ -183,6 +183,12 @@ func (w Wizard) weatherSet() bool {
 // Title is the current page heading.
 func (w Wizard) Title() string {
 	index, count := int(w.Page)+1, 6
+	if len(w.AvailablePlugins) == 0 {
+		count--
+		if w.Page > PagePlugins {
+			index--
+		}
+	}
 	if len(w.Findings) == 0 {
 		count--
 		if w.Page > PageConflicts {
@@ -384,6 +390,9 @@ func consequenceKey(c conflict.Choice) string {
 // pluginsLabel names the chosen plugins, or the localized none label.
 func (w Wizard) pluginsLabel() string {
 	if len(w.Plugins) == 0 {
+		if len(w.AvailablePlugins) == 0 {
+			return i18n.T(w.Locale, "plugin.catalog")
+		}
 		return i18n.T(w.Locale, "plugin.none")
 	}
 	names := make([]string, 0, len(w.Plugins))

@@ -11,8 +11,8 @@ import (
 var hex64 = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // The embedded pin is the supply chain. This guards the cut: every shipped
-// component must name a real unit, point at its own public release asset, and
-// carry a plausible digest.
+// component must name a real unit or declare itself binary-only, point at
+// its own public release asset, and carry a plausible digest.
 func TestEmbeddedPinIsPublishable(t *testing.T) {
 	p, err := Load()
 	if err != nil {
@@ -30,7 +30,7 @@ func TestEmbeddedPinIsPublishable(t *testing.T) {
 			continue
 		}
 		enabled++
-		if _, ok := unitForName(c.Unit); !ok {
+		if _, ok := unitForName(c.Unit); !ok && !c.BinaryOnly {
 			t.Errorf("%s: no matching unit template", c.ID)
 		}
 		if c.Tag == "" || len(c.Binaries) == 0 {
@@ -50,8 +50,8 @@ func TestEmbeddedPinIsPublishable(t *testing.T) {
 			}
 		}
 	}
-	if enabled != 6 {
-		t.Errorf("enabled components = %d, want 6", enabled)
+	if enabled != 7 {
+		t.Errorf("enabled components = %d, want 7", enabled)
 	}
 }
 

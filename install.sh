@@ -30,6 +30,10 @@ status=0
 if [ -t 0 ]; then
   "$BIN" "$@" || status=$?
 else
-  "$BIN" --yes "$@" || status=$?
+  case "${1:-}" in
+    uninstall) shift; set -- uninstall --yes "$@" ;;
+    *) set -- --yes "$@" ;;
+  esac
+  "$BIN" "$@" || status=$?
 fi
 exit "$status"

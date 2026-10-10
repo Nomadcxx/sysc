@@ -67,14 +67,13 @@ func TestAuditDecodeAcceptsHostileValues(t *testing.T) {
 	}
 }
 
-// The six documented rejections must hold (supports claim 15).
+// The documented validation rejections must hold.
 func TestAuditDecodeDocumentedRejectionsHold(t *testing.T) {
 	cases := []struct {
 		name string
 		mut  func(map[string]any)
 	}{
 		{"empty release", func(d map[string]any) { d["release"] = "" }},
-		{"empty recommended", func(d map[string]any) { d["recommended"] = []any{} }},
 		{"disabled without reason", func(d map[string]any) {
 			d["components"].([]any)[1].(map[string]any)["reason"] = ""
 		}},

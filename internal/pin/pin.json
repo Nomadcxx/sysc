@@ -51,8 +51,19 @@
     },
     {
       "id": "sysc-terminal",
-      "disabled": true,
-      "reason": "not wired: no user unit template yet"
+      "tag": "v0.1.0",
+      "binary_only": true,
+      "binaries": [
+        {
+          "name": "sysc-terminal",
+          "assets": {
+            "amd64": {
+              "url": "https://github.com/Nomadcxx/sysc-terminal/releases/download/v0.1.0/sysc-terminal",
+              "sha256": "defbafbe9602cda4b8c30f2ca67c027bcd1ff3d9ac979e13f06ce8ea33362cf9"
+            }
+          }
+        }
+      ]
     },
     {
       "id": "sysc-notify",
@@ -128,8 +139,5 @@
       }
     }
   },
-  "recommended": [
-    "org.sysc.weather",
-    "org.sysc.media"
-  ]
+  "recommended": []
 }

@@ -50,11 +50,6 @@ func TestDecodeRequiresAssetsAndSHA(t *testing.T) {
 			`{"release":"v1","recommended":["a"],"components":[{"id":"x","disabled":true}]}`,
 			"reason",
 		},
-		{
-			"empty recommended",
-			`{"release":"v1","recommended":[],"components":[]}`,
-			"recommended",
-		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -64,6 +59,39 @@ func TestDecodeRequiresAssetsAndSHA(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDecodeAllowsNoRecommendedPlugins(t *testing.T) {
+	if _, err := Decode([]byte(`{"release":"v1","recommended":[],"components":[]}`)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBinaryOnlyComponentCannotNameService(t *testing.T) {
+	data := `{"release":"v1","recommended":["a"],"components":[{"id":"sysc-terminal","tag":"v0.1.0","binary_only":true,"unit":"sysc-shell.service","binaries":[{"name":"sysc-terminal","assets":{"amd64":{"url":"https://example.invalid/sysc-terminal","sha256":"` + strings.Repeat("a", 64) + `"}}}]}]}`
+	if _, err := Decode([]byte(data)); err == nil {
+		t.Fatal("binary-only component accepted a service")
+	}
+}
+
+func TestEmbeddedTerminalAndCatalogSelection(t *testing.T) {
+	p, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Recommended) != 0 {
+		t.Fatalf("pin enables plugins without installing them: %v", p.Recommended)
+	}
+	for _, c := range p.Components {
+		if c.ID != "sysc-terminal" {
+			continue
+		}
+		if c.Disabled || !c.BinaryOnly || c.Unit != "" || c.Tag != "v0.1.0" || len(c.Binaries) != 1 {
+			t.Fatalf("terminal needs a pinned executable and no service: %+v", c)
+		}
+		return
+	}
+	t.Fatal("terminal is missing")
 }
 
 // The companion rows ship disabled until their repos tag a release. This

@@ -30,12 +30,13 @@ type Binary struct {
 // Component is one SYSC-owned program in the pin. A disabled component is
 // skipped by name and carries the reason it is not shipped yet.
 type Component struct {
-	ID       string   `json:"id"`
-	Tag      string   `json:"tag"`
-	Unit     string   `json:"unit"`
-	Disabled bool     `json:"disabled,omitempty"`
-	Reason   string   `json:"reason,omitempty"`
-	Binaries []Binary `json:"binaries,omitempty"`
+	ID         string   `json:"id"`
+	Tag        string   `json:"tag"`
+	Unit       string   `json:"unit"`
+	BinaryOnly bool     `json:"binary_only,omitempty"`
+	Disabled   bool     `json:"disabled,omitempty"`
+	Reason     string   `json:"reason,omitempty"`
+	Binaries   []Binary `json:"binaries,omitempty"`
 }
 
 // GSlapper pins the AUR package and native release packages by build target
@@ -57,8 +58,9 @@ type Pin struct {
 
 // Decode parses and validates a pin file. It rejects a missing SHA, a missing
 // amd64 asset, a malformed or non-https asset, a binary name that is not a
-// plain file name, an unknown or duplicate unit, an empty tag, a disabled row without a reason, an empty recommended plugin
-// list, and a gslapper row without a package name.
+// plain file name, an unknown unit, a binary-only component with a unit, an
+// empty tag, a disabled row without a reason, and a gslapper row without a
+// package name.
 func Decode(data []byte) (Pin, error) {
 	var p Pin
 	if err := json.Unmarshal(data, &p); err != nil {
@@ -66,9 +68,6 @@ func Decode(data []byte) (Pin, error) {
 	}
 	if p.Release == "" {
 		return Pin{}, fmt.Errorf("pin: release is empty")
-	}
-	if len(p.Recommended) == 0 {
-		return Pin{}, fmt.Errorf("pin: recommended plugin list is empty")
 	}
 	// A gslapper row that declares a family or version must name a package;
 	// pins with no external package slot at all remain valid.
@@ -117,6 +116,9 @@ func Decode(data []byte) (Pin, error) {
 		}
 		if c.Unit != "" && !knownUnit(c.Unit) {
 			return Pin{}, fmt.Errorf("pin: component %q unit %q is not a known SYSC unit", c.ID, c.Unit)
+		}
+		if c.BinaryOnly && c.Unit != "" {
+			return Pin{}, fmt.Errorf("pin: binary-only component %q cannot name a unit", c.ID)
 		}
 		if c.Tag == "" {
 			return Pin{}, fmt.Errorf("pin: component %q tag is empty", c.ID)

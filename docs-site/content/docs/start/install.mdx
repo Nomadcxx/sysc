@@ -1,9 +1,13 @@
 ---
 title: Install
-description: Download, verify and run the SYSC v0.1.1 installer.
+description: Choose the guided installer or AUR packages, then add optional features.
 ---
 
-## Install SYSC v0.1.1
+Use the guided Go installer for your first setup on Arch-family x86_64 with Niri. If you prefer package-manager updates, choose the AUR route below. Each route installs sysc-shell and its required companions.
+
+Full Debian and Fedora suite support is planned. Check the [requirements](/docs/start/requirements) before installing.
+
+## Guided Go installer: recommended
 
 Run this release as your normal user. Do not prefix the installer with sudo. It writes suite programs and systemd user units in your home directory. The optional gSlapper package step may ask the package manager for administrator authentication.
 
@@ -26,6 +30,56 @@ Continue only when sha256sum reports sysc-linux-amd64: OK. If verification fails
 
 Keep ~/.local/bin/sysc if you want to rerun this release or uninstall it later. To use a later SYSC release, change both download URLs to that release tag and read its release notes and compatibility information first.
 
+The published v0.1.1 installer does not include the current source improvements. It skips sysc-terminal and shows Weather/Media plugin choices without installing plugin executables. Add plugins through the shell's catalog. See the current source route below for terminal wallpapers and tray setup in a new config.
+
+## AUR: start with sysc-shell
+
+Install [sysc-shell](https://aur.archlinux.org/packages/sysc-shell) with your AUR helper:
+
+```sh
+yay -S sysc-shell
+```
+
+Your helper installs these companions as dependencies:
+
+| Package | What it provides |
+|---|---|
+| sysc-shell | Bars, panels, settings and the built-in launcher |
+| sysc-lock | Session locking |
+| sysc-notify | Desktop notifications |
+| sysc-clipboard | Encrypted clipboard history |
+| sysc-tray | Tray icons and menus |
+
+Clipboard history needs a running Secret Service provider, such as gnome-keyring or KeePassXC, or a configured key file. The lock screen uses your existing PAM login stack.
+
+Inside a Niri session started with niri-session, stop your existing bar and notification daemon, remove their startup entries, then run:
+
+```sh
+systemctl --user daemon-reload
+systemctl --user enable --now sysc-shell.service
+```
+
+The packaged shell service starts its companions and creates a missing config with sysc-lock selected and tray icons enabled. It preserves an existing config. Configure weather, themes and wallpapers in Settings. For keyboard shortcuts, merge /usr/share/doc/sysc-shell/niri-bindings.kdl into your existing Niri binds block.
+
+### Optional additions
+
+| Package or tool | Install it when you want |
+|---|---|
+| sysc-terminal | Live terminal-art wallpapers |
+| sysc-plugins-git | The official plugin collection |
+| swaybg / gSlapper | Image / video wallpapers |
+| sysc-launch | A standalone launcher CLI; sysc-shell already includes its launcher |
+
+For terminal wallpapers and the plugin collection:
+
+```sh
+yay -S sysc-terminal sysc-plugins-git
+```
+
+You can also choose individual plugins from the shell's catalog. Keep one installation source per plugin ID; the shell rejects duplicate IDs from packaged and catalog copies. sysc-wayland and sysc-metrics are Go libraries included when programs build. sysc-greet sets up the login greeter separately.
+
+Use your AUR helper to update these packages. When moving from the guided installer, review user units and ~/.local/bin/sysc-* binaries that override packaged files. Follow /usr/share/doc/sysc-shell/first-run.md, preserve your config and state, and confirm ExecStart=/usr/bin/... with systemctl --user cat before restarting services. Complete that review with your screen unlocked.
+
 ## Build current source
 
 The source installer follows the current sysc main branch and needs Go 1.26 and git. It builds into a temporary directory and removes that directory after running. It does not leave a sysc command installed.
@@ -34,8 +88,10 @@ The source installer follows the current sysc main branch and needs Go 1.26 and 
 curl -fsSL https://raw.githubusercontent.com/Nomadcxx/sysc/main/.install | sh
 ```
 
-This route uses the pin embedded in current main, which may differ from the v0.1.1 suite described here. For a persistent source checkout, use the build instructions in the [sysc repository](https://github.com/Nomadcxx/sysc#build-from-source).
+Current source installs sysc-terminal v0.1.0 for the shell's Terminal Art feature, enables tray presentation when creating a config with sysc-tray installed, and skips plugin selection. Add extras through the shell's plugin catalog after setup. It preserves an existing config's tray preference. Current source refuses to overwrite a pacman-managed SYSC installation, checks runtime libraries and fonts before replacing binaries, and warns when clipboard persistence needs a keyring. Uninstall preserves changed files and retains failed steps for retry. These changes do not alter the published v0.1.1 binary.
 
-The source command removes its temporary build after installation. Keep a checkout matching the pin if you may need to rerun or uninstall this installation later.
+For a persistent source checkout, use the build instructions in the [sysc repository](https://github.com/Nomadcxx/sysc#manual-source-checkout).
+
+Keep a source checkout if you may need to rerun or uninstall this installation later. Use the matching source installer for removal; the released v0.1.1 binary predates the current source's ownership checks.
 
 Before choosing a route, check the [requirements](/docs/start/requirements), [privilege boundaries](/docs/reference/privileges) and [component pins](/docs/reference/suite).

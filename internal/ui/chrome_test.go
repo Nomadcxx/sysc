@@ -69,7 +69,7 @@ func TestNavPageAccurate(t *testing.T) {
 	}
 }
 
-func TestCanvasBackgroundIsPureBlack(t *testing.T) {
+func TestCanvasStaysBlackAndGuidanceHasOwnBackground(t *testing.T) {
 	previous := lipgloss.ColorProfile()
 	lipgloss.SetColorProfile(termenv.TrueColor)
 	defer lipgloss.SetColorProfile(previous)
@@ -77,10 +77,20 @@ func TestCanvasBackgroundIsPureBlack(t *testing.T) {
 	if !strings.Contains(out, "48;2;0;0;0") {
 		t.Fatal("black canvas background was not set")
 	}
+	f := measure(i18n.EN, PageTheme, StepWizard, 80, 24, nil, "Guidance")
+	if !strings.Contains(f.advice, "48;2;22;22;22") {
+		t.Fatal("guidance has no charcoal background")
+	}
+	for _, area := range []string{f.header, f.actions, f.nav, Control("", "choice", 72, true)} {
+		if strings.Contains(area, "48;2;22;22;22") {
+			t.Fatal("guidance background leaked into the canvas or controls")
+		}
+	}
 	backgrounds := regexp.MustCompile(`48;2;(\d+);(\d+);(\d+)`).FindAllStringSubmatch(out, -1)
 	for _, rgb := range backgrounds {
-		if rgb[1] != "0" || rgb[2] != "0" || rgb[3] != "0" {
-			t.Fatalf("non-black background: %v", rgb)
+		if !(rgb[1] == "0" && rgb[2] == "0" && rgb[3] == "0") &&
+			!(rgb[1] == "22" && rgb[2] == "22" && rgb[3] == "22") {
+			t.Fatalf("unexpected background: %v", rgb)
 		}
 	}
 	beams := NewBeamsTextEffect(80, BannerHeight(), Banner())

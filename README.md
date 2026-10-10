@@ -27,8 +27,9 @@ then install the suite into your user account.
 
 Plus notifications ([sysc-notify](https://github.com/Nomadcxx/sysc-notify)), clipboard history
 ([sysc-clipboard](https://github.com/Nomadcxx/sysc-clipboard)), a system tray
-([sysc-tray](https://github.com/Nomadcxx/sysc-tray)) and
-[16 official plugins](https://github.com/Nomadcxx/sysc-plugins). Screenshots use fixture data.
+([sysc-tray](https://github.com/Nomadcxx/sysc-tray)). Choose extras from the shell's
+[official plugin catalog](https://github.com/Nomadcxx/sysc-plugins) after setup.
+Screenshots use fixture data.
 
 ## Before you start
 
@@ -47,6 +48,9 @@ Plus notifications ([sysc-notify](https://github.com/Nomadcxx/sysc-notify)), cli
 The installer requests package-manager privileges when needed.
 
 ## Install
+
+Use the guided installer for your first setup, or the AUR if you want pacman to
+manage the desktop. Start with sysc-shell; its companions come with it.
 
 ### Guided Go installer: no Go required (recommended)
 
@@ -68,24 +72,21 @@ specific release, replace `latest/download` in both URLs with
 `download/v0.1.1`. Add `~/.local/bin` to your `PATH` to use `sysc` directly;
 the commands below use its full path.
 
-### Source one-liner: requires Go 1.26+ and git
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/Nomadcxx/sysc/main/.install | sh
-```
-
-This builds current `main` in a temporary directory, opens the wizard when a
-terminal is available, and removes the temporary build afterward. It does not
-keep a `sysc` installer command. Without a terminal, it uses `--yes`.
+The published v0.1.1 binary predates the current source improvements. It does
+not install sysc-terminal, and its Weather/Media plugin choices do not install
+those plugins. Use the shell's catalog to add plugins. The source route below
+includes terminal wallpapers, seeds tray presentation for a new config, and
+skips the empty plugin-selection page. It also protects existing files during
+upgrades and keeps failed uninstall steps available for retry.
 
 ### AUR: package-managed desktop
 
-On Arch, use your AUR helper to install
-[sysc-shell](https://aur.archlinux.org/packages/sysc-shell) and optional wallpaper
-and plugin packages. Stop existing bars and notification daemons before starting the shell:
+On Arch, install [sysc-shell](https://aur.archlinux.org/packages/sysc-shell).
+Your AUR helper pulls in the required companions. Stop existing bars and
+notification daemons before starting the shell:
 
 ```sh
-yay -S sysc-shell sysc-terminal sysc-plugins-git
+yay -S sysc-shell
 systemctl --user enable --now sysc-shell.service
 ```
 
@@ -95,9 +96,31 @@ and its user service starts the companions before the shell. On first start,
 it creates a missing config with sysc-lock selected and tray presentation enabled.
 Use your AUR helper for subsequent updates.
 
+Add extras when you want them:
+
+| Package | Purpose |
+|---|---|
+| `sysc-terminal` | Live terminal-art wallpapers |
+| `sysc-plugins-git` | The official plugin collection; you can also choose plugins in the shell's catalog |
+| `sysc-launch` | Standalone launcher CLI; the shell already includes its launcher |
+
+For wallpapers and the plugin collection: `yay -S sysc-terminal sysc-plugins-git`.
+The [installation guide](https://nomadcxx.github.io/sysc/docs/start/install/)
+explains the required companions and optional wallpaper tools.
+
 For migration from the guided installer, review user units and binaries that
 shadow the packaged files. See the [setup and migration guide](https://nomadcxx.github.io/sysc/docs/)
 and `/usr/share/doc/sysc-shell/first-run.md`.
+
+### Source one-liner: requires Go 1.26+ and git
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Nomadcxx/sysc/main/.install | sh
+```
+
+This builds current `main` in a temporary directory, opens the wizard when a
+terminal is available, and removes the temporary build afterward. It does not
+keep a `sysc` installer command. Without a terminal, it uses `--yes`.
 
 ### Manual source checkout
 
@@ -119,8 +142,8 @@ and **Esc** to return to the previous page.
 |---|---|
 | Theme | Use **↑/↓** to choose Standard, Compact, or Expressive. Use **←/→** for the desktop's light/dark mode. The installer stays pure black in either mode. |
 | Wallpaper | Type a directory such as `~/Pictures/wallpapers`, then press **Enter**. Use an absolute path or a path beginning with `~/`. |
-| Plugins | Use **↑/↓** to focus Weather or Media; **Space** toggles that checkbox independently. |
-| Weather | Check the automatic location or type a city and press **Enter** to search. Once the location is correct, press **Enter** with the input empty to accept it. The built-in weather widget needs a location even if you untick the Weather plugin. |
+| Plugins | Current source skips this page. Add extras later through the shell's plugin catalog. The released v0.1.1 binary still shows Weather/Media choices, but does not install them. |
+| Weather | Check the automatic location or type a city and press **Enter** to search. Once the location is correct, press **Enter** with the input empty to accept it. This configures the built-in weather widget. |
 | Conflicts | When another provider is detected, use **↑/↓** to select it and **←/→** to choose how to handle it. See [conflict choices](#conflict-choices). |
 | Review | Check the component list, paths, and package-manager advice. Press **Enter** to begin installation. |
 
@@ -168,10 +191,11 @@ result lists gSlapper as skipped; the rest of the suite can still install.
 Config, state, and data paths follow absolute `XDG_CONFIG_HOME`,
 `XDG_STATE_HOME`, and `XDG_DATA_HOME` overrides. Binaries stay in `~/.local/bin`.
 
-## What the current release installs
+## What the installer installs
 
-The embedded [suite pin](internal/pin/pin.json) records component versions and
-checksums. Installer `v0.1.1` includes:
+The current source [suite pin](internal/pin/pin.json) records component versions
+and checksums. The published `v0.1.1` installer includes the services below;
+current source also installs sysc-terminal:
 
 | Component | Version | Role |
 |---|---|---|
@@ -181,11 +205,11 @@ checksums. Installer `v0.1.1` includes:
 | [sysc-notify](https://github.com/Nomadcxx/sysc-notify) | v0.1.0 | Notifications |
 | [sysc-tray](https://github.com/Nomadcxx/sysc-tray) | v0.1.1 | StatusNotifierItem tray |
 | [sysc-lock](https://github.com/Nomadcxx/sysc-lock) | v0.1.0 | Session lock owner |
+| [sysc-terminal](https://github.com/Nomadcxx/sysc-terminal) | v0.1.0, current source only | Terminal-art wallpaper, managed by the shell |
 | [gSlapper](https://github.com/Nomadcxx/gSlapper) | External package | Video wallpaper; install only when missing |
 
-The installer does not yet install
-[sysc-terminal](https://github.com/Nomadcxx/sysc-terminal); its suite entry is
-disabled until a user unit is wired. sysc-greet is a separate greeter project.
+sysc-terminal needs no standalone user service: the shell starts one process
+per output. sysc-greet is a separate greeter project.
 
 The installer enables `sysc-lock-session.service`. Starting the service does
 not lock your screen. The installer makes `sysc-lock` the shell's locker, in a
@@ -204,9 +228,9 @@ future suite support; they do not enable installation on those distros today.
 | Platform | Status |
 |---|---|
 | Arch-family, x86_64 | Supported |
-| AUR packages | Planned. Nothing is published to the AUR yet. |
-| Debian 13, Ubuntu 24.04+ | Stub. Only the gSlapper package route exists. |
-| Fedora 42+ | Stub. Only the gSlapper package route exists. |
+| AUR packages | Published. Start with `sysc-shell`; your helper installs its dependencies. |
+| Debian / Ubuntu | Full suite support planned. Only the gSlapper package route exists today. |
+| Fedora | Full suite support planned. Only the gSlapper package route exists today. |
 | Other distributions and architectures | Not supported. The installer refuses to run. |
 
 ## Command-line installation
@@ -225,7 +249,7 @@ Or supply both coordinates:
 
 | Flag | Use |
 |---|---|
-| `--yes` | Use Standard, dark mode, `~/Pictures/wallpapers`, and recommended plugins. Without location flags, attempt a public-IP weather lookup. |
+| `--yes` | Use Standard, dark mode, and `~/Pictures/wallpapers`. Without location flags, attempt a public-IP weather lookup. Add plugins later through the shell's catalog. |
 | `--city "Berlin"` | Look up a weather city; requires network access. |
 | `--lat=… --lon=…` | Supply both weather coordinates without a location lookup. |
 | `--lang en` | Choose `en`, `de`, `fr`, or `zh-Hans`. |
@@ -250,8 +274,9 @@ Add `--remove-gslapper` to remove gSlapper **only if SYSC installed it**; its
 package manager may request sudo. Add `--yes` to skip the uninstall confirmation.
 
 If you used the source checkout, run `./sysc uninstall` there. If you used only
-the source one-liner, download the installer as described above and run its
-`uninstall` command instead of starting an installation.
+the source one-liner, build a source checkout for uninstall too. Keep the
+installer that matches your installation; the published v0.1.1 binary predates
+the current source's ownership checks.
 
 ## Troubleshooting
 

@@ -138,7 +138,7 @@ func TestStartAllFailureNotRetried(t *testing.T) {
 	}
 	want := 0
 	for _, c := range opts.Pin.Components {
-		if !c.Disabled {
+		if !c.Disabled && !c.BinaryOnly {
 			want++
 		}
 	}

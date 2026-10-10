@@ -63,6 +63,9 @@ func parseFlags(args []string, out io.Writer) (options, error) {
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
+	if fs.NArg() != 0 {
+		return o, fmt.Errorf("unexpected arguments: %s", strings.Join(fs.Args(), " "))
+	}
 	if o.KeepConflicts && o.Handover != "" {
 		return o, errors.New("--keep-conflicts and --handover are mutually exclusive")
 	}
@@ -83,6 +86,9 @@ func parseUninstall(args []string, out io.Writer) (options, error) {
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
+	if fs.NArg() != 0 {
+		return o, fmt.Errorf("unexpected arguments: %s", strings.Join(fs.Args(), " "))
+	}
 	return o, nil
 }
 
@@ -92,7 +98,12 @@ func runUninstall(args []string, in io.Reader, out io.Writer, home string) int {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
+		fmt.Fprintln(out, err)
 		return 2
+	}
+	if os.Geteuid() == 0 {
+		fmt.Fprintln(out, "Run the installer as your desktop user, without sudo.")
+		return 1
 	}
 	p, err := pin.Load()
 	if err != nil {
@@ -186,7 +197,7 @@ func aurHelper() string {
 }
 
 func installOptions(home string, p pin.Pin, a seed.Answers, yes bool, loc i18n.Locale, osRelease []byte, run func(*exec.Cmd) error) install.Options {
-	opts := install.Options{Home: home, Pin: p, Answers: a, Yes: yes, Loc: &loc, Client: fetch.NewClient()}
+	opts := install.Options{Home: home, Pin: p, Answers: a, Yes: yes, Loc: &loc, Client: fetch.NewClient(), CheckRuntime: preflight.CheckRuntime, CheckOwnership: install.CheckOwnership}
 	wirePackages(&opts, osRelease, runtime.GOARCH, run)
 	return opts
 }

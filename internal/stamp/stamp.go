@@ -35,8 +35,9 @@ type Handover struct {
 // Activation records the user-level D-Bus activation file SYSC wrote and the
 // foreign file it displaced, if any.
 type Activation struct {
-	Path   string `json:"path"`
-	Backup string `json:"backup,omitempty"`
+	Path         string `json:"path"`
+	Backup       string `json:"backup,omitempty"`
+	BackupSHA256 string `json:"backup_sha256,omitempty"`
 }
 
 // Stamp names the release and component versions an install placed, whether
@@ -50,6 +51,22 @@ type Stamp struct {
 	Started           bool              `json:"started"`
 	HandedOver        []Handover        `json:"handed_over,omitempty"`
 	Activation        *Activation       `json:"dbus_activation,omitempty"`
+	// Files records exact ownership, including the first displaced user file.
+	// Nil identifies older stamps that only recorded component names.
+	Files []File `json:"files"`
+}
+
+// File is one binary or user unit the installer owns. Unit is empty for a binary.
+type File struct {
+	Path           string `json:"path"`
+	SHA256         string `json:"sha256"`
+	PreviousSHA256 string `json:"previous_sha256,omitempty"`
+	RollbackSHA256 string `json:"rollback_sha256,omitempty"`
+	Backup         string `json:"backup,omitempty"`
+	BackupSHA256   string `json:"backup_sha256,omitempty"`
+	Unit           string `json:"unit,omitempty"`
+	WasEnabled     bool   `json:"was_enabled,omitempty"`
+	WasActive      bool   `json:"was_active,omitempty"`
 }
 
 // Read loads the stamp from stateDir.

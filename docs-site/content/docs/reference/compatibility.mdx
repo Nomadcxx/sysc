@@ -13,7 +13,7 @@ SYSC v0.1.1 defines installer routes and publishes the assets listed below. SYSC
 |---|---|
 | Installer binary | The v0.1.1 workflow publishes Linux amd64 and arm64 installers with CGO_ENABLED=0. Source builds use the Go version in [go.mod](https://github.com/Nomadcxx/sysc/blob/v0.1.1/go.mod). Installer assets do not establish component support for both architectures. |
 | Full suite architecture | Every enabled component in the [v0.1.1 pin manifest](https://github.com/Nomadcxx/sysc/blob/v0.1.1/internal/pin/pin.json) has an amd64 asset. No complete arm64 set exists, and the installer refuses to install the suite on arm64. |
-| Distribution gate | Preflight accepts the Arch family. Its matcher checks arch, cachyos, manjaro and endeavouros in ID or ID_LIKE. The source does not qualify every derivative; other full-suite distro support remains unknown. |
+| Distribution gate | Preflight accepts the Arch family. Its matcher checks arch, cachyos, manjaro and endeavouros in ID or ID_LIKE. Full Debian and Fedora suite support is planned. The source does not qualify every derivative. |
 | Compositor | SYSC targets Niri first. In a Wayland session, preflight requires NIRI_SOCKET. Without WAYLAND_DISPLAY, the installer allows a non-graphical run and enables units. This does not establish support for other compositors or a complete desktop configuration. |
 | User services | The installer writes suite programs and units to the installing user's systemd manager. Check each component's pinned release for runtime dependencies. |
 

@@ -49,14 +49,16 @@ type Options struct {
 	Purge          bool
 	RemoveGSlapper bool
 
-	Client     *http.Client
-	Download   func(ctx context.Context, staging string, assets []fetch.Asset) error
-	Swap       func(binDir, staging string, names []string) error
-	LookPath   func(string) (string, error)
-	InstallPkg func(pkg string) error
-	RemovePkg  func(pkg string) error
-	Systemctl  func(args ...string) error
-	Now        time.Time
+	Client         *http.Client
+	Download       func(ctx context.Context, staging string, assets []fetch.Asset) error
+	Swap           func(binDir, staging string, names []string) error
+	LookPath       func(string) (string, error)
+	InstallPkg     func(pkg string) error
+	RemovePkg      func(pkg string) error
+	Systemctl      func(args ...string) error
+	Now            time.Time
+	CheckRuntime   func(staging string, names []string) ([]string, error)
+	CheckOwnership func(home string, components []pin.Component) error
 
 	// Progress receives a detached snapshot of the task list every time it
 	// changes: pending/skipped rows after download, done after swap, the
@@ -136,6 +138,9 @@ func (o Options) systemctl() func(args ...string) error {
 }
 
 func unitFor(c pin.Component) (units.Unit, bool) {
+	if c.BinaryOnly {
+		return units.Unit{}, false
+	}
 	name := c.Unit
 	if name == "" {
 		name = c.ID + ".service"
@@ -247,6 +252,16 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 	if err := requireSeedTarget(opts.configPath()); err != nil {
 		return res, err
 	}
+	lock, err := lockState(opts.stateDir())
+	if err != nil {
+		return res, err
+	}
+	defer lock.Close()
+	if opts.CheckOwnership != nil {
+		if err := opts.CheckOwnership(opts.Home, opts.Pin.Components); err != nil {
+			return res, err
+		}
+	}
 	download := opts.Download
 	if download == nil {
 		client := opts.Client
@@ -271,6 +286,15 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 	_, gslapperErr := lookPath("gslapper")
 	gslapperOnPath := gslapperErr == nil
 	prev, prevErr := stamp.Read(opts.stateDir())
+	if prevErr != nil && !os.IsNotExist(prevErr) {
+		return res, fmt.Errorf("read existing installation: %w", prevErr)
+	}
+	if prevErr == nil && prev.Files == nil {
+		prev.Files, err = legacyFiles(opts, prev)
+		if err != nil {
+			return res, err
+		}
+	}
 
 	staging := filepath.Join(opts.stateDir(), "staging")
 
@@ -282,6 +306,10 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		if c.Disabled {
 			continue
 		}
+		enabled = append(enabled, c)
+		if c.BinaryOnly {
+			continue
+		}
 		u, ok := unitFor(c)
 		if !ok {
 			return res, fmt.Errorf("%s: no matching SYSC unit", c.ID)
@@ -289,7 +317,6 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		if _, err := units.Content(u); err != nil {
 			return res, err
 		}
-		enabled = append(enabled, c)
 		unitNames = append(unitNames, u.Name)
 	}
 	// A SkipSYSC conflict choice leaves the competing SYSC component neither
@@ -304,7 +331,10 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 			skipComponent[f.Kind.Component()] = true
 		}
 	}
-	os.RemoveAll(staging)
+	if err := os.RemoveAll(staging); err != nil {
+		return res, err
+	}
+	opts.Answers.Tray = componentEnabled(enabled, "sysc-tray") && !skipComponent["sysc-tray"]
 
 	// Download and verify everything first, then swap once: a late download
 	// failure must never leave earlier components already swapped (AUD-10).
@@ -336,9 +366,17 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		}
 	}
 	emit(rows)
+	if opts.CheckRuntime != nil {
+		warnings, err := opts.CheckRuntime(staging, allNames)
+		if err != nil {
+			return res, err
+		}
+		res.Warnings = append(res.Warnings, warnings...)
+	}
 	st := stamp.Stamp{
 		Release:           opts.Pin.Release,
 		Components:        map[string]string{},
+		Files:             []stamp.File{},
 		GSlapperInstalled: prevErr == nil && prev.GSlapperInstalled && gslapperOnPath,
 	}
 	if prevErr == nil {
@@ -346,6 +384,10 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		// can still reverse it.
 		st.HandedOver = prev.HandedOver
 		st.Activation = prev.Activation
+		st.Files = append(st.Files, prev.Files...)
+		for id, tag := range prev.Components {
+			st.Components[id] = tag
+		}
 	}
 	for _, c := range enabled {
 		st.Components[c.ID] = c.Tag
@@ -374,35 +416,85 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		}
 	}()
 
-	// The stamp has to exist from the first change uninstall is responsible
-	// for. That is the swap when there are binaries (a failed swap is rolled
-	// back inside SwapAll and does not get here). With no binaries, seed and
-	// niri are the first writes, so record those before they run.
-	if len(allNames) > 0 {
-		// Stop user units before swapping so an upgrade actually loads the
-		// new binaries instead of keeping running ones (AUD-07). First
-		// installs have nothing running; errors are not fatal.
-		wasActive = units.ActiveUnits(systemctl, unitNames...)
-		_ = units.StopUnits(systemctl, unitNames)
-		if err := swap(opts.binDir(), staging, allNames); err != nil {
+	// Record the intended bytes before replacing files. PreviousSHA256 allows
+	// uninstall to recover an interruption before the replacement completed.
+	unitNames = nil
+	for _, c := range enabled {
+		if skipComponent[c.ID] || c.BinaryOnly {
+			continue
+		}
+		u, _ := unitFor(c)
+		data, err := units.Content(u)
+		if err != nil {
 			return res, err
+		}
+		if err := planFile(&st, filepath.Join(opts.unitDir(), u.Name), data, u.Name, systemctl); err != nil {
+			return res, err
+		}
+		unitNames = append(unitNames, u.Name)
+	}
+	for _, name := range allNames {
+		data, err := regularData(filepath.Join(staging, name))
+		if os.IsNotExist(err) && opts.Swap != nil {
+			continue
+		} // Injected swap owns its test files.
+		if err != nil {
+			return res, err
+		}
+		path := filepath.Join(opts.binDir(), name)
+		if _, err := regularData(path); err == nil {
+			bak, bakErr := regularData(path + ".bak")
+			if bakErr == nil {
+				trusted := false
+				for _, f := range prev.Files {
+					trusted = trusted || (f.Path == path && f.RollbackSHA256 == fileHash(bak))
+				}
+				if !trusted {
+					return res, fmt.Errorf("preserving existing rollback backup %s.bak; move it aside before rerunning", path)
+				}
+				if err := os.Remove(path + ".bak"); err != nil {
+					return res, err
+				}
+			} else if !os.IsNotExist(bakErr) {
+				return res, bakErr
+			}
+		}
+		if err := planFile(&st, path, data, "", systemctl); err != nil {
+			return res, err
+		}
+	}
+	if len(allNames) > 0 {
+		wasActive = units.ActiveUnits(systemctl, unitNames...)
+		if err := units.StopUnits(systemctl, wasActive); err != nil {
+			return res, err
+		}
+		if err := persist(); err != nil {
+			return res, err
+		}
+		if err := swap(opts.binDir(), staging, allNames); err != nil {
+			// SwapAll rolls back on failure; restore the previous ownership record.
+			var recordErr error
+			if prevErr == nil {
+				recordErr = stamp.Write(opts.stateDir(), prev, true)
+			} else {
+				recordErr = os.Remove(filepath.Join(opts.stateDir(), stamp.FileName))
+			}
+			return res, errors.Join(err, recordErr)
+		}
+		for i := range st.Files {
+			for _, name := range allNames {
+				if st.Files[i].Path == filepath.Join(opts.binDir(), name) {
+					st.Files[i].PreviousSHA256 = ""
+				}
+			}
 		}
 		for i := range rows {
 			if rows[i].Status == "" {
 				rows[i].Status = Done
 			}
 		}
-		// Swap is the first change uninstall must be able to see. Write the
-		// stamp before gSlapper, unit enable, seed, or niri — any of those
-		// can fail or the process can be interrupted, and a missing stamp
-		// makes uninstall report that nothing is installed.
-		if err := persist(); err != nil {
-			if rerr := fetch.RestoreBackups(opts.binDir(), allNames); rerr != nil {
-				return res, fmt.Errorf("recording install: %w (rollback: %v)", err, rerr)
-			}
-			return res, err
-		}
-	} else if err := persist(); err != nil {
+	}
+	if err := persist(); err != nil {
 		return res, err
 	}
 	res.Tasks = append(res.Tasks, rows...)
@@ -430,11 +522,22 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 
 	startNames := []string{}
 	for _, c := range enabled {
-		if skipComponent[c.ID] {
+		if skipComponent[c.ID] || c.BinaryOnly {
 			continue
 		}
 		u, _ := unitFor(c)
 		if err := units.Write(opts.unitDir(), u); err != nil {
+			return res, err
+		}
+		for i := range st.Files {
+			if st.Files[i].Unit == u.Name {
+				st.Files[i].PreviousSHA256 = ""
+			}
+		}
+		if err := persist(); err != nil {
+			return res, err
+		}
+		if err := systemctl("daemon-reload"); err != nil {
 			return res, err
 		}
 		if err := systemctl("enable", u.Name); err != nil {
@@ -508,14 +611,20 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 
 	if !skipComponent[conflict.KindNotifications.Component()] &&
 		componentEnabled(enabled, conflict.KindNotifications.Component()) {
-		act, aerr := dbusact.Install(opts.xdgData())
-		if aerr != nil {
-			res.Warnings = append(res.Warnings, fmt.Sprintf(i18n.T(loc, "conflicts.dbus_failed"), dbusact.Path(opts.xdgData())))
-		} else {
+		act, aerr := dbusact.Plan(opts.xdgData())
+		if aerr == nil && st.Activation != nil && st.Activation.BackupSHA256 != "" &&
+			(st.Activation.Backup != act.Backup || st.Activation.BackupSHA256 != act.BackupSHA256) {
+			aerr = errors.New("notification activation backup changed; preserving the original recovery record")
+		}
+		if aerr == nil {
 			st.Activation = &act
 			if err := persist(); err != nil {
 				return res, err
 			}
+			_, aerr = dbusact.Install(opts.xdgData())
+		}
+		if aerr != nil {
+			res.Warnings = append(res.Warnings, fmt.Sprintf(i18n.T(loc, "conflicts.dbus_failed"), dbusact.Path(opts.xdgData()))+": "+aerr.Error())
 		}
 	}
 
@@ -580,93 +689,152 @@ func requireSeedTarget(path string) error {
 // the XDG config.
 func Uninstall(opts Options) (Result, error) {
 	var res Result
+	lock, err := lockState(opts.stateDir())
+	if err != nil {
+		return res, err
+	}
+	defer lock.Close()
 	st, err := stamp.Read(opts.stateDir())
 	if err != nil {
 		return res, fmt.Errorf("no SYSC installation found: %w", err)
 	}
-	systemctl := opts.systemctl()
-	var ownedUnits []string
-	for _, c := range opts.Pin.Components {
-		if _, owned := st.Components[c.ID]; owned {
-			if u, ok := unitFor(c); ok {
-				ownedUnits = append(ownedUnits, u.Name)
-			}
+	if st.Files == nil {
+		st.Files, err = legacyFiles(opts, st)
+		if err != nil {
+			return res, err
 		}
 	}
-	_ = units.StopUnits(systemctl, ownedUnits)
+	persist := func() error {
+		res.Stamp = st
+		return stamp.Write(opts.stateDir(), st, true)
+	}
+	if err := persist(); err != nil {
+		return res, err
+	}
+	var failures []error
+	record := func(name string, err error) {
+		row := Task{Name: name, Status: Done}
+		if err != nil {
+			row.Status, row.Reason = Failed, err.Error()
+			failures = append(failures, fmt.Errorf("%s: %w", name, err))
+		}
+		res.Tasks = append(res.Tasks, row)
+	}
+	// Remove units before binaries. Each completed file is persisted separately
+	// so a later failure leaves only pending recovery records for a retry.
+	for _, isUnit := range []bool{true, false} {
+		for i := 0; i < len(st.Files); {
+			f := st.Files[i]
+			if (f.Unit != "") != isUnit {
+				i++
+				continue
+			}
+			err := restoreFile(opts, f)
+			if err == nil {
+				backups := map[string]string{}
+				if f.Backup != "" {
+					backups[f.Backup] = f.BackupSHA256
+				}
+				if f.Unit == "" && f.RollbackSHA256 != "" {
+					backups[f.Path+".bak"] = f.RollbackSHA256
+				}
+				for path, hash := range backups {
+					data, removeErr := regularData(path)
+					if os.IsNotExist(removeErr) {
+						continue
+					}
+					if removeErr == nil && fileHash(data) != hash {
+						removeErr = fmt.Errorf("preserving modified backup %s; recover it before retrying", path)
+					}
+					if removeErr == nil {
+						removeErr = os.Remove(path)
+					}
+					err = errors.Join(err, removeErr)
+				}
+			}
+			if err != nil {
+				record(filepath.Base(f.Path), err)
+				i++
+				continue
+			}
+			st.Files = append(st.Files[:i], st.Files[i+1:]...)
+			if err := persist(); err != nil {
+				return res, errors.Join(errors.Join(failures...), err)
+			}
+			record(filepath.Base(f.Path), nil)
+		}
+	}
+	record("daemon-reload", opts.systemctl()("daemon-reload"))
 
 	for i := len(st.HandedOver) - 1; i >= 0; i-- {
 		h := st.HandedOver[i]
-		row := Task{Name: "conflict:" + h.Name}
 		var errs []error
 		if h.Unit != "" && h.UnitWasEnabled {
-			// enable --now: the handover stopped a running provider, so
-			// restoring it means running again, not only enabled.
-			if err := systemctl("enable", "--now", h.Unit); err != nil {
+			if err := opts.systemctl()("enable", "--now", h.Unit); err != nil {
 				errs = append(errs, err)
 			}
 		}
-		for _, hl := range h.Lines {
-			if err := niri.RestoreLine(hl); err != nil {
+		for _, line := range h.Lines {
+			if err := niri.RestoreLine(line); err != nil {
 				errs = append(errs, err)
 			}
 		}
-		if err := errors.Join(errs...); err != nil {
-			row.Status, row.Reason = Failed, err.Error()
-		} else {
-			row.Status = Done
+		err := errors.Join(errs...)
+		if err == nil {
+			st.HandedOver = append(st.HandedOver[:i], st.HandedOver[i+1:]...)
+			if err := persist(); err != nil {
+				return res, errors.Join(errors.Join(failures...), err)
+			}
 		}
-		res.Tasks = append(res.Tasks, row)
+		record("conflict:"+h.Name, err)
 	}
 	if st.Activation != nil {
-		row := Task{Name: "dbus-activation"}
-		if err := dbusact.Remove(*st.Activation); err != nil {
-			row.Status, row.Reason = Failed, err.Error()
+		err := error(nil)
+		if st.Activation.Path != dbusact.Path(opts.xdgData()) {
+			err = errors.New("unexpected notification activation path")
 		} else {
-			row.Status = Done
+			err = dbusact.Remove(*st.Activation)
 		}
-		res.Tasks = append(res.Tasks, row)
+		if err == nil {
+			st.Activation = nil
+			if err := persist(); err != nil {
+				return res, errors.Join(errors.Join(failures...), err)
+			}
+		}
+		record("dbus-activation", err)
 	}
-
-	for _, c := range opts.Pin.Components {
-		if _, ok := st.Components[c.ID]; !ok {
-			continue
-		}
-		for _, b := range c.Binaries {
-			os.Remove(filepath.Join(opts.binDir(), b.Name))
-			// Swap keeps <name>.bak next to the binary it replaced.
-			os.Remove(filepath.Join(opts.binDir(), b.Name+".bak"))
-		}
-		if u, ok := unitFor(c); ok {
-			// Disable first: removing the unit file alone leaves dangling
-			// wants symlinks under graphical-session.target.wants (AUD-09).
-			_ = systemctl("disable", u.Name)
-			os.Remove(filepath.Join(opts.unitDir(), u.Name))
-		}
-		res.Tasks = append(res.Tasks, Task{Name: c.ID, Status: Done})
-	}
-	_ = systemctl("daemon-reload")
-
-	if st.GSlapperInstalled && opts.RemoveGSlapper && opts.RemovePkg != nil {
-		if err := opts.RemovePkg(opts.Pin.GSlapper.Package); err != nil {
-			res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Failed, Reason: err.Error()})
+	if st.GSlapperInstalled && opts.RemoveGSlapper {
+		var err error
+		if opts.RemovePkg == nil {
+			err = errors.New("no package remover configured")
 		} else {
-			res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Done})
+			err = opts.RemovePkg(opts.Pin.GSlapper.Package)
 		}
+		if err == nil {
+			st.GSlapperInstalled = false
+			if err := persist(); err != nil {
+				return res, errors.Join(errors.Join(failures...), err)
+			}
+		}
+		record("gslapper", err)
 	} else {
-		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: "not installed by SYSC"})
+		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: "kept"})
 	}
-
-	if err := niri.Remove(niri.Options{
+	record("niri", niri.Remove(niri.Options{
 		ConfigPath:  filepath.Join(opts.niriDir(), "config.kdl"),
 		SidecarPath: filepath.Join(opts.niriDir(), "sysc.kdl"),
-	}); err != nil {
+	}))
+	// Keep configuration and the retry record while any restoration is pending.
+	if len(failures) > 0 {
+		return res, errors.Join(failures...)
+	}
+	if opts.Purge {
+		if err := os.RemoveAll(filepath.Dir(opts.configPath())); err != nil {
+			return res, err
+		}
+	}
+	if err := os.Remove(filepath.Join(opts.stateDir(), stamp.FileName)); err != nil {
 		return res, err
 	}
-
-	if opts.Purge {
-		os.RemoveAll(filepath.Dir(opts.configPath()))
-	}
-	os.Remove(filepath.Join(opts.stateDir(), stamp.FileName))
 	return res, nil
 }

@@ -19,6 +19,7 @@ import (
 // Answers are the wizard choices that reach the shell configuration.
 type Answers struct {
 	Locker string
+	Tray   bool
 	// IdleLock locks the session after this much inactivity; zero leaves
 	// idle locking off. It only applies alongside Locker.
 	IdleLock     time.Duration
@@ -93,6 +94,9 @@ func ConfigJSON(a Answers) ([]byte, error) {
 		if a.IdleLock > 0 {
 			out["idle"] = map[string]any{"lock": a.IdleLock.String()}
 		}
+	}
+	if a.Tray {
+		out["tray"] = map[string]any{"enabled": true}
 	}
 	if a.WallpaperDir != "" {
 		out["wallpaper"] = map[string]any{"image_directory": a.WallpaperDir}

@@ -139,12 +139,12 @@ func runDotInstall(t *testing.T, install, inner string, tty bool) {
 func envWithPath(binDir, install string) []string {
 	env := make([]string, 0, len(os.Environ())+2)
 	for _, e := range os.Environ() {
-		if strings.HasPrefix(e, "PATH=") {
+		if strings.HasPrefix(e, "PATH=") || strings.HasPrefix(e, "SHELL=") {
 			continue
 		}
 		env = append(env, e)
 	}
-	return append(env, "PATH="+binDir+":"+os.Getenv("PATH"), "DOT_INSTALL="+install)
+	return append(env, "PATH="+binDir+":"+os.Getenv("PATH"), "DOT_INSTALL="+install, "SHELL=/bin/sh")
 }
 
 func writeStub(t *testing.T, path, body string) {

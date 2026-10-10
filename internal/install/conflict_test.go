@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Nomadcxx/sysc/internal/conflict"
+	"github.com/Nomadcxx/sysc/internal/dbusact"
 	"github.com/Nomadcxx/sysc/internal/fetch"
 	"github.com/Nomadcxx/sysc/internal/niri"
 	"github.com/Nomadcxx/sysc/internal/pin"
@@ -130,7 +131,7 @@ func TestUninstallRestoresOnlyStampedHandovers(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(actPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(actPath, []byte("ours"), 0o644); err != nil {
+	if err := os.WriteFile(actPath, dbusact.Content(), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	s := stamp.Stamp{

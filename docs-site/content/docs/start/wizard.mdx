@@ -7,11 +7,13 @@ description: Choose desktop defaults, weather location and conflict handling in 
 
 Press Enter to continue and Esc to return to the previous page. Use the arrow keys to change a selection. On the Plugins page, Space toggles the focused checkbox.
 
+Current source skips Plugins and directs you to the shell's catalog after setup. The released v0.1.1 binary still shows Weather/Media choices; those choices do not download plugin executables. Weather setup configures the shell's built-in widget.
+
 | Page | Choice |
 |---|---|
 | Theme | Select Standard, Compact or Expressive. Use Left and Right to choose the desktop's light or dark mode. The installer itself stays black. |
 | Wallpaper | Set the image directory. Enter an absolute path or a path beginning with ~/ such as ~/Pictures/wallpapers. |
-| Plugins | Toggle Weather and Media. The built-in weather widget still needs a location even if Weather is unchecked. |
+| Plugins | Released v0.1.1 only: Weather/Media selections do not install plugins. Use the shell's catalog after setup. |
 | Weather | Accept the automatic location, search for a city, or provide coordinates with command-line flags. Check the location before pressing Enter on the empty input. |
 | Conflicts | Choose Hand over, Keep both or Skip SYSC component for each detected provider. Read [conflict handling](/docs/guides/conflicts) before handing over an existing desktop service. |
 | Review | Check the component list, paths and package-manager advice. Press Enter to start installation. |
