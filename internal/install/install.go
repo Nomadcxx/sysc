@@ -463,6 +463,12 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 			return res, err
 		}
 	}
+	// A cancelled ctx (Ctrl+C in the installer) unwinds at each phase boundary
+	// below, so the deferred restart of previously active units runs before Run
+	// returns (the #39 restart guard).
+	if err := ctx.Err(); err != nil {
+		return res, err
+	}
 	if len(allNames) > 0 {
 		wasActive = units.ActiveUnits(systemctl, unitNames...)
 		if err := units.StopUnits(systemctl, wasActive); err != nil {
@@ -520,6 +526,10 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 	}
 	emit(res.Tasks)
 
+	if err := ctx.Err(); err != nil {
+		return res, err
+	}
+
 	startNames := []string{}
 	for _, c := range enabled {
 		if skipComponent[c.ID] || c.BinaryOnly {
@@ -559,6 +569,9 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 	// The user units Requisite= that target, so commenting out spawn-at-startup
 	// here would leave the next login with no bar. SSH has no live session and
 	// still takes the enable-only path below.
+	if err := ctx.Err(); err != nil {
+		return res, err
+	}
 	sessionUp := units.GraphicalSessionActive(systemctl)
 	keepSpawn := opts.InNiriSession && !sessionUp
 	if _, err := niri.Apply(niri.Options{
