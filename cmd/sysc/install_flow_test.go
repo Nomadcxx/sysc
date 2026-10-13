@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -96,15 +98,55 @@ func TestInstallingIgnoresKeys(t *testing.T) {
 	}
 }
 
-func TestInstallingAllowsCtrlC(t *testing.T) {
+func TestCtrlCCancelsInstallThenFails(t *testing.T) {
 	m := newModel(i18n.EN, nil, false)
 	m.step = ui.StepInstalling
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	cancelled := false
+	m.cancel = func() { cancelled = true }
+
+	// First Ctrl+C cancels the running install and keeps the program alive so
+	// install.Run can unwind and restart units; it must not quit yet.
+	next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	got := next.(model)
+	if !cancelled {
+		t.Fatal("first ctrl+c did not cancel the install context")
+	}
+	if !got.cancelling {
+		t.Fatal("first ctrl+c did not record the cancel")
+	}
+	if cmd != nil {
+		if _, ok := cmd().(tea.QuitMsg); ok {
+			t.Fatal("first ctrl+c quit while the install was still unwinding")
+		}
+	}
+
+	// Second Ctrl+C is the forced escape hatch.
+	_, cmd = got.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
 	if cmd == nil {
-		t.Fatal("ctrl+c did not quit while installing")
+		t.Fatal("second ctrl+c did not quit")
 	}
 	if _, ok := cmd().(tea.QuitMsg); !ok {
-		t.Fatalf("ctrl+c returned %T, want quit", cmd())
+		t.Fatalf("second ctrl+c returned %T, want quit", cmd())
+	}
+}
+
+func TestInstallExitCode(t *testing.T) {
+	failedTask := install.Task{Name: "sysc-shell", Status: install.Failed, Reason: "boom"}
+	tests := []struct {
+		name string
+		m    model
+		want int
+	}{
+		{"success", model{step: ui.StepDone}, 0},
+		{"quit mid-install", model{step: ui.StepInstalling}, 130},
+		{"cancelled", model{step: ui.StepFailed, installErr: context.Canceled}, 130},
+		{"error", model{step: ui.StepFailed, installErr: errors.New("boom")}, 1},
+		{"failed task", model{step: ui.StepDone, installRes: install.Result{Tasks: []install.Task{failedTask}}}, 1},
+	}
+	for _, tc := range tests {
+		if got := installExit(tc.m); got != tc.want {
+			t.Errorf("%s: installExit = %d, want %d", tc.name, got, tc.want)
+		}
 	}
 }
 

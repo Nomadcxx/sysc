@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,6 +49,29 @@ func TestFailedSwapRestartsPreviouslyActiveUnits(t *testing.T) {
 	_, err := Run(context.Background(), opts)
 	if err == nil || !strings.Contains(err.Error(), "swap boom") {
 		t.Fatalf("Run error = %v; want swap failure", err)
+	}
+	trailingStarts(t, rec, restartOrderStarts)
+}
+
+// #58: a cancelled context right after StopUnits unwinds at the next phase
+// checkpoint, restarts the units that were running, and reports cancellation.
+func TestCancelledInstallAfterStopRestartsUnits(t *testing.T) {
+	home := setupHome(t)
+	rec := &recorder{}
+	ctx, cancel := context.WithCancel(context.Background())
+	opts := Options{
+		Home: home, Pin: loadPin(t), Answers: weatherAnswers(), Yes: true,
+		Download: func(context.Context, string, []fetch.Asset) error { return nil },
+		Swap: func(string, string, []string) error {
+			cancel() // Ctrl+C lands right after the units were stopped
+			return nil
+		},
+		LookPath:  func(string) (string, error) { return "", os.ErrNotExist },
+		Systemctl: rec.systemctl, Now: time.Unix(1000, 0),
+	}
+	_, err := Run(ctx, opts)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Run error = %v, want context.Canceled", err)
 	}
 	trailingStarts(t, rec, restartOrderStarts)
 }

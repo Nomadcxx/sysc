@@ -263,6 +263,11 @@ type model struct {
 	// injectable seam for tests (never call the real install.Run in tests).
 	send      func(tea.Msg)
 	installer func(seed.Answers, func([]install.Task)) (install.Result, error)
+
+	// cancel aborts the in-flight install; cancelling records that the user
+	// asked to stop so the process reports an interrupted exit, not success.
+	cancel     context.CancelFunc
+	cancelling bool
 }
 
 func newModel(loc i18n.Locale, recommended []string, plainNiri bool) model {
@@ -385,7 +390,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.step == ui.StepInstalling {
 			if msg.Type == tea.KeyCtrlC {
-				return m, tea.Quit
+				if m.cancelling {
+					// Second Ctrl+C forces the way out; main reports 130.
+					return m, tea.Quit
+				}
+				m.cancelling = true
+				if m.cancel != nil {
+					m.cancel()
+				}
+				return m, nil
 			}
 			return m, nil
 		}
@@ -739,7 +752,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	findings, _ := conflict.Detect(conflict.Env{NiriConfig: niriConfigPath(home)})
 	choices := conflict.Defaults(findings, o.KeepConflicts, o.Handover == "all")
 
@@ -771,7 +785,12 @@ func main() {
 		opts := installOptions(home, p, a, false, loc, osr, func(cmd *exec.Cmd) error {
 			reply := make(chan error, 1)
 			prog.Send(packageRequestMsg{cmd: cmd, reply: reply})
-			return <-reply
+			select {
+			case err := <-reply:
+				return err
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		})
 
 		opts.InNiriSession = inNiri
@@ -806,6 +825,7 @@ func main() {
 		}
 	}
 
+	m.cancel = cancel
 	prog = newInstallProgram(m, installer, tea.WithAltScreen())
 	final, err := prog.Run()
 	if err != nil {
@@ -816,11 +836,29 @@ func main() {
 	if !ok {
 		return
 	}
-	if fm.installErr != nil || anyFailed(fm.installRes.Tasks) {
+	if code := installExit(fm); code != 0 {
 		if fm.installErr != nil {
 			fmt.Fprintln(os.Stderr, fm.installErr)
 		}
-		os.Exit(1)
+		os.Exit(code)
+	}
+}
+
+// installExit maps the final installer model to a process exit code. A quit
+// that left the program mid-install, or a cancelled install, is an
+// interruption: exit 130 (the shell convention for SIGINT), never 0, so a
+// half-applied install cannot masquerade as success. A completed install with a
+// failed task or error exits 1; a clean install exits 0.
+func installExit(fm model) int {
+	switch {
+	case fm.step == ui.StepInstalling:
+		return 130
+	case errors.Is(fm.installErr, context.Canceled):
+		return 130
+	case fm.installErr != nil || anyFailed(fm.installRes.Tasks):
+		return 1
+	default:
+		return 0
 	}
 }
 
