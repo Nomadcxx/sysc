@@ -277,7 +277,7 @@ func writeAtomic(path string, data []byte) error {
 		return destWriteErr(path, dest, viaLink, err)
 	}
 	tmp := dest + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	if err := os.WriteFile(tmp, data, backup.FileMode(dest)); err != nil {
 		os.Remove(tmp)
 		return destWriteErr(path, dest, viaLink, err)
 	}

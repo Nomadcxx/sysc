@@ -13,6 +13,21 @@ import (
 
 const maxStateCopies = 5
 
+// defaultFileMode is used when the target does not exist yet.
+const defaultFileMode = 0o644
+
+// FileMode returns the permission bits to write path with. A file the user
+// already restricted to themselves stays restricted: rewriting a 0600 config
+// as 0644 would make it world-readable. A missing path, or one we cannot stat,
+// uses defaultFileMode.
+func FileMode(path string) os.FileMode {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return defaultFileMode
+	}
+	return fi.Mode().Perm()
+}
+
 // FirstBak copies path to path+".sysc.bak" unless that backup already exists.
 // The first backup is sacred: later calls never overwrite it.
 func FirstBak(path string) (bool, error) {
@@ -26,7 +41,7 @@ func FirstBak(path string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if err := os.WriteFile(bak, data, 0o644); err != nil {
+	if err := os.WriteFile(bak, data, FileMode(path)); err != nil {
 		return false, err
 	}
 	return true, nil

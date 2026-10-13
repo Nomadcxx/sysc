@@ -129,3 +129,27 @@ func TestStateCopyRotatesOldest(t *testing.T) {
 		t.Fatalf("oldest copy still present: %v", err)
 	}
 }
+
+func TestFirstBakKeepsSourceMode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.kdl")
+	if err := os.WriteFile(path, []byte("secret"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := FirstBak(path); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Stat(path + ".sysc.bak")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fi.Mode().Perm(); got != 0o600 {
+		t.Errorf("backup mode = %04o, want 0600", got)
+	}
+}
+
+func TestFileModeDefaultsForMissingFile(t *testing.T) {
+	if got := FileMode(filepath.Join(t.TempDir(), "absent")); got != 0o644 {
+		t.Errorf("FileMode(missing) = %04o, want 0644", got)
+	}
+}
