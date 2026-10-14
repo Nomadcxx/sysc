@@ -1,26 +1,26 @@
 ---
 title: Suite pins
-description: Component releases, user units and architecture in the SYSC v0.1.1 installer pin.
+description: Component releases, user units and architecture in the SYSC v0.1.2 installer pin.
 ---
 
-## SYSC v0.1.1 suite pins
+## SYSC v0.1.2 suite pins
 
-The installer embeds this component set in its v0.1.1 binary. It downloads the listed amd64 release assets over HTTPS and verifies their SHA-256 values from the [pin manifest](https://github.com/Nomadcxx/sysc/blob/v0.1.1/internal/pin/pin.json).
+The installer embeds this component set in its v0.1.2 binary. It downloads the listed amd64 release assets over HTTPS and verifies their SHA-256 values from the [pin manifest](https://github.com/Nomadcxx/sysc/blob/v0.1.2/internal/pin/pin.json).
 
-Current source also installs sysc-terminal v0.1.0 as a wallpaper executable that the shell manages, enables tray presentation in a new config when sysc-tray installs, and leaves plugin installation to the shell's catalog. The published v0.1.1 binary retains the older behavior below; its Weather/Media choices do not download plugins. See the [current source manifest](https://github.com/Nomadcxx/sysc/blob/main/internal/pin/pin.json) for the source route.
+The v0.1.2 release is cut from the current default branch, so source builds and the released binary install the same set: sysc-terminal v0.1.0 as a managed wallpaper executable, tray presentation seeded in a new config when sysc-tray installs, and plugin installation left to the shell's catalog.
 
 ## Enabled user services
 
-- **sysc-shell v0.1.0:** sysc-shell.service
-- **sysc-clipboard v0.1.2:** sysc-clipboard.service
-- **sysc-walls v1.0.2:** sysc-walls.service
-- **sysc-notify v0.1.0:** sysc-notify.service
-- **sysc-tray v0.1.1:** sysc-tray.service
-- **sysc-lock v0.1.0:** sysc-lock-session.service
+- **sysc-shell v0.2.0:** sysc-shell.service
+- **sysc-clipboard v0.1.3:** sysc-clipboard.service
+- **sysc-walls v1.1.1:** sysc-walls.service
+- **sysc-notify v0.1.1:** sysc-notify.service
+- **sysc-tray v0.1.2:** sysc-tray.service
+- **sysc-lock v0.1.1:** sysc-lock-session.service
 
 ## Disabled and optional
 
-- **sysc-terminal:** disabled because v0.1.1 has no user unit template.
+- **sysc-terminal v0.1.0:** a binary-only component; the shell manages its wallpaper processes and it has no user unit.
 - **gSlapper v1.5.1:** an optional package; SYSC installs it only when it is missing.
 
 All enabled component binary assets in this pin are amd64. SYSC also publishes an arm64 installer executable, but the installer refuses to install this suite on arm64.

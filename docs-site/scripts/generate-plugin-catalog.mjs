@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const sourceFile = fileURLToPath(new URL('../data/plugin-catalog.json', import.meta.url));
 const outputFile = fileURLToPath(new URL('../content/docs/plugins/catalog.mdx', import.meta.url));
-const sourceRevision = 'b6323d6f131bc8fa2d814942b271faecd045522a';
+const sourceRevision = '6a8130a47fbd27ca93ccd3ecc62b78d0814587f2';
 const sourceURL = `https://raw.githubusercontent.com/Nomadcxx/sysc-plugins/${sourceRevision}/catalog.json`;
 
 // ponytail: format a checked-in catalog snapshot so docs builds never fetch catalog data or plugin assets.

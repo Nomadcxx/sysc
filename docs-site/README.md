@@ -31,7 +31,7 @@ Open `http://localhost:8000/sysc/docs/`. Replace `123` with the pull request num
 
 Use each component's current default branch for behavior guidance. Name the exact component releases pinned by the SYSC installer release in installation steps. Commit links identify the revision behind each documentation review. Update the affected guidance when source behavior changes. Write “unknown” when source does not establish support or qualification.
 
-The source record covers installer release v0.1.1. Read its component pins in [internal/pin/pin.json at tag v0.1.1](https://github.com/Nomadcxx/sysc/blob/v0.1.1/internal/pin/pin.json). On 2026-10-09, we checked the default branch refs listed in the table. We excluded dirty local work and feature branches.
+The source record covers installer release v0.1.2. Read its component pins in [internal/pin/pin.json at tag v0.1.2](https://github.com/Nomadcxx/sysc/blob/v0.1.2/internal/pin/pin.json). On 2026-10-15, we checked the default branch refs listed in the table. We excluded dirty local work and feature branches.
 
 The sidebar has five groups: Start, Guides, Components, Developers, and Plugins. Fumadocs meta.json files hold the route inventory. Add each page to its section metadata with the content.
 
