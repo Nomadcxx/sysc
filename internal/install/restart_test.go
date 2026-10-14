@@ -76,6 +76,35 @@ func TestCancelledInstallAfterStopRestartsUnits(t *testing.T) {
 	trailingStarts(t, rec, restartOrderStarts)
 }
 
+// #58: cancellation during the final non-context-aware phase must not report success.
+func TestCancelledInstallDuringFinalStartReturnsCancellation(t *testing.T) {
+	home := setupHome(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	started := false
+	systemctl := func(args ...string) error {
+		if len(args) > 0 && args[0] == "start" {
+			started = true
+			cancel()
+		}
+		return nil
+	}
+	opts := Options{
+		Home: home, Pin: loadPin(t), Answers: weatherAnswers(), Yes: true,
+		Download:  func(context.Context, string, []fetch.Asset) error { return nil },
+		Swap:      func(string, string, []string) error { return nil },
+		LookPath:  func(string) (string, error) { return "", os.ErrNotExist },
+		Systemctl: systemctl, Now: time.Unix(1000, 0),
+	}
+	_, err := Run(ctx, opts)
+	if !started {
+		t.Fatal("installer did not reach the final unit start")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Run error = %v, want context.Canceled", err)
+	}
+}
+
 // A failure later in the run (here: read-only niri config) must restart them too.
 func TestFailedNiriApplyRestartsUnits(t *testing.T) {
 	home := setupHome(t)
