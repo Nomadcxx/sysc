@@ -92,7 +92,7 @@ install -m 755 "$download_dir/sysc-linux-amd64" "$HOME/.local/bin/sysc" &&
 ```
 
 Continue only if the checksum reports `sysc-linux-amd64: OK`. Replace
-`latest/download` with `download/v0.1.2` to pin a release. The commands below
+`latest/download` with `download/v0.1.3` to pin a release. The commands below
 use `~/.local/bin/sysc`.
 
 ### Manual source checkout
@@ -168,7 +168,7 @@ Config, state, and data paths follow absolute `XDG_CONFIG_HOME`,
 ## What the installer installs
 
 The [suite pin](internal/pin/pin.json) records component versions
-and checksums. The released `v0.1.2` installer includes the components below:
+and checksums. The released `v0.1.3` installer includes the components below:
 
 | Component | Version | Role |
 |---|---|---|
@@ -178,7 +178,7 @@ and checksums. The released `v0.1.2` installer includes the components below:
 | [sysc-notify](https://github.com/Nomadcxx/sysc-notify) | v0.1.1 | Notifications |
 | [sysc-tray](https://github.com/Nomadcxx/sysc-tray) | v0.1.2 | StatusNotifierItem tray |
 | [sysc-lock](https://github.com/Nomadcxx/sysc-lock) | v0.1.1 | Session lock owner |
-| [sysc-terminal](https://github.com/Nomadcxx/sysc-terminal) | v0.1.0 | Terminal-art wallpaper, managed by the shell |
+| [sysc-terminal](https://github.com/Nomadcxx/sysc-terminal) | v0.2.0 | Terminal-art wallpaper, managed by the shell |
 | [gSlapper](https://github.com/Nomadcxx/gSlapper) | External package | Video wallpaper; install only when missing |
 
 sysc-terminal needs no standalone user service: the shell starts one process

@@ -86,7 +86,7 @@ func TestEmbeddedTerminalAndCatalogSelection(t *testing.T) {
 		if c.ID != "sysc-terminal" {
 			continue
 		}
-		if c.Disabled || !c.BinaryOnly || c.Unit != "" || c.Tag != "v0.1.0" || len(c.Binaries) != 1 {
+		if c.Disabled || !c.BinaryOnly || c.Unit != "" || c.Tag != "v0.2.0" || len(c.Binaries) != 1 {
 			t.Fatalf("terminal needs a pinned executable and no service: %+v", c)
 		}
 		return

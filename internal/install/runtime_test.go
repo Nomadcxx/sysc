@@ -170,11 +170,11 @@ func TestEmbeddedTerminalIsInstalledWithoutUserUnit(t *testing.T) {
 	if !fetched || !swapped {
 		t.Fatalf("terminal fetched %v swapped %v", fetched, swapped)
 	}
-	if res.Stamp.Components["sysc-terminal"] != "v0.1.0" {
+	if res.Stamp.Components["sysc-terminal"] != "v0.2.0" {
 		t.Fatalf("terminal not stamped: %v", res.Stamp.Components)
 	}
 	stored, err := stamp.Read(opts.stateDir())
-	if err != nil || stored.Components["sysc-terminal"] != "v0.1.0" {
+	if err != nil || stored.Components["sysc-terminal"] != "v0.2.0" {
 		t.Fatalf("terminal stamp not persisted: %+v %v", stored, err)
 	}
 	if exists(filepath.Join(opts.unitDir(), "sysc-terminal.service")) {
