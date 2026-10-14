@@ -129,3 +129,42 @@ func TestStateCopyRotatesOldest(t *testing.T) {
 		t.Fatalf("oldest copy still present: %v", err)
 	}
 }
+
+func TestFirstBakKeepsSourceMode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.kdl")
+	if err := os.WriteFile(path, []byte("secret"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := FirstBak(path); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Stat(path + ".sysc.bak")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fi.Mode().Perm(); got != 0o600 {
+		t.Errorf("backup mode = %04o, want 0600", got)
+	}
+}
+
+func TestFileModeDefaultsForMissingFile(t *testing.T) {
+	got, err := FileMode(filepath.Join(t.TempDir(), "absent"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != 0o644 {
+		t.Errorf("FileMode(missing) = %04o, want 0644", got)
+	}
+}
+
+func TestFileModeReturnsUnexpectedStatErrors(t *testing.T) {
+	dir := t.TempDir()
+	parent := filepath.Join(dir, "file")
+	if err := os.WriteFile(parent, []byte("not a directory"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := FileMode(filepath.Join(parent, "child")); err == nil {
+		t.Fatal("FileMode on a non-directory parent returned no error")
+	}
+}
