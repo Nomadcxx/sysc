@@ -6,7 +6,7 @@ description: Search desktop entries and activate Niri applications from Go.
 
 sysc-launch scans desktop entries, ranks text queries and activates applications through Niri. It is a Go library and diagnostic CLI; it does not draw a launcher panel or run a daemon. sysc-shell owns that interface.
 
-**Source:** [default-branch commit c0c7ef2d](https://github.com/Nomadcxx/sysc-launch/commit/c0c7ef2d4bbf0a4ab78bc6d837304488016f80f2) · **SYSC v0.1.1 status:** library/CLI source, not a separately installed suite component.
+**Source:** [default-branch commit dd9a3c87](https://github.com/Nomadcxx/sysc-launch/commit/dd9a3c87839e82dc699dc95d5fee333f3c560dfa) · **SYSC v0.1.3 status:** library/CLI source, not a separately installed suite component.
 
 ## Query from Go
 
@@ -72,7 +72,7 @@ sysc-launch launch DESKTOP_ID ACTION_ID
 
 Query writes a JSON result list. Copy the desktop ID and optional action ID from that result before launching. Activation needs Niri in PATH; desktop scanning and query do not. The launcher passes the desktop entry's argument vector without a shell.
 
-See the [versioned Go API](https://pkg.go.dev/github.com/Nomadcxx/sysc-launch@v0.2.1-0.20261007072322-c0c7ef2d4bbf) and the [source record](/docs/reference/sources) for the exact module snapshot. SYSC v0.1.1's sysc-shell v0.1.0 uses an earlier dependency listed there.
+See the [versioned Go API](https://pkg.go.dev/github.com/Nomadcxx/sysc-launch@v0.2.1) and the [source record](/docs/reference/sources) for the exact module snapshot. SYSC v0.1.3's sysc-shell v0.2.0 uses the v0.2.1 release.
 
 ## Discovery and ranking
 

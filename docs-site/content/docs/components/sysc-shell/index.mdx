@@ -6,7 +6,7 @@ description: Start and inspect the Niri desktop shell installed by SYSC.
 
 The shell owns the bars, panels, settings, wallpaper controls and desktop OSDs. It talks to Niri and runs inside the graphical user session.
 
-**Source:** [default-branch commit 0b684039](https://github.com/Nomadcxx/sysc-shell/commit/0b6840392e1e80ca45f0a1284dfab8e6d8ac6960) · **SYSC v0.1.1 pin:** sysc-shell v0.1.0. See the [source record](/docs/reference/sources) before applying behavior from a newer source snapshot to an installed suite.
+**Source:** [default-branch commit fd2961e8](https://github.com/Nomadcxx/sysc-shell/commit/fd2961e8318c269279e8bacb28b74522fd4e5392) · **SYSC v0.1.3 pin:** sysc-shell v0.2.0, the release cut from this default branch.
 
 <Video src="/media/shell-tour.mp4" poster="/media/shell-tour-poster.png" label="Settings, Bar settings and the system monitor opening over a static wallpaper, with the bar in view" />
 
@@ -56,6 +56,8 @@ Use the [service integration guide](/docs/guides/service-integration), [theme gu
 
 These captures use fixture data and invented network and device names.
 
+The shell offers a first-run setup panel when no config exists; reopen it with `sysc-shell ipc panel.toggle '{"panel":"onboarding"}'`. Shell surfaces and Settings are available in English, Spanish, Portuguese, Japanese, Korean and Russian; choose the interface language in Settings → Session → Language.
+
 The shell opens panels from the bar. You can also bind `sysc-shell ipc` actions in Niri. For example, open the launcher with Super+Space and the settings panel with Super+Comma:
 
 ~~~kdl
@@ -65,7 +67,7 @@ binds {
 }
 ~~~
 
-The IPC endpoint accepts `sysc-shell ipc status` for a read-only status check. Panel actions include `launcher`, `control-center`, `notifications`, `clipboard`, `clock`, `weather`, `system-monitor`, `session`, `power`, `settings`, `wallpaper`, `audio`, `network`, `bluetooth`, `terminal-art` and `plugin-store`. Wallpaper and Terminal Art appear when their optional backends are available. The shell repository's [Niri hotkey reference](https://github.com/Nomadcxx/sysc-shell/blob/0b6840392e1e80ca45f0a1284dfab8e6d8ac6960/docs/niri-hotkeys.md) lists the other panel and OSD actions.
+The IPC endpoint accepts `sysc-shell ipc status` for a read-only status check. Panel actions include `launcher`, `control-center`, `notifications`, `clipboard`, `clock`, `weather`, `system-monitor`, `session`, `power`, `settings`, `wallpaper`, `audio`, `network`, `bluetooth`, `terminal-art` and `plugin-store`. Wallpaper and Terminal Art appear when their optional backends are available. The shell repository's [Niri hotkey reference](https://github.com/Nomadcxx/sysc-shell/blob/fd2961e8318c269279e8bacb28b74522fd4e5392/docs/niri-hotkeys.md) lists the other panel and OSD actions.
 
 Use Settings to edit the shell's saved config. The installer seeds that file on first install and leaves an existing file in place during reinstall or upgrade. Back up the config before editing it by hand; the [path reference](/docs/reference/paths) shows the XDG location.
 
@@ -83,6 +85,6 @@ Replace `sysc-tray.service` with the unit for the feature. The shell can draw wi
 
 The shell targets Niri. The source record does not establish support for other compositors or a complete hardware matrix.
 
-The current default branch also documents Night Light using Niri's gamma-control protocol. This feature postdates the SYSC v0.1.1 sysc-shell v0.1.0 pin; it is not available in that installed release. See the [Night Light guide at the documented source commit](https://github.com/Nomadcxx/sysc-shell/blob/0b6840392e1e80ca45f0a1284dfab8e6d8ac6960/docs/night-light.md) for current-branch behavior.
+The shell documents Night Light using Niri's gamma-control protocol, available from Settings → Night Light. See the [Night Light guide at the documented source commit](https://github.com/Nomadcxx/sysc-shell/blob/fd2961e8318c269279e8bacb28b74522fd4e5392/docs/night-light.md).
 
-[Source code](https://github.com/Nomadcxx/sysc-shell/tree/0b6840392e1e80ca45f0a1284dfab8e6d8ac6960) · [Report an issue](https://github.com/Nomadcxx/sysc-shell/issues)
+[Source code](https://github.com/Nomadcxx/sysc-shell/tree/fd2961e8318c269279e8bacb28b74522fd4e5392) · [Report an issue](https://github.com/Nomadcxx/sysc-shell/issues)

@@ -6,18 +6,18 @@ description: Run Niri terminal effects as a per-output wallpaper process.
 
 sysc-terminal renders sysc-Go effects on Niri's background layer. It runs one process per output. sysc-shell can supervise those processes when Terminal Art is available.
 
-**Source:** [default-branch commit 3f24ca08](https://github.com/Nomadcxx/sysc-terminal/commit/3f24ca081bfc97f790147889d32ed08b31882960) · **SYSC v0.1.1 status:** disabled in the installer manifest; the suite does not install a binary or unit.
+**Source:** [default-branch commit e2756323](https://github.com/Nomadcxx/sysc-terminal/commit/e2756323d249a7170d610f0049bc65b859cf01af) · **SYSC v0.1.3 pin:** sysc-terminal v0.2.0, a binary-only component with no user unit.
 
-The Go installer built from current source installs the checksum-pinned v0.1.0 executable. sysc-shell starts the wallpaper processes, so terminal wallpapers need no standalone user service. On Arch you can also install `sysc-terminal` from the AUR. See the [installation guide](/docs/start/install) for these routes; the published installer v0.1.1 remains unchanged.
+The installer ships the checksum-pinned v0.2.0 executable. sysc-shell starts the wallpaper processes, so terminal wallpapers need no standalone user service. On Arch you can also install `sysc-terminal` from the AUR. See the [installation guide](/docs/start/install) for these routes.
 
 <Video src="/media/terminal-tour.mp4" poster="/media/terminal-tour-poster.png" label="sysc-terminal as the desktop wallpaper in Tokyo Night: the cross-logo effect is picked in Terminal Art, terminals are launched from the launcher, then a plugin and the system monitor are opened" />
 
 ## Install from source
 
-This source needs Go 1.26 or later and CGO disabled. The command below installs the exact source revision recorded on the [source page](/docs/reference/sources):
+This source needs Go 1.26 or later and CGO disabled. The command below installs the released v0.2.0, the version the suite pins:
 
 ~~~sh
-GOBIN="$HOME/.local/bin" CGO_ENABLED=0 go install github.com/Nomadcxx/sysc-terminal/cmd/sysc-terminal@v0.1.1-0.20261008172809-3f24ca081bfc
+GOBIN="$HOME/.local/bin" CGO_ENABLED=0 go install github.com/Nomadcxx/sysc-terminal/cmd/sysc-terminal@v0.2.0
 export PATH="$HOME/.local/bin:$PATH"
 sysc-terminal --list
 ~~~
@@ -29,9 +29,9 @@ systemctl --user import-environment PATH
 systemctl --user restart sysc-shell.service
 ~~~
 
-The v0.1.1 installer does not manage this binary, so this manual install remains separate from suite upgrades and removal.
+The suite installer manages this binary; a manual install stays separate from suite upgrades and removal.
 
-At this source commit, go.mod pins sysc-Go v1.0.6-0.20261008172414-1ff1f6c3c8d0 and sysc-wayland v0.3.1. The [README build note](https://github.com/Nomadcxx/sysc-terminal/blob/3f24ca081bfc97f790147889d32ed08b31882960/README.md#build) still says sysc-Go v1.0.4; the install command follows go.mod. The [pinned sysc-Go commit](https://github.com/Nomadcxx/sysc-Go/commit/1ff1f6c3c8d0860f2fcd9f0d89349d491619dc6d) identifies the animation source used by this binary.
+At this source commit, go.mod pins sysc-Go v1.0.7 and sysc-wayland v0.3.1. The [README build note](https://github.com/Nomadcxx/sysc-terminal/blob/e2756323d249a7170d610f0049bc65b859cf01af/README.md#build) still says sysc-Go v1.0.6-0.20261008172414-1ff1f6c3c8d0; the install command follows go.mod. The sysc-Go v1.0.7 module identifies the animation source used by this binary.
 
 ## Run one output
 
@@ -52,8 +52,8 @@ Run `sysc-terminal --list` after installing the binary to see effect IDs and the
 
 The IPC socket accepts `query`, `pause`, `resume`, `change effect <id> theme <theme> [file <path>]`, `reset` and `stop`. A paused process keeps its last frame. The CLI's `--file` option supplies text art to text effects. A font without braille glyphs can render an empty or broken-looking image; use `--font /path/to/font.ttf` to select a font that covers them.
 
-The SYSC v0.1.1 installer does not install a sysc-terminal executable or service. If the shell cannot find an optional manual install, check the user manager's `PATH` with `systemctl --user show-environment`; exporting `PATH` in one terminal does not change the service environment. See the [install steps above](#install-from-source) for the user-manager command.
+The suite installer includes the sysc-terminal executable and no service unit. If the shell cannot find a manual install, check the user manager's `PATH` with `systemctl --user show-environment`; exporting `PATH` in one terminal does not change the service environment. See the [install steps above](#install-from-source) for the user-manager command.
 
 The documented source repository's README names an older sysc-Go build dependency than its committed `go.mod`. The source record uses the `go.mod` version for the recorded build. Check the exact dependency before comparing effect IDs or output with another release.
 
-[CLI source at the documented commit](https://github.com/Nomadcxx/sysc-terminal/blob/3f24ca081bfc97f790147889d32ed08b31882960/cmd/sysc-terminal/main.go) · [Source code](https://github.com/Nomadcxx/sysc-terminal/tree/3f24ca081bfc97f790147889d32ed08b31882960) · [Report an issue](https://github.com/Nomadcxx/sysc-terminal/issues)
+[CLI source at the documented commit](https://github.com/Nomadcxx/sysc-terminal/blob/e2756323d249a7170d610f0049bc65b859cf01af/cmd/sysc-terminal/main.go) · [Source code](https://github.com/Nomadcxx/sysc-terminal/tree/e2756323d249a7170d610f0049bc65b859cf01af) · [Report an issue](https://github.com/Nomadcxx/sysc-terminal/issues)

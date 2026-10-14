@@ -6,7 +6,7 @@ description: Inspect the user service that receives system tray items for sysc-s
 
 sysc-tray owns StatusNotifierItem discovery and DBusMenu state. sysc-shell owns icon drawing, placement, input and menu surfaces. The tray daemon runs separately, so restarting the shell does not discard tray registrations.
 
-**Source:** [default-branch commit a7928ebd](https://github.com/Nomadcxx/sysc-tray/commit/a7928ebd45aa1fd1253d6142bb1d98e4681e8126) · **SYSC v0.1.1 pin:** sysc-tray v0.1.1.
+**Source:** [default-branch commit e7d3dd4b](https://github.com/Nomadcxx/sysc-tray/commit/e7d3dd4be576fe667018a729ae18815df6932019) · **SYSC v0.1.3 pin:** sysc-tray v0.1.2.
 
 ## Session service
 
@@ -20,7 +20,7 @@ busctl --user status org.kde.StatusNotifierWatcher
 journalctl --user -u sysc-tray.service -b --no-pager
 ~~~
 
-The service should run while the graphical-session.target is active. The bus-name owner may be sysc-tray or another healthy watcher: v0.1.1 provides the watcher when the name is free and attaches as a host when another watcher already owns it. A different process in the bus status is not by itself a failure. A failed or intentionally skipped unit can leave the shell without tray items; check the install choice and the journal before restarting anything.
+The service should run while the graphical-session.target is active. The bus-name owner may be sysc-tray or another healthy watcher: v0.1.2 provides the watcher when the name is free and attaches as a host when another watcher already owns it. A different process in the bus status is not by itself a failure. A failed or intentionally skipped unit can leave the shell without tray items; check the install choice and the journal before restarting anything.
 
 ## Interface boundary
 
@@ -36,6 +36,6 @@ If the tray is empty, check the service first, then confirm that an application 
 
 Menu events include the revision that the shell displayed. When an application changes its menu before a click arrives, the service rejects the stale event instead of activating a different row. Open the menu again and choose the current item.
 
-The [v0.1.1 protocol package](https://pkg.go.dev/github.com/Nomadcxx/sysc-tray@v0.1.1/protocol) describes the suite-pinned public types. The internal presenter socket is a session interface; avoid treating its message layout as a public integration API.
+The [v0.1.2 protocol package](https://pkg.go.dev/github.com/Nomadcxx/sysc-tray@v0.1.2/protocol) describes the suite-pinned public types. The internal presenter socket is a session interface; avoid treating its message layout as a public integration API.
 
 [Source code](https://github.com/Nomadcxx/sysc-tray/tree/a7928ebd45aa1fd1253d6142bb1d98e4681e8126) · [Report an issue](https://github.com/Nomadcxx/sysc-tray/issues)

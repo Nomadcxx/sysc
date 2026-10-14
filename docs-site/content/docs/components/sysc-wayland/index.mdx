@@ -6,7 +6,7 @@ description: Connect to a Wayland compositor with the versioned pure-Go client.
 
 sysc-wayland provides a pure-Go Wayland transport and generated protocol bindings. It does not need CGO or libwayland. The current source supports core bindings plus text-input, cursor-shape and idle protocols.
 
-**Source:** [default-branch commit 74b83d8e](https://github.com/Nomadcxx/sysc-wayland/commit/74b83d8e2fb167701e5ce15fc326344e9f0f15db) · **SYSC v0.1.1 status:** library dependency, not a separately installed program.
+**Source:** [default-branch commit c328f3e5](https://github.com/Nomadcxx/sysc-wayland/commit/c328f3e5d6dfaf4f58361264dd0997fff898d279) · **SYSC v0.1.3 status:** library dependency, not a separately installed program.
 
 ## Compositor globals
 
@@ -64,7 +64,7 @@ Run it inside a Wayland session. Output depends on the compositor; a line can lo
 
 One goroutine must own a connection, its context and every proxy created from it. Call Dispatch on that same goroutine to receive events. Connect with an empty address to use the session environment, or pass a socket address explicitly.
 
-The documented version is a prerelease snapshot. The stable v0.3.1 API remains available from the [versioned package docs](https://pkg.go.dev/github.com/Nomadcxx/sysc-wayland@v0.3.1/client). SYSC v0.1.1's sysc-shell v0.1.0 uses an earlier module snapshot; see the [source record](/docs/reference/sources) for that exact dependency.
+The documented source is the stable v0.3.2 release, available from the [versioned package docs](https://pkg.go.dev/github.com/Nomadcxx/sysc-wayland@v0.3.2/client). SYSC v0.1.3's sysc-shell v0.2.0 uses this module version; see the [source record](/docs/reference/sources).
 
 ## Protocol packages
 

@@ -24,6 +24,6 @@ If the target is active and one unit failed, read its status and journal before 
 systemctl --user start sysc-shell.service
 ```
 
-Use the exact unit from the [v0.1.1 suite list](/docs/reference/suite). sysc-terminal has no suite unit in this release. A conflict choice can leave an installed component's unit disabled by design.
+Use the exact unit from the [v0.1.3 suite list](/docs/reference/suite). sysc-terminal has no suite unit in this release. A conflict choice can leave an installed component's unit disabled by design.
 
 The installer log is normally ~/.local/state/sysc/installer.log; the install stamp beside it records the release and whether the suite started. An absolute XDG_STATE_HOME changes both paths. See [paths](/docs/reference/paths), [verification](/docs/start/verify) and [recovery through uninstall](/docs/guides/uninstall).

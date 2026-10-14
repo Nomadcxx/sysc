@@ -4,7 +4,7 @@ description: Choose the process that owns each output's wallpaper or idle screen
 ---
 
 
-**SYSC v0.1.1 pins:** sysc-shell v0.1.0, sysc-walls v1.0.2 and gSlapper v1.5.1. The installer disables sysc-terminal. The [source record](/docs/reference/sources) links each reviewed commit.
+**SYSC v0.1.3 pins:** sysc-shell v0.2.0, sysc-walls v1.1.1, sysc-terminal v0.2.0 and gSlapper v1.5.1. The [source record](/docs/reference/sources) links each reviewed commit.
 
 Use one wallpaper owner per output. sysc-shell can manage static image backends, gSlapper video and image playback, or sysc-terminal effects. sysc-walls owns the idle screensaver, not the desktop background.
 
@@ -35,7 +35,7 @@ Replace OUTPUT with a connector from the output list. Do not run a manual proces
 
 ### Live terminal effects
 
-sysc-terminal draws sysc-Go effects on Niri's background layer. It runs one process per output and uses a separate IPC socket for each. SYSC v0.1.1 installs no sysc-terminal executable or user unit; its pinned sysc-shell module still declares the Go dependency. Install the executable separately to use Terminal Art. See the [sysc-terminal guide](/docs/components/sysc-terminal) for its exact source install and discovery check.
+sysc-terminal draws sysc-Go effects on Niri's background layer. It runs one process per output and uses a separate IPC socket for each. SYSC v0.1.3 installs the sysc-terminal v0.2.0 executable with no user unit; the shell manages its processes. Install it separately only for a manual shell setup. See the [sysc-terminal guide](/docs/components/sysc-terminal) for its exact source install and discovery check.
 
 ### Idle screensaver
 
@@ -56,4 +56,4 @@ Do not configure sysc-walls as a wallpaper backend. It starts after the idle tim
 4. Confirm that no second wallpaper process targets the same output.
 5. Check the [Niri session environment](/docs/guides/niri-session) before changing service startup.
 
-Current shell source manages wallpaper child processes. The exact capabilities in SYSC v0.1.1 follow its pinned sysc-shell and sysc-walls releases; the [source record](/docs/reference/sources) lists both.
+Current shell source manages wallpaper child processes. The exact capabilities in SYSC v0.1.3 follow its pinned sysc-shell and sysc-walls releases; the [source record](/docs/reference/sources) lists both.

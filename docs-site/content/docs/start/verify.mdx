@@ -17,9 +17,9 @@ journalctl --user -u sysc-shell.service -b --no-pager
 
 The session target should report active. The shell service should show active (running); an empty failed-unit list means systemd has no failed user units. The journal command shows this boot's shell messages.
 
-The v0.1.1 suite also enables sysc-clipboard.service, sysc-notify.service, sysc-tray.service, sysc-walls.service and sysc-lock-session.service. Check each service by its exact name if the corresponding feature is missing. sysc-terminal is disabled in the installer manifest and has no suite unit.
+The v0.1.3 suite also enables sysc-clipboard.service, sysc-notify.service, sysc-tray.service, sysc-walls.service and sysc-lock-session.service. Check each service by its exact name if the corresponding feature is missing. sysc-terminal ships as a managed wallpaper executable with no user unit.
 
-The lock-owner service starts with the session; it does not lock the screen by itself. New sysc-shell configs set `session.locker: "sysc-lock"`, while existing configs remain unchanged. Running sysc-lock requests a lock, so only run it when you are ready to lock the current session and can authenticate. See the [v0.1.1 shell defaults](https://github.com/Nomadcxx/sysc/blob/4cb1899fe678ce5afe0cf032d102a17475969a5d/README.md#L66-L70).
+The lock-owner service starts with the session; it does not lock the screen by itself. New sysc-shell configs set `session.locker: "sysc-lock"`, while existing configs remain unchanged. Running sysc-lock requests a lock, so only run it when you are ready to lock the current session and can authenticate. See the [v0.1.3 shell defaults](https://github.com/Nomadcxx/sysc/blob/v0.1.3/README.md#L187-L194).
 
 If you installed from SSH or a TTY, the installer can enable services but cannot start them. Log in through Niri and check again. If a unit fails, begin with the read-only [service checks](/docs/troubleshooting/services). Do not run systemctl --user through sudo.
 

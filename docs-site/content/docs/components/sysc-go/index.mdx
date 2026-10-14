@@ -5,7 +5,7 @@ description: Run terminal animations or use the animation library from Go.
 
 sysc-Go provides terminal animations and text effects for Go programs. Its command-line tools are `syscgo` and `syscgo-tui`; sysc-terminal and sysc-walls use the library for desktop effects.
 
-**Source:** [default-branch commit 562ad7bf](https://github.com/Nomadcxx/sysc-Go/commit/562ad7bdf5353325e4589e55193a9a570f3d8cd8) · **SYSC v0.1.1 status:** dependency reference; the installer does not install a separate sysc-Go binary.
+**Source:** [default-branch commit 6fe292db](https://github.com/Nomadcxx/sysc-Go/commit/6fe292db15a907f812e47acc4782379dcf193615) · **SYSC v0.1.3 status:** dependency reference; the installer does not install a separate sysc-Go binary.
 
 ## Run an effect
 
@@ -41,7 +41,7 @@ For use as a library, add the reviewed module revision to your Go project:
 go get github.com/Nomadcxx/sysc-Go@562ad7bdf5353325e4589e55193a9a570f3d8cd8
 ~~~
 
-This project revision records `go 1.24.2` in `go.mod`; the repository README asks command builders to use Go 1.26 or later. Check the target project's module version before upgrading a dependency. `sysc-terminal`, `sysc-walls` and sysc-shell can each use a different sysc-Go revision; the [source record](/docs/reference/sources) lists the revisions behind this site's guidance and the v0.1.1 module graph.
+This project revision records `go 1.24.2` in `go.mod`; the repository README asks command builders to use Go 1.26 or later. Check the target project's module version before upgrading a dependency. `sysc-terminal`, `sysc-walls` and sysc-shell can each use a different sysc-Go revision; the [source record](/docs/reference/sources) lists the revisions behind this site's guidance and the v0.1.3 module graph.
 
 The commands run terminal effects. The sysc-terminal and sysc-walls integrations render through their own desktop processes and use their own dependency pins. See [wallpaper ownership](/docs/guides/wallpapers) before running a desktop wallpaper process alongside the shell.
 

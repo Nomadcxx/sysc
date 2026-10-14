@@ -11,14 +11,14 @@ Full Debian and Fedora suite support is planned. Check the [requirements](/docs/
 
 Run this release as your normal user. Do not prefix the installer with sudo. It writes suite programs and systemd user units in your home directory. The optional gSlapper package step may ask the package manager for administrator authentication.
 
-The commands below select the reviewed v0.1.1 release. They verify the amd64 installer against the checksum file before placing it in ~/.local/bin.
+The commands below select the reviewed v0.1.3 release. They verify the amd64 installer against the checksum file before placing it in ~/.local/bin.
 
 ```sh
 set -eu
 download_dir=$(mktemp -d)
 trap 'rm -rf "$download_dir"' EXIT
 asset=sysc-linux-amd64
-base=https://github.com/Nomadcxx/sysc/releases/download/v0.1.1
+base=https://github.com/Nomadcxx/sysc/releases/download/v0.1.3
 curl -fsSL "$base/$asset" -o "$download_dir/$asset"
 curl -fsSL "$base/SHA256SUMS" -o "$download_dir/SHA256SUMS"
 (cd "$download_dir" && sha256sum --ignore-missing -c SHA256SUMS)
@@ -30,7 +30,7 @@ Continue only when sha256sum reports sysc-linux-amd64: OK. If verification fails
 
 Keep ~/.local/bin/sysc if you want to rerun this release or uninstall it later. To use a later SYSC release, change both download URLs to that release tag and read its release notes and compatibility information first.
 
-The published v0.1.1 installer does not include the current source improvements. It skips sysc-terminal and shows Weather/Media plugin choices without installing plugin executables. Add plugins through the shell's catalog. See the current source route below for terminal wallpapers and tray setup in a new config.
+This release installs sysc-terminal v0.2.0 for the shell's Terminal Art feature, seeds tray presentation when it creates a config with sysc-tray installed, and skips plugin selection. Add plugins through the shell's catalog after setup.
 
 ## AUR: start with sysc-shell
 
@@ -88,10 +88,10 @@ The source installer follows the current sysc main branch and needs Go 1.26 and 
 curl -fsSL https://raw.githubusercontent.com/Nomadcxx/sysc/main/.install | sh
 ```
 
-Current source installs sysc-terminal v0.1.0 for the shell's Terminal Art feature, enables tray presentation when creating a config with sysc-tray installed, and skips plugin selection. Add extras through the shell's plugin catalog after setup. It preserves an existing config's tray preference. Current source refuses a new takeover of a pacman-managed SYSC installation, permits recorded user installations to upgrade, checks runtime libraries and fonts before replacing binaries, and warns when clipboard persistence needs a keyring. Uninstall preserves changed files and retains failed steps for retry. These changes do not alter the published v0.1.1 binary.
+The source installer follows the current sysc main branch and installs sysc-terminal v0.2.0 for the shell's Terminal Art feature, enables tray presentation when creating a config with sysc-tray installed, and skips plugin selection. Add extras through the shell's plugin catalog after setup. It preserves an existing config's tray preference. It refuses a new takeover of a pacman-managed SYSC installation, permits recorded user installations to upgrade, checks runtime libraries and fonts before replacing binaries, and warns when clipboard persistence needs a keyring. Uninstall preserves changed files and retains failed steps for retry. The v0.1.3 release was cut from this branch and carries the same behavior.
 
 For a persistent source checkout, use the build instructions in the [sysc repository](https://github.com/Nomadcxx/sysc#manual-source-checkout).
 
-Keep a source checkout if you may need to rerun or uninstall this installation later. Use the matching source installer for removal; the released v0.1.1 binary predates the current source's ownership checks.
+Keep a source checkout if you may need to rerun or uninstall this installation later. Use the matching source installer for removal, or the release installer for the release you installed.
 
 Before choosing a route, check the [requirements](/docs/start/requirements), [privilege boundaries](/docs/reference/privileges) and [component pins](/docs/reference/suite).

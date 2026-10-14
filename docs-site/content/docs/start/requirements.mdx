@@ -1,13 +1,13 @@
 ---
 title: Requirements
-description: Supported SYSC v0.1.1 install route, terminal size, session and network needs.
+description: Supported SYSC v0.1.3 install route, terminal size, session and network needs.
 ---
 
 ## Before you install
 
-SYSC v0.1.1 installs the desktop suite on an Arch-family x86_64 system. It targets Niri and systemd user services. The installer refuses root and non-Arch-family distributions.
+SYSC v0.1.3 installs the desktop suite on an Arch-family x86_64 system. It targets Niri and systemd user services. The installer refuses root and non-Arch-family distributions.
 
-SYSC's release workflow also publishes an arm64 installer, but the v0.1.1 component pin has amd64 assets only. That binary does not provide a complete arm64 suite. SYSC has not published a qualification matrix for every Arch derivative, machine or desktop configuration. See [compatibility](/docs/reference/compatibility).
+SYSC's release workflow also publishes an arm64 installer, but the v0.1.3 component pin has amd64 assets only. That binary does not provide a complete arm64 suite. SYSC has not published a qualification matrix for every Arch derivative, machine or desktop configuration. See [compatibility](/docs/reference/compatibility).
 
 ## Other distributions
 
@@ -32,11 +32,11 @@ The installer can run from SSH or a TTY without a Wayland session. It enables th
 
 ## Weather and location
 
-The installer seeds the shell's weather widget and requires coordinates even when you turn off the Weather plugin checkbox.
+The installer seeds the shell's weather widget and always needs a location. With `--yes` it uses an automatic lookup unless you pass coordinates.
 
 Automatic location lookup sends a request to ipapi.co to estimate coordinates from the network address. Searching a city sends the city name to Open-Meteo's geocoding API. Supplying both latitude and longitude avoids those location lookups. The shell stores the selected coordinates and location label in its config and uses the coordinates for weather requests.
 
-For the request endpoints, see the [SYSC location lookup source](https://github.com/Nomadcxx/sysc/blob/v0.1.1/internal/geo/geo.go) and the [sysc-shell v0.1.0 README](https://github.com/Nomadcxx/sysc-shell/blob/v0.1.0/README.md).
+For the request endpoints, see the [SYSC location lookup source](https://github.com/Nomadcxx/sysc/blob/v0.1.3/internal/geo/geo.go) and the [sysc-shell v0.2.0 README](https://github.com/Nomadcxx/sysc-shell/blob/v0.2.0/README.md).
 
 ## Other components
 

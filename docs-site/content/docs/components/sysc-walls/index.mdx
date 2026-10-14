@@ -6,7 +6,7 @@ description: Inspect the idle screensaver service managed by the SYSC shell.
 
 sysc-walls watches for idle activity and starts a multi-monitor screensaver. It renders sysc-Go animations in fullscreen Kitty terminals. It is an idle screensaver, not the desktop wallpaper process.
 
-**Source:** [default-branch commit f7ec3a72](https://github.com/Nomadcxx/sysc-walls/commit/f7ec3a72d7e198881a06956861e63f45bc947340) · **SYSC v0.1.1 pin:** sysc-walls v1.0.2.
+**Source:** [default-branch commit 522fc4cb](https://github.com/Nomadcxx/sysc-walls/commit/522fc4cb07d8b02e93fe4bf9578b4a3361cdbbad) · **SYSC v0.1.3 pin:** sysc-walls v1.1.1.
 
 ## Control from the shell
 
@@ -23,7 +23,7 @@ The service should be active in the graphical session. The log can show whether 
 
 ## Install scope
 
-The standalone upstream installer can place programs in /usr/local/bin and needs administrator access. SYSC v0.1.1 uses its pinned daemon and installs it under the user's prefix. Use the SYSC installer to update or remove the suite copy; do not overwrite it with a standalone install.
+The standalone upstream installer can place programs in /usr/local/bin and needs administrator access. SYSC v0.1.3 uses its pinned daemon, client and display binaries and installs them under the user's prefix. Use the SYSC installer to update or remove the suite copy; do not overwrite it with a standalone install.
 
 The current upstream README lists Niri, Hyprland, Sway and X11 support. That list describes standalone sysc-walls; it does not expand SYSC's Niri and Arch-family support qualification. The display uses Kitty, and sysc-Go provides its effects.
 

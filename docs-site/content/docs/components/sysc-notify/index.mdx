@@ -6,7 +6,7 @@ description: Resolve notification service ownership and inspect notification del
 
 sysc-notify owns org.freedesktop.Notifications on the session bus. It sends notification state to sysc-shell, which draws popups and history.
 
-**Source:** [default-branch commit f44a247e](https://github.com/Nomadcxx/sysc-notify/commit/f44a247e01c18d582b7e8eca42372588d9f85a7b) · **SYSC v0.1.1 pin:** sysc-notify v0.1.0. Check the pinned release notes when you need behavior specific to that version.
+**Source:** [default-branch commit 9b6e374d](https://github.com/Nomadcxx/sysc-notify/commit/9b6e374db2f7d19ee36a2464f8ae495daa8f557f) · **SYSC v0.1.3 pin:** sysc-notify v0.1.1. Check the pinned release notes when you need behavior specific to that version.
 
 ![](/media/notify-toasts.webp "Three sysc-shell notification toasts. Fixture data.")
 
@@ -28,7 +28,7 @@ The bus status should identify the process that owns the notification name. If t
 
 The daemon connects to sysc-shell at $XDG_RUNTIME_DIR/sysc-notify/presenter.v1.sock. The current source implements notification spec 1.3 actions and replacement IDs, image hints, urgency and inline replies. It keeps up to 100 closed notifications for seven days in `$XDG_STATE_HOME/sysc-notify/history.json`, falling back to `~/.local/state/sysc-notify/history.json` when XDG_STATE_HOME is unset ([history store](https://github.com/Nomadcxx/sysc-notify/blob/f44a247e01c18d582b7e8eca42372588d9f85a7b/internal/history/store.go)). Transient notifications and notifications with the boolean `x-sysc-private` hint set to true stay out of history ([hint handling](https://github.com/Nomadcxx/sysc-notify/blob/f44a247e01c18d582b7e8eca42372588d9f85a7b/internal/notify/normalize.go)).
 
-The [v0.1.0 protocol API](https://pkg.go.dev/github.com/Nomadcxx/sysc-notify@v0.1.0/protocol) documents the suite-pinned package. For socket ownership and service handoff, see the [service integration guide](/docs/guides/service-integration).
+The [v0.1.1 protocol API](https://pkg.go.dev/github.com/Nomadcxx/sysc-notify@v0.1.1/protocol) documents the suite-pinned package. For socket ownership and service handoff, see the [service integration guide](/docs/guides/service-integration).
 
 ## Follow a notification
 
