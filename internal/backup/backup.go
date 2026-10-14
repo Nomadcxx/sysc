@@ -2,7 +2,9 @@
 package backup
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,14 +20,17 @@ const defaultFileMode = 0o644
 
 // FileMode returns the permission bits to write path with. A file the user
 // already restricted to themselves stays restricted: rewriting a 0600 config
-// as 0644 would make it world-readable. A missing path, or one we cannot stat,
-// uses defaultFileMode.
-func FileMode(path string) os.FileMode {
+// as 0644 would make it world-readable. A missing path uses defaultFileMode;
+// other stat errors must not silently make a private file public.
+func FileMode(path string) (os.FileMode, error) {
 	fi, err := os.Stat(path)
-	if err != nil {
-		return defaultFileMode
+	if errors.Is(err, fs.ErrNotExist) {
+		return defaultFileMode, nil
 	}
-	return fi.Mode().Perm()
+	if err != nil {
+		return 0, err
+	}
+	return fi.Mode().Perm(), nil
 }
 
 // FirstBak copies path to path+".sysc.bak" unless that backup already exists.
@@ -37,11 +42,15 @@ func FirstBak(path string) (bool, error) {
 	} else if !os.IsNotExist(err) {
 		return false, err
 	}
+	mode, err := FileMode(path)
+	if err != nil {
+		return false, err
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return false, err
 	}
-	if err := os.WriteFile(bak, data, FileMode(path)); err != nil {
+	if err := os.WriteFile(bak, data, mode); err != nil {
 		return false, err
 	}
 	return true, nil

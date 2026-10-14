@@ -277,12 +277,28 @@ func writeAtomic(path string, data []byte) error {
 		return destWriteErr(path, dest, viaLink, err)
 	}
 	tmp := dest + ".tmp"
-	if err := os.WriteFile(tmp, data, backup.FileMode(dest)); err != nil {
-		os.Remove(tmp)
+	mode, err := backup.FileMode(dest)
+	if err != nil {
+		return destWriteErr(path, dest, viaLink, err)
+	}
+	if err := os.Remove(tmp); err != nil && !os.IsNotExist(err) {
+		return destWriteErr(path, dest, viaLink, err)
+	}
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+	if err != nil {
+		return destWriteErr(path, dest, viaLink, err)
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmp)
+		return destWriteErr(path, dest, viaLink, err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmp)
 		return destWriteErr(path, dest, viaLink, err)
 	}
 	if err := os.Rename(tmp, dest); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return destWriteErr(path, dest, viaLink, err)
 	}
 	return nil

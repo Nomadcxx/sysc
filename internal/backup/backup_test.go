@@ -149,7 +149,22 @@ func TestFirstBakKeepsSourceMode(t *testing.T) {
 }
 
 func TestFileModeDefaultsForMissingFile(t *testing.T) {
-	if got := FileMode(filepath.Join(t.TempDir(), "absent")); got != 0o644 {
+	got, err := FileMode(filepath.Join(t.TempDir(), "absent"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != 0o644 {
 		t.Errorf("FileMode(missing) = %04o, want 0644", got)
+	}
+}
+
+func TestFileModeReturnsUnexpectedStatErrors(t *testing.T) {
+	dir := t.TempDir()
+	parent := filepath.Join(dir, "file")
+	if err := os.WriteFile(parent, []byte("not a directory"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := FileMode(filepath.Join(parent, "child")); err == nil {
+		t.Fatal("FileMode on a non-directory parent returned no error")
 	}
 }
