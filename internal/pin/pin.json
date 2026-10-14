@@ -1,17 +1,17 @@
 {
-  "release": "v0.1.1",
+  "release": "v0.1.2",
   "components": [
     {
       "id": "sysc-shell",
-      "tag": "v0.1.0",
+      "tag": "v0.2.0",
       "unit": "sysc-shell.service",
       "binaries": [
         {
           "name": "sysc-shell",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-shell/releases/download/v0.1.0/sysc-shell",
-              "sha256": "d8279b8d3d4bc6e8b1bac222fe43ffee4eb4626b590e13332ff2d7ecf6e250a1"
+              "url": "https://github.com/Nomadcxx/sysc-shell/releases/download/v0.2.0/sysc-shell",
+              "sha256": "769f1fe51a436ad9ee6e24e680e6210e475fe46e4721fcc0375a37d52d5f150a"
             }
           }
         }
@@ -19,15 +19,15 @@
     },
     {
       "id": "sysc-clipboard",
-      "tag": "v0.1.2",
+      "tag": "v0.1.3",
       "unit": "sysc-clipboard.service",
       "binaries": [
         {
           "name": "sysc-clipboard",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-clipboard/releases/download/v0.1.2/sysc-clipboard",
-              "sha256": "472d95daae0a13e4f69653a98d38bfdefc945f73f686f247e412c151ca1f0204"
+              "url": "https://github.com/Nomadcxx/sysc-clipboard/releases/download/v0.1.3/sysc-clipboard",
+              "sha256": "accdd838486d96169ad39823f32599f367bc88d99f512298461e075a0d8da172"
             }
           }
         }
@@ -35,15 +35,33 @@
     },
     {
       "id": "sysc-walls",
-      "tag": "v1.0.2",
+      "tag": "v1.1.1",
       "unit": "sysc-walls.service",
       "binaries": [
         {
           "name": "sysc-walls-daemon",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.0.2/sysc-walls-daemon",
-              "sha256": "a5c90ea248599d44acf64d3eccf6db3e215e6d232f550ab14e72739881eb92b4"
+              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.1.1/sysc-walls-daemon",
+              "sha256": "093c37b6f9f6ae6e0e1efe04eebf5a1d00f923b82c3c1bad0b3e3ffdd66f1dc9"
+            }
+          }
+        },
+        {
+          "name": "sysc-walls-client",
+          "assets": {
+            "amd64": {
+              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.1.1/sysc-walls-client",
+              "sha256": "b9318a1eed34d399de6336a03abe59fc0e4d01a10e54bae0caeb6bee61ac48e1"
+            }
+          }
+        },
+        {
+          "name": "sysc-walls-display",
+          "assets": {
+            "amd64": {
+              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.1.1/sysc-walls-display",
+              "sha256": "4dc33346fb7cc459aac8b6b980c8d186206ab26a0650fac8bcd0a249b173f885"
             }
           }
         }
@@ -67,15 +85,15 @@
     },
     {
       "id": "sysc-notify",
-      "tag": "v0.1.0",
+      "tag": "v0.1.1",
       "unit": "sysc-notify.service",
       "binaries": [
         {
           "name": "sysc-notify",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-notify/releases/download/v0.1.0/sysc-notify",
-              "sha256": "11d1e0f18c621d95f660aa42b47311a059513484490de80c0f3ec0612bb899f0"
+              "url": "https://github.com/Nomadcxx/sysc-notify/releases/download/v0.1.1/sysc-notify",
+              "sha256": "699f9ba7ee677d844ec8f6455172f76d6756950200312e7453c144ce9c38f413"
             }
           }
         }
@@ -83,15 +101,15 @@
     },
     {
       "id": "sysc-tray",
-      "tag": "v0.1.1",
+      "tag": "v0.1.2",
       "unit": "sysc-tray.service",
       "binaries": [
         {
           "name": "sysc-tray",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-tray/releases/download/v0.1.1/sysc-tray",
-              "sha256": "baee68bfe89e912a74059b0a7a5de40b728489e122787b277861d2a7158e2b85"
+              "url": "https://github.com/Nomadcxx/sysc-tray/releases/download/v0.1.2/sysc-tray",
+              "sha256": "9546552fea04c1afcdfdc0810f87676687c87b0c9c62c057aed93f23864856aa"
             }
           }
         }
@@ -99,15 +117,15 @@
     },
     {
       "id": "sysc-lock",
-      "tag": "v0.1.0",
+      "tag": "v0.1.1",
       "unit": "sysc-lock-session.service",
       "binaries": [
         {
           "name": "sysc-lock",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-lock/releases/download/v0.1.0/sysc-lock",
-              "sha256": "cc619af0874b51d9fbf4b9b85a61c8f56ad32d5f641d58dfa69de65023075d79"
+              "url": "https://github.com/Nomadcxx/sysc-lock/releases/download/v0.1.1/sysc-lock",
+              "sha256": "4fc12009d52f8a62f058deda84a5dd10ed3ee2241a665fcd9ba44f8e6ef313bc"
             }
           }
         }

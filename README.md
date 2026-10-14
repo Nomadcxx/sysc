@@ -92,9 +92,8 @@ install -m 755 "$download_dir/sysc-linux-amd64" "$HOME/.local/bin/sysc" &&
 ```
 
 Continue only if the checksum reports `sysc-linux-amd64: OK`. Replace
-`latest/download` with `download/v0.1.1` to pin a release. The published v0.1.1
-binary predates the current source: it does not install sysc-terminal or the
-Weather and Media plugins. The commands below use `~/.local/bin/sysc`.
+`latest/download` with `download/v0.1.2` to pin a release. The commands below
+use `~/.local/bin/sysc`.
 
 ### Manual source checkout
 
@@ -116,7 +115,7 @@ and **Esc** to return to the previous page.
 |---|---|
 | Theme | Use **↑/↓** to choose Standard, Compact, or Expressive. Use **←/→** for the desktop's light/dark mode. The installer stays pure black in either mode. |
 | Wallpaper | Type a directory such as `~/Pictures/wallpapers`, then press **Enter**. Use an absolute path or a path beginning with `~/`. |
-| Plugins | Current source skips this page. Add extras later through the shell's plugin catalog. The released v0.1.1 binary still shows Weather/Media choices, but does not install them. |
+| Plugins | The installer skips this page. Add extras later through the shell's plugin catalog. |
 | Weather | Check the automatic location or type a city and press **Enter** to search. Once the location is correct, press **Enter** with the input empty to accept it. This configures the built-in weather widget. |
 | Conflicts | When another provider is detected, use **↑/↓** to select it and **←/→** to choose how to handle it. See [conflict choices](#conflict-choices). |
 | Review | Check the component list, paths, and package-manager advice. Press **Enter** to begin installation. |
@@ -168,19 +167,18 @@ Config, state, and data paths follow absolute `XDG_CONFIG_HOME`,
 
 ## What the installer installs
 
-The current source [suite pin](internal/pin/pin.json) records component versions
-and checksums. The published `v0.1.1` installer includes the services below;
-current source also installs sysc-terminal:
+The [suite pin](internal/pin/pin.json) records component versions
+and checksums. The released `v0.1.2` installer includes the components below:
 
 | Component | Version | Role |
 |---|---|---|
-| [sysc-shell](https://github.com/Nomadcxx/sysc-shell) | v0.1.0 | Desktop bar, panels, and plugins |
-| [sysc-clipboard](https://github.com/Nomadcxx/sysc-clipboard) | v0.1.2 | Clipboard history |
-| [sysc-walls](https://github.com/Nomadcxx/sysc-walls) | v1.0.2 | Idle screensaver |
-| [sysc-notify](https://github.com/Nomadcxx/sysc-notify) | v0.1.0 | Notifications |
-| [sysc-tray](https://github.com/Nomadcxx/sysc-tray) | v0.1.1 | StatusNotifierItem tray |
-| [sysc-lock](https://github.com/Nomadcxx/sysc-lock) | v0.1.0 | Session lock owner |
-| [sysc-terminal](https://github.com/Nomadcxx/sysc-terminal) | v0.1.0, current source only | Terminal-art wallpaper, managed by the shell |
+| [sysc-shell](https://github.com/Nomadcxx/sysc-shell) | v0.2.0 | Desktop bar, panels, and plugins |
+| [sysc-clipboard](https://github.com/Nomadcxx/sysc-clipboard) | v0.1.3 | Clipboard history |
+| [sysc-walls](https://github.com/Nomadcxx/sysc-walls) | v1.1.1 | Idle screensaver |
+| [sysc-notify](https://github.com/Nomadcxx/sysc-notify) | v0.1.1 | Notifications |
+| [sysc-tray](https://github.com/Nomadcxx/sysc-tray) | v0.1.2 | StatusNotifierItem tray |
+| [sysc-lock](https://github.com/Nomadcxx/sysc-lock) | v0.1.1 | Session lock owner |
+| [sysc-terminal](https://github.com/Nomadcxx/sysc-terminal) | v0.1.0 | Terminal-art wallpaper, managed by the shell |
 | [gSlapper](https://github.com/Nomadcxx/gSlapper) | External package | Video wallpaper; install only when missing |
 
 sysc-terminal needs no standalone user service: the shell starts one process
@@ -250,8 +248,7 @@ package manager may request sudo. Add `--yes` to skip the uninstall confirmation
 
 If you used the source checkout, run `./sysc uninstall` there. If you used only
 the source one-liner, build a source checkout for uninstall too. Keep the
-installer that matches your installation; the published v0.1.1 binary predates
-the current source's ownership checks.
+installer that matches your installation.
 
 ## Troubleshooting
 
