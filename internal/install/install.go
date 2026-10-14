@@ -595,6 +595,9 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 	if err := persist(); err != nil {
 		return res, err
 	}
+	if err := ctx.Err(); err != nil {
+		return res, err
+	}
 
 	for _, f := range opts.Findings {
 		row := Task{Name: "conflict:" + f.Name}
@@ -621,6 +624,9 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		res.Tasks = append(res.Tasks, row)
 	}
 	emit(res.Tasks)
+	if err := ctx.Err(); err != nil {
+		return res, err
+	}
 
 	if !skipComponent[conflict.KindNotifications.Component()] &&
 		componentEnabled(enabled, conflict.KindNotifications.Component()) {
@@ -640,6 +646,9 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 			res.Warnings = append(res.Warnings, fmt.Sprintf(i18n.T(loc, "conflicts.dbus_failed"), dbusact.Path(opts.xdgData()))+": "+aerr.Error())
 		}
 	}
+	if err := ctx.Err(); err != nil {
+		return res, err
+	}
 
 	started := false
 	restarted = true
@@ -658,6 +667,9 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		return res, err
 	}
 	emit(res.Tasks)
+	if err := ctx.Err(); err != nil {
+		return res, err
+	}
 	return res, nil
 }
 
