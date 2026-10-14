@@ -9,3 +9,5 @@
 | [2026-10-09-sysc-documentation-site-handover.md](2026-10-09-sysc-documentation-site-handover.md) | documentation audit and implementation handover |
 | [2026-10-09-sysc-documentation-site-design.md](2026-10-09-sysc-documentation-site-design.md) | approved design |
 | [2026-10-09-sysc-documentation-site-implementation-plan.md](2026-10-09-sysc-documentation-site-implementation-plan.md) | implementation plan |
+| [2026-10-15-sysc-update-design.md](2026-10-15-sysc-update-design.md) | design |
+| [2026-10-15-sysc-update.md](2026-10-15-sysc-update.md) | implementation plan |
