@@ -98,5 +98,7 @@
   "help.failed": "Zum Fehler und Logpfad scrollen. Ursache beheben, dann erneut starten. Enter schließt diese Ansicht.",
   "plugin.weather": "Wetter",
   "plugin.media": "Medien",
-  "weather.invalid": "Der Ortsdienst lieferte einen ungültigen Namen. Bitte eine Stadt suchen."
+  "weather.invalid": "Der Ortsdienst lieferte einen ungültigen Namen. Bitte eine Stadt suchen.",
+  "refuse.stamp": "Kein SYSC-Installationsstempel gefunden unter %s",
+  "update.current": "Bereits %s."
 }

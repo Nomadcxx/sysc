@@ -98,5 +98,7 @@
   "help.failed": "滚动查看错误与日志路径。修复提示的问题后重新运行安装器。Enter 关闭此界面。",
   "plugin.weather": "天气",
   "plugin.media": "媒体",
-  "weather.invalid": "定位服务返回了无效地名，请搜索城市。"
+  "weather.invalid": "定位服务返回了无效地名，请搜索城市。",
+  "refuse.stamp": "未在以下位置找到 SYSC 安装标记： %s",
+  "update.current": "已是 %s。"
 }

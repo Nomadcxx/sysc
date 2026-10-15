@@ -98,5 +98,7 @@
   "help.failed": "Consultez l’erreur et le journal. Corrigez la cause indiquée, puis relancez l’installateur. Entrée ferme cet écran.",
   "plugin.weather": "Météo",
   "plugin.media": "Média",
-  "weather.invalid": "Le service a renvoyé un nom de lieu invalide. Essayez de rechercher une ville."
+  "weather.invalid": "Le service a renvoyé un nom de lieu invalide. Essayez de rechercher une ville.",
+  "refuse.stamp": "Aucune estampille d'installation SYSC trouvée à %s",
+  "update.current": "Déjà à %s."
 }
