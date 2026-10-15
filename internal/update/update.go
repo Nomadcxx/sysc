@@ -86,6 +86,9 @@ func Delta(prev stamp.Stamp, next pin.Pin) []Row {
 // CRLF ending, a line with extra columns and a missing asset are all refused.
 func ChecksumFor(sums []byte, asset string) (string, error) {
 	for _, line := range strings.Split(string(sums), "\n") {
+		if strings.ContainsRune(line, '\r') {
+			return "", fmt.Errorf("SHA256SUMS: a line carries a carriage return")
+		}
 		fields := strings.Fields(line)
 		if len(fields) != 2 {
 			if strings.TrimSpace(line) == "" {

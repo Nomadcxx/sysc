@@ -2,6 +2,7 @@ package update
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/Nomadcxx/sysc/internal/pin"
@@ -102,10 +103,10 @@ func TestChecksumFor(t *testing.T) {
 
 func TestChecksumForRefusesMalformedLines(t *testing.T) {
 	cases := map[string]string{
-		"short digest":    "abc  sysc-linux-amd64\n",
-		"not hex":         "zzz  sysc-linux-amd64\n",
-		"extra column":    "aaa bbb sysc-linux-amd64\n",
-		"crlf":            "aaa  sysc-linux-amd64\r\n",
+		"short digest":    strings.Repeat("a", 63) + "  sysc-linux-amd64\n",
+		"not hex":         strings.Repeat("z", 64) + "  sysc-linux-amd64\n",
+		"extra column":    goodSum + " bbb  sysc-linux-amd64\n",
+		"crlf":            goodSum + "  sysc-linux-amd64\r\n",
 		"empty asset set": "\n",
 	}
 	for name, sums := range cases {
