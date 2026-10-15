@@ -98,5 +98,7 @@
   "help.failed": "Desplázate hasta el error y la ruta del registro. Corrige la causa informada y vuelve a ejecutar el instalador. Enter cierra esta pantalla.",
   "plugin.weather": "Clima",
   "plugin.media": "Medios",
-  "weather.invalid": "El servicio de ubicación devolvió un nombre de lugar no válido. Prueba una búsqueda por ciudad."
+  "weather.invalid": "El servicio de ubicación devolvió un nombre de lugar no válido. Prueba una búsqueda por ciudad.",
+  "refuse.stamp": "No se encontró un sello de instalación de SYSC en %s. Ejecuta sysc para instalar la suite.",
+  "update.current": "Ya en %s."
 }

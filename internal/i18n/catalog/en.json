@@ -98,5 +98,7 @@
   "help.failed": "Scroll to the error and log path. Fix the reported cause, then rerun the installer. Enter closes this screen.",
   "plugin.weather": "Weather",
   "plugin.media": "Media",
-  "weather.invalid": "The location service returned an invalid place name. Try a city search."
+  "weather.invalid": "The location service returned an invalid place name. Try a city search.",
+  "refuse.stamp": "No SYSC install stamp was found at %s. Run sysc to install the suite.",
+  "update.current": "Already at %s."
 }

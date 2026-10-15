@@ -250,6 +250,29 @@ If you used the source checkout, run `./sysc uninstall` there. If you used only
 the source one-liner, build a source checkout for uninstall too. Keep the
 installer that matches your installation.
 
+## Update
+
+```sh
+"$HOME/.local/bin/sysc" update
+```
+
+The update fetches the current release installer, verifies it against that
+release's `SHA256SUMS`, and hands the work to it. It prints the per-component
+delta between your installed stamp and the pinned versions, then runs the same
+download, swap, stamp and restart sequence an install runs. Your
+`sysc-shell/config.json` is never overwritten. Add `--yes` to skip the
+confirmation.
+
+Your installed `sysc` binary is deliberately left alone, so the one-liner below
+still moves the installer itself forward when you want that:
+
+```sh
+curl -fsSL https://github.com/Nomadcxx/sysc/releases/latest/download/sysc-linux-amd64 -o /tmp/sysc && chmod +x /tmp/sysc && /tmp/sysc update
+```
+
+An installer older than the release that first shipped this verb keeps using
+that one-liner; the update verb is not available inside it.
+
 ## Troubleshooting
 
 | Symptom | Next step |

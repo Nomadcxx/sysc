@@ -98,5 +98,7 @@
   "help.failed": "오류와 로그 경로까지 스크롤하세요. 보고된 원인을 수정한 후 설치 프로그램을 다시 실행하세요. Enter로 이 화면을 닫습니다.",
   "plugin.weather": "날씨",
   "plugin.media": "미디어",
-  "weather.invalid": "위치 서비스가 유효하지 않은 지명을 반환했습니다. 도시 검색을 시도해 보세요."
+  "weather.invalid": "위치 서비스가 유효하지 않은 지명을 반환했습니다. 도시 검색을 시도해 보세요.",
+  "refuse.stamp": "%s 에서 SYSC 설치 스탬프를 찾을 수 없습니다. sysc 를 실행하여 스위트를 설치하세요.",
+  "update.current": "이미 %s 입니다."
 }

@@ -98,5 +98,7 @@
   "help.failed": "Role até o erro e o caminho do log. Corrija a causa informada e execute o instalador novamente. Enter fecha esta tela.",
   "plugin.weather": "Clima",
   "plugin.media": "Mídia",
-  "weather.invalid": "O serviço de local devolveu um nome de local inválido. Tente uma pesquisa por cidade."
+  "weather.invalid": "O serviço de local devolveu um nome de local inválido. Tente uma pesquisa por cidade.",
+  "refuse.stamp": "Nenhum carimbo de instalação do SYSC encontrado em %s. Execute sysc para instalar o conjunto.",
+  "update.current": "Já em %s."
 }

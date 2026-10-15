@@ -42,6 +42,9 @@ type options struct {
 	RemoveGSlapper bool
 	KeepConflicts  bool
 	Handover       string
+	// Apply marks the update delegate: the fetching installer sets it, so
+	// the freshly downloaded binary knows it was invoked to apply, not to fetch.
+	Apply bool
 }
 
 func parseFlags(args []string, out io.Writer) (options, error) {
@@ -51,6 +54,7 @@ func parseFlags(args []string, out io.Writer) (options, error) {
 	fs.Usage = func() {
 		fmt.Fprintln(out, "Usage: sysc [flags]            install")
 		fmt.Fprintln(out, "       sysc uninstall [flags]  remove an installation")
+		fmt.Fprintln(out, "       sysc update [flags]    update an installed suite")
 		fmt.Fprintln(out, "       sysc --version           report the installed suite")
 		fs.PrintDefaults()
 	}
@@ -720,6 +724,9 @@ func newInstallProgram(m model, installer func(seed.Answers, func([]install.Task
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--version" {
 		os.Exit(runVersion(filepath.Join(stateHome(), "sysc"), os.Args[2:], os.Stdout, os.Stderr))
+	}
+	if len(os.Args) > 1 && os.Args[1] == "update" {
+		os.Exit(runUpdate(os.Args[2:], os.Stdin, os.Stdout, os.Stderr, mustHome(), install.Run))
 	}
 	if len(os.Args) > 1 && os.Args[1] == "uninstall" {
 		os.Exit(runUninstall(os.Args[2:], os.Stdin, os.Stdout, mustHome()))
