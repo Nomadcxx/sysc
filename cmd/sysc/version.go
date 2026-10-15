@@ -21,7 +21,11 @@ const shellVersionTimeout = 2 * time.Second
 
 // runVersion reports the installed suite from the stamp and nothing else. It
 // reads no binary, so it answers before any unit is touched.
-func runVersion(stateDir string, out, errOut io.Writer) int {
+func runVersion(stateDir string, args []string, out, errOut io.Writer) int {
+	if len(args) != 0 {
+		fmt.Fprintf(errOut, "unexpected arguments: %s\n", strings.Join(args, " "))
+		return 2
+	}
 	st, err := stamp.Read(stateDir)
 	if err != nil {
 		if os.IsNotExist(err) {

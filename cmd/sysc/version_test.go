@@ -24,7 +24,7 @@ func TestRunVersionWithStamp(t *testing.T) {
 		t.Fatalf("write stamp: %v", err)
 	}
 	var out, errOut bytes.Buffer
-	if code := runVersion(dir, &out, &errOut); code != 0 {
+	if code := runVersion(dir, nil, &out, &errOut); code != 0 {
 		t.Fatalf("exit = %d, want 0 (stderr %q)", code, errOut.String())
 	}
 	want := "sysc release: v0.1.1\n" +
@@ -40,7 +40,7 @@ func TestRunVersionWithStamp(t *testing.T) {
 func TestRunVersionWithoutStamp(t *testing.T) {
 	dir := t.TempDir()
 	var out, errOut bytes.Buffer
-	if code := runVersion(dir, &out, &errOut); code != 0 {
+	if code := runVersion(dir, nil, &out, &errOut); code != 0 {
 		t.Fatalf("exit = %d, want 0", code)
 	}
 	want := "no sysc install stamp at " + filepath.Join(dir, stamp.FileName) + "\n"
@@ -58,7 +58,7 @@ func TestRunVersionWithCorruptStamp(t *testing.T) {
 		t.Fatalf("write corrupt stamp: %v", err)
 	}
 	var out, errOut bytes.Buffer
-	if code := runVersion(dir, &out, &errOut); code != 1 {
+	if code := runVersion(dir, nil, &out, &errOut); code != 1 {
 		t.Fatalf("exit = %d, want 1", code)
 	}
 	if out.Len() != 0 {
@@ -66,6 +66,20 @@ func TestRunVersionWithCorruptStamp(t *testing.T) {
 	}
 	if errOut.Len() == 0 {
 		t.Fatal("stderr is empty, want the parse error verbatim")
+	}
+}
+
+func TestRunVersionRefusesExtraArguments(t *testing.T) {
+	dir := t.TempDir()
+	var out, errOut bytes.Buffer
+	if code := runVersion(dir, []string{"extra"}, &out, &errOut); code != 2 {
+		t.Fatalf("exit = %d, want 2", code)
+	}
+	if want := "unexpected arguments: extra\n"; errOut.String() != want {
+		t.Fatalf("stderr = %q, want %q", errOut.String(), want)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", out.String())
 	}
 }
 

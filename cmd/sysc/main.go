@@ -719,7 +719,7 @@ func newInstallProgram(m model, installer func(seed.Answers, func([]install.Task
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--version" {
-		os.Exit(runVersion(filepath.Join(stateHome(), "sysc"), os.Stdout, os.Stderr))
+		os.Exit(runVersion(filepath.Join(stateHome(), "sysc"), os.Args[2:], os.Stdout, os.Stderr))
 	}
 	if len(os.Args) > 1 && os.Args[1] == "uninstall" {
 		os.Exit(runUninstall(os.Args[2:], os.Stdin, os.Stdout, mustHome()))
