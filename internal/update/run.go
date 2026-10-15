@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/Nomadcxx/sysc/internal/fetch"
 	"github.com/Nomadcxx/sysc/internal/stamp"
@@ -18,6 +20,10 @@ import (
 // from. The pin is embedded in a binary, so the only way to learn a newer one
 // is to fetch the release binary that carries it.
 const DefaultBase = "https://github.com/Nomadcxx/sysc/releases/latest/download"
+
+// staleStagingAge bounds which update-* dirs a new run sweeps: anything older
+// is a crash leftover, anything younger may belong to a live run.
+const staleStagingAge = time.Hour
 
 // Options configures the fetching half of `sysc update`. The refusal strings
 // come from the caller because the installer owns its translated text.
@@ -62,10 +68,8 @@ func Fetch(ctx context.Context, o Options) int {
 	if run == nil {
 		run = runInstaller
 	}
-	if o.Arch != "amd64" {
-		fmt.Fprintln(o.ErrOut, o.RefuseDistro)
-		return 1
-	}
+	// The stamp comes first: "nothing is installed" answers both roles, and a
+	// host the pin cannot install should hear it before the distro refusal.
 	stampPath := filepath.Join(o.StateDir, stamp.FileName)
 	if _, err := stamp.Read(o.StateDir); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -75,11 +79,28 @@ func Fetch(ctx context.Context, o Options) int {
 		fmt.Fprintln(o.ErrOut, err)
 		return 1
 	}
+	if o.Arch != "amd64" {
+		fmt.Fprintln(o.ErrOut, o.RefuseDistro)
+		return 1
+	}
 	asset := "sysc-linux-" + o.Arch
 	staging := filepath.Join(o.StateDir, "staging")
 	if err := os.MkdirAll(staging, 0o755); err != nil {
 		fmt.Fprintln(o.ErrOut, err)
 		return 1
+	}
+	// A run that died before its defer leaves its update-* dir behind; sweep
+	// ones old enough to be dead so staging does not grow run over run. The
+	// bound keeps a concurrently downloading parent's dir out of reach.
+	if entries, err := os.ReadDir(staging); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() || !strings.HasPrefix(e.Name(), "update-") {
+				continue
+			}
+			if info, err := e.Info(); err == nil && time.Since(info.ModTime()) > staleStagingAge {
+				_ = os.RemoveAll(filepath.Join(staging, e.Name()))
+			}
+		}
 	}
 	dir, err := os.MkdirTemp(staging, "update-")
 	if err != nil {

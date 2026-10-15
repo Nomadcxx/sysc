@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Nomadcxx/sysc/internal/stamp"
 )
@@ -181,5 +182,50 @@ func TestFetchRunsWithoutYes(t *testing.T) {
 	})
 	if strings.Join(gotArgs, " ") != "update --apply" {
 		t.Fatalf("Fetch ran %v, want [update --apply]", gotArgs)
+	}
+}
+
+func TestFetchChecksTheStampBeforeTheArch(t *testing.T) {
+	stateDir := filepath.Join(t.TempDir(), "sysc") // never installed
+	var out, errOut strings.Builder
+	got := Fetch(context.Background(), Options{
+		StateDir:      stateDir,
+		Arch:          "arm64",
+		Out:           &out,
+		ErrOut:        &errOut,
+		RefuseDistro:  "Arch-family distributions only.",
+		RefuseNoStamp: "No SYSC install stamp at %s.",
+	})
+	if got != 1 {
+		t.Fatalf("Fetch without a stamp = %d, want 1", got)
+	}
+	want := "No SYSC install stamp at " + filepath.Join(stateDir, stamp.FileName) + ".\n"
+	if errOut.String() != want {
+		t.Fatalf("Fetch printed %q, want %q", errOut.String(), want)
+	}
+}
+
+func TestFetchSweepsAStaleStagingDir(t *testing.T) {
+	stateDir, _ := fetchEnv(t)
+	stale := filepath.Join(stateDir, "staging", "update-stale")
+	if err := os.MkdirAll(stale, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-2 * time.Hour)
+	if err := os.Chtimes(stale, old, old); err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut strings.Builder
+	got := Fetch(context.Background(), Options{
+		StateDir: stateDir, Arch: "amd64", Out: &out, ErrOut: &errOut,
+		RefuseNoStamp: "No SYSC install stamp at %s.",
+		Download:      writeDownload(t, goodSum+"  sysc-linux-amd64\n", "installer"),
+		Run:           func(context.Context, string, ...string) int { return 0 },
+	})
+	if got != 0 {
+		t.Fatalf("Fetch = %d, want 0 (stderr: %s)", got, errOut.String())
+	}
+	if _, err := os.Stat(stale); err == nil {
+		t.Fatal("a stale staging dir survived the next run")
 	}
 }
