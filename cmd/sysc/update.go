@@ -79,7 +79,7 @@ func applyUpdate(o options, in io.Reader, out, errOut io.Writer, home string, ru
 	prev, err := stamp.Read(filepath.Join(stateHome(), "sysc"))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			fmt.Fprintf(errOut, "%s %s\n", i18n.T(loc, "refuse.stamp"), filepath.Join(stateHome(), "sysc", stamp.FileName))
+			fmt.Fprintf(errOut, i18n.T(loc, "refuse.stamp")+"\n", filepath.Join(stateHome(), "sysc", stamp.FileName))
 			return 1
 		}
 		fmt.Fprintln(errOut, err)

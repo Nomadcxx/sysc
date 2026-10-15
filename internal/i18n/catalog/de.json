@@ -99,6 +99,6 @@
   "plugin.weather": "Wetter",
   "plugin.media": "Medien",
   "weather.invalid": "Der Ortsdienst lieferte einen ungültigen Namen. Bitte eine Stadt suchen.",
-  "refuse.stamp": "Kein SYSC-Installationsstempel gefunden unter %s",
+  "refuse.stamp": "Kein SYSC-Installationsstempel unter %s gefunden. Führen Sie sysc aus, um die Suite zu installieren.",
   "update.current": "Bereits %s."
 }

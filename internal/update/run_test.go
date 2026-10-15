@@ -47,7 +47,7 @@ func TestFetchRefusesWithoutAStamp(t *testing.T) {
 	downloaded := false
 	got := Fetch(context.Background(), Options{
 		StateDir: stateDir, Arch: "amd64", Out: &out, ErrOut: &errOut,
-		RefuseNoStamp: "No SYSC install stamp at",
+		RefuseNoStamp: "No SYSC install stamp at %s.",
 		Download: func(context.Context, string, string, string, string) error {
 			downloaded = true
 			return nil
@@ -60,7 +60,7 @@ func TestFetchRefusesWithoutAStamp(t *testing.T) {
 	if downloaded {
 		t.Fatal("Fetch downloaded without a stamp")
 	}
-	want := "No SYSC install stamp at: " + filepath.Join(stateDir, stamp.FileName) + "\n"
+	want := "No SYSC install stamp at " + filepath.Join(stateDir, stamp.FileName) + ".\n"
 	if errOut.String() != want {
 		t.Fatalf("Fetch printed %q, want %q", errOut.String(), want)
 	}
@@ -96,7 +96,7 @@ func TestFetchRefusesAFailedInstallerDownload(t *testing.T) {
 	stagingDir := ""
 	got := Fetch(context.Background(), Options{
 		StateDir: stateDir, Arch: "amd64", Out: &out, ErrOut: &errOut,
-		RefuseNoStamp: "No SYSC install stamp at",
+		RefuseNoStamp: "No SYSC install stamp at %s.",
 		Download: func(_ context.Context, dir, _, name, _ string) error {
 			stagingDir = filepath.Dir(dir)
 			if name != "SHA256SUMS" {
@@ -133,7 +133,7 @@ func TestFetchHandsTheFetchedInstallerTheWork(t *testing.T) {
 	got := Fetch(context.Background(), Options{
 		StateDir: stateDir, Arch: "amd64", Yes: true, Out: &out, ErrOut: &errOut,
 		Base:          "https://example.invalid/dl",
-		RefuseNoStamp: "No SYSC install stamp at",
+		RefuseNoStamp: "No SYSC install stamp at %s.",
 		Download: func(_ context.Context, dir, url, name, sha string) error {
 			downloaded[name] = url
 			return os.WriteFile(filepath.Join(dir, name), []byte(goodSum+"  sysc-linux-amd64\n"), 0o755)
@@ -172,7 +172,7 @@ func TestFetchRunsWithoutYes(t *testing.T) {
 	var gotArgs []string
 	Fetch(context.Background(), Options{
 		StateDir: stateDir, Arch: "amd64", Out: &out, ErrOut: &errOut,
-		RefuseNoStamp: "No SYSC install stamp at",
+		RefuseNoStamp: "No SYSC install stamp at %s.",
 		Download:      writeDownload(t, goodSum+"  sysc-linux-amd64\n", "installer"),
 		Run: func(_ context.Context, _ string, args ...string) int {
 			gotArgs = args

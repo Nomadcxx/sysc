@@ -99,6 +99,6 @@
   "plugin.weather": "날씨",
   "plugin.media": "미디어",
   "weather.invalid": "위치 서비스가 유효하지 않은 지명을 반환했습니다. 도시 검색을 시도해 보세요.",
-  "refuse.stamp": "다음 위치에서 SYSC 설치 스탬프를 찾을 수 없습니다: %s",
+  "refuse.stamp": "%s 에서 SYSC 설치 스탬프를 찾을 수 없습니다. sysc 를 실행하여 스위트를 설치하세요.",
   "update.current": "이미 %s 입니다."
 }

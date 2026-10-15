@@ -34,6 +34,8 @@ type Options struct {
 	Out, ErrOut io.Writer
 
 	// RefuseDistro and RefuseNoStamp are the named refusals this verb prints.
+	// RefuseNoStamp is a format string taking the stamp path, because the
+	// caller owns the translated text and only this half knows the path.
 	RefuseDistro  string
 	RefuseNoStamp string
 
@@ -67,7 +69,7 @@ func Fetch(ctx context.Context, o Options) int {
 	stampPath := filepath.Join(o.StateDir, stamp.FileName)
 	if _, err := stamp.Read(o.StateDir); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			fmt.Fprintf(o.ErrOut, o.RefuseNoStamp+": %s\n", stampPath)
+			fmt.Fprintf(o.ErrOut, o.RefuseNoStamp+"\n", stampPath)
 			return 1
 		}
 		fmt.Fprintln(o.ErrOut, err)

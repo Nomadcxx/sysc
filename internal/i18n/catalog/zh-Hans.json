@@ -99,6 +99,6 @@
   "plugin.weather": "天气",
   "plugin.media": "媒体",
   "weather.invalid": "定位服务返回了无效地名，请搜索城市。",
-  "refuse.stamp": "未在以下位置找到 SYSC 安装标记： %s",
+  "refuse.stamp": "未在 %s 找到 SYSC 安装标记。请先运行 sysc 安装该套件。",
   "update.current": "已是 %s。"
 }
