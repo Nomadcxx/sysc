@@ -120,7 +120,11 @@ func (o Options) xdgData() string {
 }
 
 // binDir stays on ~/.local/bin: it is on PATH by convention, not via XDG.
-func (o Options) binDir() string  { return filepath.Join(o.Home, ".local", "bin") }
+func (o Options) binDir() string { return BinDir(o.Home) }
+
+// BinDir is where the suite installs binaries. Callers outside the package
+// need it to report on what was installed.
+func BinDir(home string) string   { return filepath.Join(home, ".local", "bin") }
 func (o Options) unitDir() string { return filepath.Join(o.xdgConfig(), "systemd", "user") }
 func (o Options) configPath() string {
 	return filepath.Join(o.xdgConfig(), "sysc-shell", "config.json")
