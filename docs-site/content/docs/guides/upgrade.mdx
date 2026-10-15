@@ -13,4 +13,16 @@ The installer downloads and verifies all pinned component binaries before swappi
 
 Review the final task list. gSlapper is optional: an unavailable helper or failed package action appears as skipped while the suite tasks continue. Other failures can leave a recorded partial install; use the stamp and final task list to see what SYSC owns, then follow [uninstall](/docs/guides/uninstall) if you want to remove it.
 
+## Update with the installer you already have
+
+When the installer in ~/.local/bin already ships the `update` verb, it can fetch the release installer that carries the current pin and hand the upgrade to it:
+
+```sh
+"$HOME/.local/bin/sysc" update
+```
+
+It verifies the fetched installer against that release's SHA256SUMS, prints the per-component version delta against your install stamp, asks for confirmation (`--yes` skips it), and then runs the same download-verify-swap sequence an install runs. Your sysc-shell config is never overwritten, and the installed sysc binary is deliberately left alone: rerun the one-liner on [Install SYSC](/docs/start/install) when you also want to move the installer itself forward.
+
+If your installer predates the verb it has no `update` command, and the release steps above remain the route for that one.
+
 If the installer says units are enabled but not started, log into Niri through niri-session and check the [session target](/docs/guides/niri-session). For a failed service, collect the [service diagnostics](/docs/troubleshooting/services) before starting it manually.

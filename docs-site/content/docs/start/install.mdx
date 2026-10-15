@@ -30,6 +30,8 @@ Continue only when sha256sum reports sysc-linux-amd64: OK. If verification fails
 
 Keep ~/.local/bin/sysc if you want to rerun this release or uninstall it later. To use a later SYSC release, change both download URLs to that release tag and read its release notes and compatibility information first.
 
+Once that installer is on disk, later suite upgrades can run `"$HOME/.local/bin/sysc" update`; see [Upgrade](/docs/guides/upgrade).
+
 This release installs sysc-terminal v0.2.0 for the shell's Terminal Art feature, seeds tray presentation when it creates a config with sysc-tray installed, and skips plugin selection. Add plugins through the shell's catalog after setup.
 
 ## AUR: start with sysc-shell
