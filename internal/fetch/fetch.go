@@ -106,6 +106,53 @@ func download(ctx context.Context, client *http.Client, staging string, a Asset)
 	return rename(tmp.Name(), filepath.Join(staging, a.Name))
 }
 
+// FetchOne downloads one asset without a checksum. Only a checksum list may be
+// fetched this way: it is the file that gives every other download its digest,
+// so it can only be pinned by the same TLS channel that fetched it. Assets
+// that carry a digest use DownloadAll.
+func FetchOne(ctx context.Context, client *http.Client, dir, url, name string) error {
+	if client == nil {
+		client = NewClient()
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	if err := safeName(name); err != nil {
+		return fmt.Errorf("download %s: %w", name, err)
+	}
+	a := Asset{Name: name, URL: url, SHA256: ""}
+	return fetchUnverified(ctx, client, dir, a)
+}
+
+func fetchUnverified(ctx context.Context, client *http.Client, dir string, a Asset) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.URL, nil)
+	if err != nil {
+		return fmt.Errorf("download %s: %w", a.Name, err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("download %s: %w", a.Name, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download %s: %s", a.Name, resp.Status)
+	}
+	tmp, err := os.CreateTemp(dir, ".download-*")
+	if err != nil {
+		return err
+	}
+	_, copyErr := io.Copy(tmp, resp.Body)
+	closeErr := tmp.Close()
+	if copyErr != nil || closeErr != nil {
+		os.Remove(tmp.Name())
+		if copyErr != nil {
+			return fmt.Errorf("download %s: %w", a.Name, copyErr)
+		}
+		return closeErr
+	}
+	return rename(tmp.Name(), filepath.Join(dir, a.Name))
+}
+
 // RestoreBackups returns each named binary to the state it had before this
 // run: a destination with a .bak is restored from it, one without a .bak did
 // not exist before the run and is removed. Used when a step after a
