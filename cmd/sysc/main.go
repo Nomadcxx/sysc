@@ -51,6 +51,7 @@ func parseFlags(args []string, out io.Writer) (options, error) {
 	fs.Usage = func() {
 		fmt.Fprintln(out, "Usage: sysc [flags]            install")
 		fmt.Fprintln(out, "       sysc uninstall [flags]  remove an installation")
+		fmt.Fprintln(out, "       sysc --version           report the installed suite")
 		fs.PrintDefaults()
 	}
 	fs.BoolVar(&o.Yes, "yes", false, "install with defaults, no prompts")
@@ -717,6 +718,9 @@ func newInstallProgram(m model, installer func(seed.Answers, func([]install.Task
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		os.Exit(runVersion(filepath.Join(stateHome(), "sysc"), os.Args[2:], os.Stdout, os.Stderr))
+	}
 	if len(os.Args) > 1 && os.Args[1] == "uninstall" {
 		os.Exit(runUninstall(os.Args[2:], os.Stdin, os.Stdout, mustHome()))
 	}
@@ -775,6 +779,9 @@ func main() {
 		printTasks(os.Stdout, res)
 		if anyFailed(res.Tasks) {
 			os.Exit(1)
+		}
+		if res.Stamp.Release != "" {
+			printShellVersion(os.Stdout, install.BinDir(home))
 		}
 		return
 	}
@@ -841,6 +848,9 @@ func main() {
 			fmt.Fprintln(os.Stderr, fm.installErr)
 		}
 		os.Exit(code)
+	}
+	if fm.installRes.Stamp.Release != "" {
+		printShellVersion(os.Stdout, install.BinDir(home))
 	}
 }
 
