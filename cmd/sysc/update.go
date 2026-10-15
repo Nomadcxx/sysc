@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/Nomadcxx/sysc/internal/i18n"
@@ -27,9 +28,8 @@ func parseUpdate(args []string, out io.Writer) (options, error) {
 	var o options
 	fs := flag.NewFlagSet("sysc update", flag.ContinueOnError)
 	fs.SetOutput(out)
-	o.Apply = true
 	fs.BoolVar(&o.Yes, "yes", false, "no prompts")
-	fs.BoolVar(&o.Apply, "apply", true, "apply the update this installer carries (set by the fetching installer)")
+	fs.BoolVar(&o.Apply, "apply", false, "apply the update this installer carries (set by the installer that fetched it)")
 	fs.StringVar(&o.Lang, "lang", "", "installer language (en, zh-Hans, de, fr, es, pt, ja, ko, ru)")
 	if err := fs.Parse(args); err != nil {
 		return o, err
@@ -40,9 +40,9 @@ func parseUpdate(args []string, out io.Writer) (options, error) {
 	return o, nil
 }
 
-// runUpdate is the child half: the freshly fetched installer is the only party
-// that knows the new pin, so it prints the delta, asks, and hands the work to
-// the same install.Run an install uses. It never swaps a binary itself.
+// runUpdate is the whole verb. Without --apply it fetches the release installer
+// that carries the current pin and hands it the work; with --apply it is that
+// fetched installer, and it is the only party that knows the new pin.
 func runUpdate(args []string, in io.Reader, out, errOut io.Writer, home string, run installRunner) int {
 	o, err := parseUpdate(args, errOut)
 	if err != nil {
@@ -52,6 +52,25 @@ func runUpdate(args []string, in io.Reader, out, errOut io.Writer, home string, 
 		fmt.Fprintln(errOut, err)
 		return 2
 	}
+	loc := i18n.Match(o.Lang)
+	if !o.Apply {
+		return update.Fetch(context.Background(), update.Options{
+			StateDir:      filepath.Join(stateHome(), "sysc"),
+			Arch:          runtime.GOARCH,
+			Yes:           o.Yes,
+			Out:           out,
+			ErrOut:        errOut,
+			RefuseDistro:  i18n.T(loc, "refuse.distro"),
+			RefuseNoStamp: i18n.T(loc, "refuse.stamp"),
+		})
+	}
+	return applyUpdate(o, in, out, errOut, home, run)
+}
+
+// applyUpdate prints the delta against this installer's own pin, asks, and
+// hands the work to the same install.Run an install uses. It never swaps a
+// binary itself.
+func applyUpdate(o options, in io.Reader, out, errOut io.Writer, home string, run installRunner) int {
 	loc := i18n.Match(o.Lang)
 	if os.Geteuid() == 0 {
 		fmt.Fprintln(errOut, "Run the installer as your desktop user, without sudo.")

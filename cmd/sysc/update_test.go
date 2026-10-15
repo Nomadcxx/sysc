@@ -45,12 +45,15 @@ func TestParseUpdateRefusesUnknownArguments(t *testing.T) {
 	if _, err := parseUpdate([]string{"extra"}, &errOut); err == nil {
 		t.Fatal("parseUpdate accepted a positional argument")
 	}
-	o, err := parseUpdate([]string{"--yes"}, &errOut)
+	o, err := parseUpdate([]string{"--apply", "--yes"}, &errOut)
 	if err != nil {
-		t.Fatalf("parseUpdate(--yes) = %v", err)
+		t.Fatalf("parseUpdate(--apply --yes) = %v", err)
 	}
 	if !o.Yes || !o.Apply {
-		t.Fatalf("parseUpdate(--yes) = %+v, want Yes and Apply", o)
+		t.Fatalf("parseUpdate(--apply --yes) = %+v, want Yes and Apply", o)
+	}
+	if plain, err := parseUpdate(nil, &errOut); err != nil || plain.Apply {
+		t.Fatalf("parseUpdate() = %+v, %v, want a verb that fetches rather than applies", plain, err)
 	}
 }
 
@@ -58,7 +61,7 @@ func TestUpdateRefusesWithoutAStamp(t *testing.T) {
 	updateEnv(t)
 	var out, errOut bytes.Buffer
 	called := false
-	got := runUpdate([]string{"--yes"}, strings.NewReader(""), &out, &errOut, os.Getenv("HOME"),
+	got := runUpdate([]string{"--apply", "--yes"}, strings.NewReader(""), &out, &errOut, os.Getenv("HOME"),
 		func(context.Context, install.Options) (install.Result, error) {
 			called = true
 			return install.Result{}, nil
@@ -89,7 +92,7 @@ func TestUpdateRefusesWhenTheSuiteIsAlreadyAtThePin(t *testing.T) {
 	writeStamp(t, stateDir, stamp.Stamp{Release: p.Release, Components: components})
 	var out, errOut bytes.Buffer
 	called := false
-	got := runUpdate([]string{"--yes"}, strings.NewReader(""), &out, &errOut, home,
+	got := runUpdate([]string{"--apply", "--yes"}, strings.NewReader(""), &out, &errOut, home,
 		func(context.Context, install.Options) (install.Result, error) {
 			called = true
 			return install.Result{}, nil
@@ -120,7 +123,7 @@ func TestUpdatePrintsTheDeltaAndRunsTheSamePipeline(t *testing.T) {
 	writeStamp(t, stateDir, stamp.Stamp{Release: "v0.0.1", Components: map[string]string{"sysc-shell": "v0.0.1"}})
 	var out, errOut bytes.Buffer
 	var got install.Options
-	got2 := runUpdate([]string{"--yes"}, strings.NewReader(""), &out, &errOut, home,
+	got2 := runUpdate([]string{"--apply", "--yes"}, strings.NewReader(""), &out, &errOut, home,
 		func(_ context.Context, opts install.Options) (install.Result, error) {
 			got = opts
 			return install.Result{Tasks: []install.Task{{Name: "sysc-shell", Status: install.Done}}}, nil
@@ -148,7 +151,7 @@ func TestUpdateAsksBeforeRunningThePipeline(t *testing.T) {
 	writeStamp(t, stateDir, stamp.Stamp{Release: "v0.0.1", Components: map[string]string{"sysc-shell": "v0.0.1"}})
 	var out, errOut bytes.Buffer
 	called := false
-	got := runUpdate(nil, strings.NewReader("n\n"), &out, &errOut, home,
+	got := runUpdate([]string{"--apply"}, strings.NewReader("n\n"), &out, &errOut, home,
 		func(context.Context, install.Options) (install.Result, error) {
 			called = true
 			return install.Result{}, nil
@@ -168,7 +171,7 @@ func TestUpdateReportsAFailedTask(t *testing.T) {
 	stateDir, home := updateEnv(t)
 	writeStamp(t, stateDir, stamp.Stamp{Release: "v0.0.1", Components: map[string]string{"sysc-shell": "v0.0.1"}})
 	var out, errOut bytes.Buffer
-	got := runUpdate([]string{"--yes"}, strings.NewReader(""), &out, &errOut, home,
+	got := runUpdate([]string{"--apply", "--yes"}, strings.NewReader(""), &out, &errOut, home,
 		func(context.Context, install.Options) (install.Result, error) {
 			return install.Result{Tasks: []install.Task{{Name: "sysc-shell", Status: install.Failed, Reason: "no asset"}}}, nil
 		})
