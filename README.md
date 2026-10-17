@@ -2,15 +2,18 @@
   <img src="assets/header.webp" alt="SYSC" width="873">
 </p>
 
-<details>
-<summary>Watch the installer tour</summary>
-
-<video src="assets/tour.mp4" controls preload="none" width="100%"></video>
-</details>
-
 Guided installer for the SYSC desktop on [Niri](https://github.com/YaLTeR/niri).
 Choose your desktop defaults, review existing bars and notification daemons,
 then install the suite into your user account.
+
+### Shell tour
+
+<p align="center">
+  <a href="assets/sysc-shell-tour.webp"><img src="assets/sysc-shell-tour.webp" alt="SYSC Shell in the Tokyo Night theme, showing the launcher, Monitor panel, and Appearance settings" width="960"></a>
+</p>
+<p align="center"><sub>Desktop tour · Tokyo Night</sub></p>
+
+[Watch the installer walkthrough (MP4)](assets/tour.mp4)
 
 [Documentation](https://nomadcxx.github.io/sysc/docs/) · [Install](#install) · [Wizard guide](#wizard-guide) · [Sudo and install locations](#sudo-and-install-locations) · [Uninstall](#uninstall) · [Troubleshooting](#troubleshooting)
 
