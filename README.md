@@ -1,11 +1,12 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo.png">
-    <img src="assets/logo-light.png" alt="SYSC" width="873">
-  </picture>
+  <img src="assets/header.webp" alt="SYSC" width="873">
 </p>
 
-https://github.com/user-attachments/assets/7cadf7b9-6fe5-4d53-b7d6-757e4082b68a
+<details>
+<summary>Watch the installer tour</summary>
+
+<video src="assets/tour.mp4" controls preload="none" width="100%"></video>
+</details>
 
 Guided installer for the SYSC desktop on [Niri](https://github.com/YaLTeR/niri).
 Choose your desktop defaults, review existing bars and notification daemons,
@@ -17,9 +18,9 @@ then install the suite into your user account.
 
 <table>
   <tr>
-    <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-shell"><img src="assets/suite-shell.png" alt="The sysc-shell control centre" width="300"></a><br><b><a href="https://github.com/Nomadcxx/sysc-shell">sysc-shell</a></b><br><sub>Bars, panels, launcher and settings</sub></td>
-    <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-lock"><img src="assets/suite-lock.webp" alt="The sysc-lock lock screen" width="300"></a><br><b><a href="https://github.com/Nomadcxx/sysc-lock">sysc-lock</a></b><br><sub>Compositor-enforced lock screen</sub></td>
-    <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-terminal"><img src="assets/suite-terminal.webp" alt="sysc-terminal fire effect as the desktop wallpaper" width="300"></a><br><b><a href="https://github.com/Nomadcxx/sysc-terminal">sysc-terminal</a></b><br><sub>Live terminal-art wallpaper</sub></td>
+    <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-shell"><img src="assets/suite-shell.png" alt="The sysc-shell control centre" width="300" loading="lazy"></a><br><b><a href="https://github.com/Nomadcxx/sysc-shell">sysc-shell</a></b><br><sub>Bars, panels, launcher and settings</sub></td>
+    <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-lock"><img src="assets/suite-lock.webp" alt="The sysc-lock lock screen" width="300" loading="lazy"></a><br><b><a href="https://github.com/Nomadcxx/sysc-lock">sysc-lock</a></b><br><sub>Compositor-enforced lock screen</sub></td>
+    <td align="center" valign="top"><a href="https://github.com/Nomadcxx/sysc-terminal"><img src="assets/suite-terminal.webp" alt="sysc-terminal fire effect as the desktop wallpaper" width="300" loading="lazy"></a><br><b><a href="https://github.com/Nomadcxx/sysc-terminal">sysc-terminal</a></b><br><sub>Live terminal-art wallpaper</sub></td>
   </tr>
 </table>
 
