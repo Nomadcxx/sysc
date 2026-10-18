@@ -1,9 +1,9 @@
 ---
 title: Install
-description: Choose the guided installer or AUR packages, then add optional features.
+description: Choose the guided installer, AUR packages or the Nix flake, then add optional features.
 ---
 
-Use the guided Go installer for your first setup on Arch-family x86_64 with Niri. If you prefer package-manager updates, choose the AUR route below. Each route installs sysc-shell and its required companions.
+Use the guided Go installer for your first setup on Arch-family x86_64 with Niri. If you prefer package-manager updates, choose the AUR route below; each of those routes installs sysc-shell and its required companions. Nix users install from the flake instead, which packages the shell and the weather plugin.
 
 Full Debian and Fedora suite support is planned. Check the [requirements](/docs/start/requirements) before installing.
 
@@ -81,6 +81,25 @@ yay -S sysc-terminal sysc-plugins-git
 You can also choose individual plugins from the shell's catalog. Keep one installation source per plugin ID; the shell rejects duplicate IDs from packaged and catalog copies. sysc-wayland and sysc-metrics are Go libraries included when programs build. sysc-greet sets up the login greeter separately.
 
 Use your AUR helper to update these packages. When moving from the guided installer, review user units and ~/.local/bin/sysc-* binaries that override packaged files. Follow /usr/share/doc/sysc-shell/first-run.md, preserve your config and state, and confirm ExecStart=/usr/bin/... with systemctl --user cat before restarting services. Complete that review with your screen unlocked.
+
+## Nix: the flake route
+
+Nix is not a package channel here: there is no AUR package for it, the guided installer never touches a Nix store, and for Nix the flake is the route. [sysc-shell](https://github.com/Nomadcxx/sysc-shell#nix) ships `packages.default`, an overlay, a home-manager module and a NixOS module for x86_64-linux and aarch64-linux.
+
+In a home-manager flake configuration:
+
+```nix
+{
+  inputs.sysc-shell.url = "github:Nomadcxx/sysc-shell";
+
+  # modules = [ inputs.sysc-shell.homeModules.default ];
+  # programs.sysc-shell.enable = true;
+}
+```
+
+On NixOS without home-manager, `inputs.sysc-shell.nixosModules.default` puts the package in `environment.systemPackages` and deploys the same systemd user unit under `/etc/systemd/user`. Plugin directories and shell settings are per user, so the home-manager module is the one that links them.
+
+The flake packages the shell and the weather plugin only. The companions (sysc-lock, sysc-notify, sysc-clipboard, sysc-tray), sysc-terminal, sysc-walls and the plugin collection are not packaged for Nix, so a Nix install runs the shell without them.
 
 ## Build current source
 

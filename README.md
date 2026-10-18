@@ -80,6 +80,23 @@ Optional extras: `sysc-terminal` (terminal-art wallpapers), `sysc-plugins-git`
 guided installer? Read the [installation guide](https://nomadcxx.github.io/sysc/docs/start/install/)
 first.
 
+### Nix
+
+Nix is not an AUR package, and the installer does not touch a Nix store: for Nix the flake is the
+route. [sysc-shell](https://github.com/Nomadcxx/sysc-shell#nix) ships `packages.default`, an
+overlay, a home-manager module and a NixOS module for x86_64-linux and aarch64-linux, covering the
+shell and the weather plugin rather than the companions.
+
+```nix
+{
+  inputs.sysc-shell.url = "github:Nomadcxx/sysc-shell";
+
+  # home-manager: modules = [ inputs.sysc-shell.homeModules.default ];
+  # NixOS without home-manager: imports = [ inputs.sysc-shell.nixosModules.default ];
+  # then enable it: programs.sysc-shell.enable = true;
+}
+```
+
 ### Manual
 
 Release binary, no Go required. It verifies the checksum and keeps the
