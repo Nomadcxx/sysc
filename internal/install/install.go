@@ -582,7 +582,7 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		ConfigPath:  filepath.Join(opts.niriDir(), "config.kdl"),
 		SidecarPath: filepath.Join(opts.niriDir(), "sysc.kdl"),
 		StateDir:    filepath.Join(opts.stateDir(), "backups"),
-		Binds:       niri.DefaultBinds,
+		Binds:       niri.DefaultBindsFor(filepath.Join(opts.binDir(), "sysc-shell")),
 		Now:         opts.Now,
 		KeepSpawn:   keepSpawn,
 	}); err != nil {
