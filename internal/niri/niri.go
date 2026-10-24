@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -22,11 +23,18 @@ type Bind struct {
 	Action string
 }
 
-// DefaultBinds are the recommended sysc-shell ipc bindings.
-var DefaultBinds = []Bind{
-	{Key: "Mod+Space", Action: `spawn "sysc-shell" "ipc" "panel.toggle" "{\"panel\":\"launcher\"}"`},
-	{Key: "Mod+Comma", Action: `spawn "sysc-shell" "ipc" "panel.open" "{\"panel\":\"settings\"}"`},
+// DefaultBindsFor returns the recommended sysc-shell IPC bindings using the
+// command path installed by the suite.
+func DefaultBindsFor(shellPath string) []Bind {
+	shell := strconv.Quote(shellPath)
+	return []Bind{
+		{Key: "Mod+Space", Action: `spawn ` + shell + ` "ipc" "panel.toggle" "{\"panel\":\"launcher\"}"`},
+		{Key: "Mod+Comma", Action: `spawn ` + shell + ` "ipc" "panel.open" "{\"panel\":\"settings\"}"`},
+	}
 }
+
+// DefaultBinds are the recommended sysc-shell IPC bindings.
+var DefaultBinds = DefaultBindsFor("sysc-shell")
 
 // Options configures Apply.
 type Options struct {

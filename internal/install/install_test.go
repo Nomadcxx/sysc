@@ -521,3 +521,44 @@ func TestMain(m *testing.M) {
 	os.Unsetenv("XDG_STATE_HOME")
 	os.Exit(m.Run())
 }
+
+func TestNiriBindingsUseInstalledShellPath(t *testing.T) {
+	home := filepath.Join(t.TempDir(), "home with spaces")
+	configDir := filepath.Join(home, ".config", "niri")
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "config.kdl"), []byte("input {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("XDG_STATE_HOME", "")
+
+	_, err := Run(context.Background(), Options{
+		Home:      home,
+		Pin:       loadPin(t),
+		Answers:   weatherAnswers(),
+		Yes:       true,
+		Download:  func(context.Context, string, []fetch.Asset) error { return nil },
+		Swap:      func(string, string, []string) error { return nil },
+		LookPath:  func(string) (string, error) { return "", os.ErrNotExist },
+		Systemctl: noopSystemctl,
+		Now:       time.Unix(1000, 0),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(configDir, "sysc.kdl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	shellPath := filepath.Join(home, ".local", "bin", "sysc-shell")
+	want := `spawn "` + shellPath + `"`
+	if got := strings.Count(string(data), want); got != 2 {
+		t.Fatalf("installed shell command count = %d; want 2 (%s)\n%s", got, want, data)
+	}
+	if strings.Contains(string(data), `spawn "sysc-shell"`) {
+		t.Fatalf("Niri binds still depend on PATH:\n%s", data)
+	}
+}
