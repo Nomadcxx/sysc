@@ -45,7 +45,7 @@ jobs:
       # release carries only the two installer binaries and their checksums.
       - name: Checksums
         run: cd dist && sha256sum sysc-linux-* > SHA256SUMS
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/sysc-linux-amd64
