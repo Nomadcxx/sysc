@@ -1,0 +1,10 @@
+name: CI setup
+
+description: Install the native test dependency required by sysc.
+
+runs:
+  using: composite
+  steps:
+    - name: Install dash for the install-script tests
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dash
