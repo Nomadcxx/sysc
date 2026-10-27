@@ -1,5 +1,5 @@
 {
-  "release": "v0.1.3",
+  "release": "v0.1.4",
   "components": [
     {
       "id": "sysc-shell",
@@ -19,15 +19,15 @@
     },
     {
       "id": "sysc-clipboard",
-      "tag": "v0.1.3",
+      "tag": "v0.1.4",
       "unit": "sysc-clipboard.service",
       "binaries": [
         {
           "name": "sysc-clipboard",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-clipboard/releases/download/v0.1.3/sysc-clipboard",
-              "sha256": "accdd838486d96169ad39823f32599f367bc88d99f512298461e075a0d8da172"
+              "url": "https://github.com/Nomadcxx/sysc-clipboard/releases/download/v0.1.4/sysc-clipboard",
+              "sha256": "1b1e327cb44b734cd416d54200131707fbf19854274d41b3adb0d63e9a8a9ef2"
             }
           }
         }
@@ -35,15 +35,15 @@
     },
     {
       "id": "sysc-walls",
-      "tag": "v1.1.1",
+      "tag": "v1.4.1",
       "unit": "sysc-walls.service",
       "binaries": [
         {
           "name": "sysc-walls-daemon",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.1.1/sysc-walls-daemon",
-              "sha256": "093c37b6f9f6ae6e0e1efe04eebf5a1d00f923b82c3c1bad0b3e3ffdd66f1dc9"
+              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.4.1/sysc-walls-daemon",
+              "sha256": "96bb07b98f632b033be808d765ced0e356486ee4f1cffcebff5318bbb02cf761"
             }
           }
         },
@@ -51,8 +51,8 @@
           "name": "sysc-walls-client",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.1.1/sysc-walls-client",
-              "sha256": "b9318a1eed34d399de6336a03abe59fc0e4d01a10e54bae0caeb6bee61ac48e1"
+              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.4.1/sysc-walls-client",
+              "sha256": "517b96962b7684c19c991fb4c0d7740000fbab23b9e882fe29618f9e5bab9eec"
             }
           }
         },
@@ -60,8 +60,8 @@
           "name": "sysc-walls-display",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.1.1/sysc-walls-display",
-              "sha256": "4dc33346fb7cc459aac8b6b980c8d186206ab26a0650fac8bcd0a249b173f885"
+              "url": "https://github.com/Nomadcxx/sysc-walls/releases/download/v1.4.1/sysc-walls-display",
+              "sha256": "bd7ef65fe5b0a5888146fac6614953544aeaaef5f26a0b504296a2e385748ab8"
             }
           }
         }
@@ -69,15 +69,15 @@
     },
     {
       "id": "sysc-terminal",
-      "tag": "v0.2.0",
+      "tag": "v0.3.1",
       "binary_only": true,
       "binaries": [
         {
           "name": "sysc-terminal",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-terminal/releases/download/v0.2.0/sysc-terminal",
-              "sha256": "6660dd1c16a5f39b722cea27c3ba59d09adf178b694069e18ac62d09a3bf6320"
+              "url": "https://github.com/Nomadcxx/sysc-terminal/releases/download/v0.3.1/sysc-terminal",
+              "sha256": "177be5bd0edd6dd3819df28c200a53d0703bea21edbaf7c4b6eac2cc57bc179d"
             }
           }
         }
@@ -85,15 +85,15 @@
     },
     {
       "id": "sysc-notify",
-      "tag": "v0.1.1",
+      "tag": "v0.1.2",
       "unit": "sysc-notify.service",
       "binaries": [
         {
           "name": "sysc-notify",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-notify/releases/download/v0.1.1/sysc-notify",
-              "sha256": "699f9ba7ee677d844ec8f6455172f76d6756950200312e7453c144ce9c38f413"
+              "url": "https://github.com/Nomadcxx/sysc-notify/releases/download/v0.1.2/sysc-notify",
+              "sha256": "e37c0932df41e07a6a42fdaaac1a2bd98d5c142529df0eb5e4ea589e8453fc1d"
             }
           }
         }
@@ -101,15 +101,15 @@
     },
     {
       "id": "sysc-tray",
-      "tag": "v0.1.2",
+      "tag": "v0.1.3",
       "unit": "sysc-tray.service",
       "binaries": [
         {
           "name": "sysc-tray",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-tray/releases/download/v0.1.2/sysc-tray",
-              "sha256": "9546552fea04c1afcdfdc0810f87676687c87b0c9c62c057aed93f23864856aa"
+              "url": "https://github.com/Nomadcxx/sysc-tray/releases/download/v0.1.3/sysc-tray",
+              "sha256": "443303a0180b7e44deebb4770d040a3e870bf2406167d96161a06dc30d54012c"
             }
           }
         }
@@ -117,15 +117,15 @@
     },
     {
       "id": "sysc-lock",
-      "tag": "v0.1.1",
+      "tag": "v0.1.4",
       "unit": "sysc-lock-session.service",
       "binaries": [
         {
           "name": "sysc-lock",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-lock/releases/download/v0.1.1/sysc-lock",
-              "sha256": "4fc12009d52f8a62f058deda84a5dd10ed3ee2241a665fcd9ba44f8e6ef313bc"
+              "url": "https://github.com/Nomadcxx/sysc-lock/releases/download/v0.1.4/sysc-lock",
+              "sha256": "07b471f81f2b24bc88e5daeb29a841d0c9815adad808bafcf7e2ffa15f265b72"
             }
           }
         }
@@ -135,24 +135,24 @@
   "gslapper": {
     "family": "arch",
     "package": "gslapper",
-    "version": "1.5.1",
+    "version": "1.5.3",
     "assets": {
       "debian13": {
         "amd64": {
-          "url": "https://github.com/Nomadcxx/gSlapper/releases/download/v1.5.1/gslapper_1.5.1_debian13_amd64.deb",
-          "sha256": "27adffbe597c9cfef4699c47b395e9bb40bf39e26596b6586d871dd5e0d5a010"
+          "url": "https://github.com/Nomadcxx/gSlapper/releases/download/v1.5.3/gslapper_1.5.3_debian13_amd64.deb",
+          "sha256": "39a5612b147e8c4596c626e2c8b86bce724a139a78c34fd37c85d4004a850e9f"
         }
       },
       "ubuntu24.04": {
         "amd64": {
-          "url": "https://github.com/Nomadcxx/gSlapper/releases/download/v1.5.1/gslapper_1.5.1_ubuntu24.04_amd64.deb",
-          "sha256": "a3e2d3fb3c22736adaab1b4ce89204c1170a0c7c66992a7625676553c7de3816"
+          "url": "https://github.com/Nomadcxx/gSlapper/releases/download/v1.5.3/gslapper_1.5.3_ubuntu24.04_amd64.deb",
+          "sha256": "da2c86bfd3d1443bd96039c9eed887302e4716140b07dc57bae753b1d3c42129"
         }
       },
       "fedora42": {
         "amd64": {
-          "url": "https://github.com/Nomadcxx/gSlapper/releases/download/v1.5.1/gslapper-1.5.1-1.fedora42.x86_64.rpm",
-          "sha256": "5bf2db2372bebf9f454780ea26042b18d47c357675da517f6c9f31db7c3e240f"
+          "url": "https://github.com/Nomadcxx/gSlapper/releases/download/v1.5.3/gslapper-1.5.3-1.fedora42.x86_64.rpm",
+          "sha256": "dddb548646315077efac9182c956b056cf1b28e9768c5fc074513c6ef690a189"
         }
       }
     }
