@@ -24,7 +24,7 @@ func TestEmbeddedPinIncludesLock(t *testing.T) {
 	}
 	for _, c := range p.Components {
 		if c.ID == "sysc-lock" {
-			if c.Disabled || c.Tag != "v0.1.3" || c.Unit != "sysc-lock-session.service" {
+			if c.Disabled || c.Tag != "v0.1.4" || c.Unit != "sysc-lock-session.service" {
 				t.Fatalf("lock pin=%+v", c)
 			}
 			return

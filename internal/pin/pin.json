@@ -117,15 +117,15 @@
     },
     {
       "id": "sysc-lock",
-      "tag": "v0.1.3",
+      "tag": "v0.1.4",
       "unit": "sysc-lock-session.service",
       "binaries": [
         {
           "name": "sysc-lock",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-lock/releases/download/v0.1.3/sysc-lock",
-              "sha256": "061dfc1d23a7b2c2014f6fb9fad4ccc2665a5488264d9a27476c2f4ec72a070a"
+              "url": "https://github.com/Nomadcxx/sysc-lock/releases/download/v0.1.4/sysc-lock",
+              "sha256": "07b471f81f2b24bc88e5daeb29a841d0c9815adad808bafcf7e2ffa15f265b72"
             }
           }
         }

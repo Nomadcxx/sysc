@@ -198,7 +198,7 @@ and checksums. The released `v0.1.4` installer includes the components below:
 | [sysc-walls](https://github.com/Nomadcxx/sysc-walls) | v1.4.1 | Idle screensaver |
 | [sysc-notify](https://github.com/Nomadcxx/sysc-notify) | v0.1.2 | Notifications |
 | [sysc-tray](https://github.com/Nomadcxx/sysc-tray) | v0.1.3 | StatusNotifierItem tray |
-| [sysc-lock](https://github.com/Nomadcxx/sysc-lock) | v0.1.3 | Session lock owner |
+| [sysc-lock](https://github.com/Nomadcxx/sysc-lock) | v0.1.4 | Session lock owner |
 | [sysc-terminal](https://github.com/Nomadcxx/sysc-terminal) | v0.3.1 | Terminal-art wallpaper, managed by the shell |
 | [gSlapper](https://github.com/Nomadcxx/gSlapper) | External package | Video wallpaper; install only when missing |
 
