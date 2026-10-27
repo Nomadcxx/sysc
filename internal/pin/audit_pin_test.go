@@ -12,7 +12,7 @@ func auditPin(t *testing.T, mut func(map[string]any)) []byte {
 	if err := json.Unmarshal([]byte(`{
 "release":"v0.1.0",
 "components":[{"id":"sysc-shell","tag":"v0.1.0","unit":"sysc-shell.service","binaries":[{"name":"sysc-shell","assets":{"amd64":{"url":"https://example.invalid/x","sha256":"`+strings.Repeat("1", 64)+`"}}}]},{"id":"sysc-terminal","disabled":true,"reason":"no assets"}],
-"gslapper":{"family":"arch","package":"gslapper","version":"1.5.1"},
+"gslapper":{"family":"arch","package":"gslapper","version":"1.5.3"},
 "recommended":["org.sysc.weather"]}`), &doc); err != nil {
 		t.Fatal(err)
 	}
