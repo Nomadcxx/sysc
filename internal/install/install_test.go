@@ -205,6 +205,37 @@ func TestUninstallKeepsConfig(t *testing.T) {
 	}
 }
 
+func TestInstallUninstallRemovesRelativeNiriSidecarInclude(t *testing.T) {
+	home := setupHome(t)
+	config := filepath.Join(home, ".config", "niri", "config.kdl")
+	writeFile(t, config, "include \"./sysc.kdl\"\ninput {}\n")
+
+	if _, err := Run(context.Background(), installOpts(t, home, "v1")); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(data); got != "include \"./sysc.kdl\"\ninput {}\n" {
+		t.Fatalf("install changed the existing sidecar include:\n%s", got)
+	}
+
+	if _, err := Uninstall(Options{Home: home, Pin: loadPin(t), Systemctl: noopSystemctl}); err != nil {
+		t.Fatal(err)
+	}
+	data, err = os.ReadFile(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(data); got != "input {}\n" {
+		t.Fatalf("uninstall left or changed config content:\n%s", got)
+	}
+	if exists(filepath.Join(home, ".config", "niri", "sysc.kdl")) {
+		t.Fatal("uninstall left the sidecar")
+	}
+}
+
 func TestUninstallPurge(t *testing.T) {
 	home := uninstallHome(t)
 	if _, err := Uninstall(Options{Home: home, Pin: loadPin(t), Purge: true, Systemctl: noopSystemctl}); err != nil {
