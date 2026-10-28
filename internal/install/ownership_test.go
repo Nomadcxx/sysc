@@ -1,6 +1,7 @@
 package install
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,85 @@ import (
 	"github.com/Nomadcxx/sysc/internal/pin"
 	"github.com/Nomadcxx/sysc/internal/stamp"
 )
+
+func TestRerunPreservesModifiedFilesAndOldRollbackCopies(t *testing.T) {
+	o := safetyOptions(t)
+	binary := filepath.Join(o.binDir(), "sysc-shell")
+	unit := filepath.Join(o.unitDir(), "sysc-walls.service")
+	putOwnedTestFile(t, binary, []byte("original binary"), 0o750)
+	putOwnedTestFile(t, unit, []byte("original service"), 0o640)
+	if _, err := Run(context.Background(), o); err != nil {
+		t.Fatal(err)
+	}
+	putOwnedTestFile(t, binary, []byte("manually updated binary"), 0o750)
+	putOwnedTestFile(t, unit, []byte("customized service"), 0o640)
+	if err := os.Chmod(unit, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	putOwnedTestFile(t, binary+".bak", []byte("older rollback"), 0o700)
+	dropin := filepath.Join(unit+".d", "override.conf")
+	putOwnedTestFile(t, dropin, []byte("[Service]\nEnvironment=HOME=%h\n"), 0o600)
+	res, err := Run(context.Background(), o)
+	if err != nil {
+		t.Fatalf("existing user installation blocked upgrade: %v", err)
+	}
+	for path, want := range map[string]string{binary: "manually updated binary", unit: "customized service", binary + ".bak": "older rollback"} {
+		backup := path + ".sysc." + fileHash([]byte(want)) + ".bak"
+		data, err := os.ReadFile(backup)
+		if err != nil || string(data) != want {
+			t.Fatalf("modified file not preserved at %s: %q %v", backup, data, err)
+		}
+	}
+	fi, err := os.Stat(unit + ".sysc." + fileHash([]byte("customized service")) + ".bak")
+	if err != nil || fi.Mode().Perm() != 0o640 {
+		t.Fatalf("custom unit backup permissions changed: %v %v", fi, err)
+	}
+	if len(res.Warnings) == 0 {
+		t.Fatal("preserved modifications were not reported")
+	}
+	if _, err := Run(context.Background(), o); err != nil {
+		t.Fatalf("retry after preservation failed: %v", err)
+	}
+	if _, err := Uninstall(o); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]string{binary: "original binary", unit: "original service", dropin: "[Service]\nEnvironment=HOME=%h\n"} {
+		data, err := os.ReadFile(path)
+		if err != nil || string(data) != want {
+			t.Fatalf("original file or drop-in lost: %s: %q %v", path, data, err)
+		}
+	}
+}
+
+func TestPreserveFileRetriesWithoutOverwritingRecoveryFiles(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sysc-walls.service")
+	data := []byte("custom service")
+	putOwnedTestFile(t, path, data, 0o600)
+	backup, err := preserveFile(path, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := preserveFile(path, data); err != nil {
+		t.Fatalf("identical preservation cannot retry: %v", err)
+	}
+	putOwnedTestFile(t, backup, []byte("changed recovery copy"), 0o600)
+	if _, err := preserveFile(path, data); err == nil {
+		t.Fatal("overwrote changed recovery copy")
+	}
+	got, err := os.ReadFile(backup)
+	if err != nil || string(got) != "changed recovery copy" {
+		t.Fatalf("recovery copy lost: %q %v", got, err)
+	}
+	if err := os.Remove(backup); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(path, backup); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := preserveFile(path, data); err == nil {
+		t.Fatal("accepted symlinked backup")
+	}
+}
 
 func ownershipOptions(t *testing.T) Options {
 	t.Helper()
@@ -32,7 +112,7 @@ func TestOwnershipPreservesBackupModeAndModifiedBytes(t *testing.T) {
 	path := filepath.Join(o.binDir(), "sysc-shell")
 	putOwnedTestFile(t, path, []byte("foreign binary"), 0o750)
 	var st stamp.Stamp
-	if err := planFile(&st, path, []byte("SYSC binary"), "", o.systemctl()); err != nil {
+	if _, err := planFile(&st, path, []byte("SYSC binary"), "", o.systemctl()); err != nil {
 		t.Fatal(err)
 	}
 	fi, err := os.Stat(path + ".sysc.bak")
@@ -50,7 +130,7 @@ func TestOwnershipPreservesBackupModeAndModifiedBytes(t *testing.T) {
 	if err := restoreFile(o, st.Files[0]); err == nil {
 		t.Error("restored modified backup")
 	}
-	if err := planFile(&st, path, []byte("updated binary"), "", o.systemctl()); err == nil {
+	if _, err := planFile(&st, path, []byte("updated binary"), "", o.systemctl()); err == nil {
 		t.Error("rerun accepted modified backup")
 	}
 }
@@ -87,7 +167,7 @@ func TestOwnershipReloadsRestoredUnitBeforeStarting(t *testing.T) {
 	path := filepath.Join(o.unitDir(), "sysc-shell.service")
 	putOwnedTestFile(t, path, []byte("foreign unit"), 0o640)
 	var st stamp.Stamp
-	if err := planFile(&st, path, []byte("SYSC unit"), "sysc-shell.service", o.systemctl()); err != nil {
+	if _, err := planFile(&st, path, []byte("SYSC unit"), "sysc-shell.service", o.systemctl()); err != nil {
 		t.Fatal(err)
 	}
 	putOwnedTestFile(t, path, []byte("SYSC unit"), 0o644)
@@ -107,7 +187,7 @@ func TestOwnershipRetryAfterBackupCleanup(t *testing.T) {
 	foreign := []byte("foreign binary")
 	putOwnedTestFile(t, path, foreign, 0o755)
 	var st stamp.Stamp
-	if err := planFile(&st, path, []byte("SYSC binary"), "", o.systemctl()); err != nil {
+	if _, err := planFile(&st, path, []byte("SYSC binary"), "", o.systemctl()); err != nil {
 		t.Fatal(err)
 	}
 	putOwnedTestFile(t, path, []byte("SYSC binary"), 0o755)
@@ -140,11 +220,11 @@ func TestOwnershipUninstallsInterruptedUpgrade(t *testing.T) {
 	o := ownershipOptions(t)
 	path := filepath.Join(o.binDir(), "sysc-shell")
 	var st stamp.Stamp
-	if err := planFile(&st, path, []byte("first SYSC binary"), "", o.systemctl()); err != nil {
+	if _, err := planFile(&st, path, []byte("first SYSC binary"), "", o.systemctl()); err != nil {
 		t.Fatal(err)
 	}
 	putOwnedTestFile(t, path, []byte("first SYSC binary"), 0o755)
-	if err := planFile(&st, path, []byte("upgraded SYSC binary"), "", o.systemctl()); err != nil {
+	if _, err := planFile(&st, path, []byte("upgraded SYSC binary"), "", o.systemctl()); err != nil {
 		t.Fatal(err)
 	}
 	// Planning was stamped, but the process stopped before swapping binaries.

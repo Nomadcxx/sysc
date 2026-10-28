@@ -61,11 +61,47 @@ func TestTaskLines(t *testing.T) {
 		{Name: "sysc-clipboard", Status: install.Failed, Reason: "boom"},
 		{Name: "sysc-bar"},
 	}
-	out := taskLines(tasks, 0)
-	for _, want := range []string{"✓ sysc-shell", "- sysc-walls (disabled)", "✗ sysc-clipboard (boom)", "⠋ sysc-bar"} {
+	out := taskLines(tasks, 0, i18n.EN)
+	for _, want := range []string{"✓ sysc-shell", "- sysc-walls (disabled)", "✗ sysc-clipboard (boom)", "· sysc-bar"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("taskLines missing %q in:\n%s", want, out)
 		}
+	}
+}
+
+func TestTaskLinesShowDownloadTicksAndActiveStep(t *testing.T) {
+	tasks := []install.Task{
+		{Name: "sysc-shell", Version: "v0.2.1", Status: install.Verified},
+		{Name: "sysc-walls", Version: "v1.4.1", Status: install.Downloading},
+		{Name: "sysc-tray"},
+		{Name: "desktop-config", Status: install.Running},
+	}
+	out := taskLines(tasks, 0, i18n.EN)
+	for _, want := range []string{"✓ sysc-shell v0.2.1 (download verified)", "⠋ sysc-walls v1.4.1 (downloading and verifying)", "· sysc-tray", "⠋ Desktop configuration"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing progress %q in:\n%s", want, out)
+		}
+	}
+}
+
+func TestProgressKeepsCurrentStepVisible(t *testing.T) {
+	m := newModel(i18n.EN, nil, false)
+	m.step, m.width, m.height = ui.StepInstalling, 80, 24
+	var tasks []install.Task
+	for i := 0; i < 15; i++ {
+		tasks = append(tasks, install.Task{Name: "completed step", Status: install.Done})
+	}
+	tasks = append(tasks, install.Task{Name: "sysc-walls.service", Status: install.Running})
+	next, _ := m.Update(progressMsg{tasks: tasks})
+	got := next.(model)
+	if got.scroll == 0 || !strings.Contains(got.View(), "sysc-walls.service") {
+		t.Fatal("current service step is hidden below the viewport")
+	}
+	tasks[len(tasks)-1].Status = install.Failed
+	next, _ = got.Update(installDoneMsg{res: install.Result{Tasks: tasks}, err: errors.New("service failed")})
+	got = next.(model)
+	if !strings.Contains(got.View(), "sysc-walls.service") {
+		t.Fatal("failure screen hid the failed service")
 	}
 }
 

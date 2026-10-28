@@ -123,3 +123,51 @@ func TestNewModelLogPathUsesXDGState(t *testing.T) {
 		t.Fatalf("logPath = %q, want %q", m.logPath, want)
 	}
 }
+
+func TestInstallShowsTicksBeforeWorkFinishes(t *testing.T) {
+	m := newModel(i18n.EN, nil, false)
+	m.w.Page = ui.PageConfirm
+	m.logPath = filepath.Join(t.TempDir(), "installer.log")
+	release := make(chan struct{})
+	var once sync.Once
+	finish := func() { once.Do(func() { close(release) }) }
+	out := &syncBuffer{}
+	fake := func(_ seed.Answers, progress func([]install.Task)) (install.Result, error) {
+		tasks := []install.Task{
+			{Name: "sysc-shell", Version: "v0.2.1", Status: install.Verified},
+			{Name: "sysc-walls", Version: "v1.4.1", Status: install.Downloading},
+		}
+		progress(tasks)
+		progress(tasks)
+		<-release
+		tasks[0].Status, tasks[1].Status = install.Done, install.Done
+		progress(tasks)
+		return install.Result{Tasks: tasks, Warnings: []string{"saved custom service"}}, nil
+	}
+	prog := newInstallProgram(m, fake, tea.WithInput(nil), tea.WithOutput(out))
+	done := make(chan error, 1)
+	go func() { _, err := prog.Run(); done <- err }()
+	t.Cleanup(func() { finish(); prog.Kill() })
+	prog.Send(tea.WindowSizeMsg{Width: 80, Height: 24})
+	prog.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	waitForOutput(t, out, "✓ sysc-shell v0.2.1")
+	waitForOutput(t, out, "sysc-walls v1.4.1 (downloading and verifying)")
+	finish()
+	waitForOutput(t, out, i18n.T(i18n.EN, "done.blurb"))
+	prog.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("installer preview did not exit")
+	}
+	data, err := os.ReadFile(m.logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(data), "sysc-shell v0.2.1: verified") != 1 || !strings.Contains(string(data), "warning: saved custom service") {
+		t.Fatalf("log omitted progress or repeated unchanged rows:\n%s", data)
+	}
+}

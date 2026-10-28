@@ -372,6 +372,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case progressMsg:
 		if m.step == ui.StepInstalling {
 			m.tasks = msg.tasks
+			m.followTask(m.tasks, "install")
 		}
 	case installDoneMsg:
 		m.scroll = 0
@@ -379,6 +380,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.installErr = msg.err
 		if msg.err != nil || anyFailed(msg.res.Tasks) {
 			m.step = ui.StepFailed
+			m.followTask(m.installRes.Tasks, "failed")
 		} else {
 			m.step = ui.StepDone
 		}
@@ -610,13 +612,18 @@ func (m model) runInstall() {
 		return
 	}
 	defer logFile.Close()
+	previous := map[string]install.Task{}
 	progress := func(tasks []install.Task) {
 		for _, task := range tasks {
+			if old, ok := previous[task.Name]; ok && old == task {
+				continue
+			}
+			previous[task.Name] = task
 			status := string(task.Status)
 			if status == "" {
 				status = "pending"
 			}
-			line := task.Name + ": " + status
+			line := strings.TrimSpace(task.Name+" "+task.Version) + ": " + status
 			if task.Reason != "" {
 				line += " (" + task.Reason + ")"
 			}
@@ -625,6 +632,9 @@ func (m model) runInstall() {
 		m.notify(progressMsg{tasks: append([]install.Task(nil), tasks...)})
 	}
 	res, err := m.installer(m.w.Answers(), progress)
+	for _, warning := range res.Warnings {
+		fmt.Fprintln(logFile, "warning:", warning)
+	}
 	if err != nil {
 		fmt.Fprintf(logFile, "error: %v\n", err)
 	}
@@ -639,21 +649,47 @@ func (m model) notify(msg tea.Msg) {
 
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
-// taskLines renders one line per task: spinner while pending, then a status
-// glyph with the reason when there is one.
-func taskLines(tasks []install.Task, frame int) string {
+// Follow the active or failed row when the list outgrows a small terminal.
+func (m *model) followTask(tasks []install.Task, prefix string) {
+	_, _, help := m.content()
+	for i, task := range tasks {
+		switch task.Status {
+		case install.Downloading, install.Installing, install.Running, install.Failed:
+			body := i18n.T(m.w.Locale, prefix+".blurb") + "\n\n" + taskLines(tasks[:i+1], m.frame, m.w.Locale)
+			m.scroll = ui.ScrollLimit(m.w.Locale, body, help, m.w.Page, m.step, m.width, m.height, m.beams)
+		}
+	}
+}
+
+// taskLines shows a spinner only for active work and a tick for completed steps.
+func taskLines(tasks []install.Task, frame int, loc i18n.Locale) string {
 	lines := make([]string, 0, len(tasks))
 	for _, task := range tasks {
+		name := i18n.T(loc, "install."+task.Name)
+		if name == "" {
+			name = task.Name
+		}
+		if task.Version != "" {
+			name += " " + task.Version
+		}
+		detail := task.Reason
+		glyph := "·"
 		switch task.Status {
 		case install.Done:
-			lines = append(lines, "✓ "+task.Name)
+			glyph = "✓"
+		case install.Verified:
+			glyph, detail = "✓", i18n.T(loc, "install.verified")
 		case install.Skipped:
-			lines = append(lines, "- "+task.Name+reason(task.Reason))
+			glyph = "-"
 		case install.Failed:
-			lines = append(lines, "✗ "+task.Name+reason(task.Reason))
-		default:
-			lines = append(lines, spinnerFrames[frame%len(spinnerFrames)]+" "+task.Name)
+			glyph = "✗"
+		case install.Downloading, install.Installing, install.Running:
+			glyph = spinnerFrames[frame%len(spinnerFrames)]
+			if task.Status != install.Running {
+				detail = i18n.T(loc, "install."+string(task.Status))
+			}
 		}
+		lines = append(lines, glyph+" "+name+reason(detail))
 	}
 	return strings.Join(lines, "\n")
 }
@@ -670,7 +706,7 @@ func (m model) content() (string, string, string) {
 	switch m.step {
 	case ui.StepInstalling:
 		title = i18n.T(m.w.Locale, "install.title")
-		body = i18n.T(m.w.Locale, "install.blurb") + "\n\n" + taskLines(m.tasks, m.frame)
+		body = i18n.T(m.w.Locale, "install.blurb") + "\n\n" + taskLines(m.tasks, m.frame, m.w.Locale)
 		help = i18n.T(m.w.Locale, "help.install")
 	case ui.StepDone, ui.StepFailed:
 		prefix := "done"
@@ -678,7 +714,7 @@ func (m model) content() (string, string, string) {
 			prefix = "failed"
 		}
 		title, help = i18n.T(m.w.Locale, prefix+".title"), i18n.T(m.w.Locale, "help."+prefix)
-		body = i18n.T(m.w.Locale, prefix+".blurb") + "\n\n" + taskLines(m.installRes.Tasks, 0)
+		body = i18n.T(m.w.Locale, prefix+".blurb") + "\n\n" + taskLines(m.installRes.Tasks, 0, m.w.Locale)
 		if m.installErr != nil {
 			body += "\n\n" + m.installErr.Error()
 		}
