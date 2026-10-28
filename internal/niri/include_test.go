@@ -1,6 +1,7 @@
 package niri
 
 import (
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -82,6 +83,144 @@ func TestOccupiedKeysExcludesSidecarByAbsolutePath(t *testing.T) {
 	}
 	if !slices.Contains(res.BindsAdded, "Mod+Space") {
 		t.Fatalf("Mod+Space not written; skipped=%v added=%v", res.BindsSkipped, res.BindsAdded)
+	}
+}
+
+func TestApplyAndRemoveRecognizeSidecarIncludeForms(t *testing.T) {
+	cases := []struct {
+		name       string
+		include    func(string) string
+		nested     bool
+		home       bool
+		symlink    bool
+		lineEnding string
+	}{
+		{name: "bare", include: func(string) string { return `include "sysc.kdl"` }},
+		{name: "relative", include: func(string) string { return `include "./sysc.kdl"` }},
+		{name: "absolute", include: func(sidecar string) string { return `include "` + sidecar + `"` }},
+		{name: "optional", include: func(string) string { return `include optional=true "sysc.kdl"` }},
+		{name: "home", include: func(string) string { return `include "~/sysc.kdl"` }, home: true},
+		{name: "symlink", include: func(string) string { return `include "./sysc.kdl"` }, symlink: true},
+		{name: "nested", nested: true},
+		{name: "crlf", include: func(string) string { return `include "./sysc.kdl"` }, lineEnding: "\r\n"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			configDir := dir
+			if tc.home {
+				t.Setenv("HOME", dir)
+				configDir = filepath.Join(dir, "niri")
+			}
+			config := filepath.Join(configDir, "config.kdl")
+			sidecar := filepath.Join(dir, "sysc.kdl")
+			symlinkTarget := filepath.Join(dir, "sidecar-target.kdl")
+			if tc.symlink {
+				write(t, symlinkTarget, "original sidecar target\n")
+				if err := os.Symlink(symlinkTarget, sidecar); err != nil {
+					t.Fatal(err)
+				}
+			}
+			nl := tc.lineEnding
+			if nl == "" {
+				nl = "\n"
+			}
+
+			rootText := ""
+			var nestedPath, nestedText string
+			if tc.nested {
+				rootText = `include "outer.kdl"` + nl + "input {}" + nl
+				nestedPath = filepath.Join(dir, "outer.kdl")
+				nestedText = `include "sysc.kdl"` + nl
+				write(t, nestedPath, nestedText)
+			} else {
+				rootText = tc.include(sidecar) + nl + "input {}" + nl
+			}
+			write(t, config, rootText)
+
+			opts := Options{
+				ConfigPath:  config,
+				SidecarPath: sidecar,
+				StateDir:    filepath.Join(dir, "state"),
+				Binds:       DefaultBinds,
+				Now:         time.Unix(1000, 0),
+				KeepSpawn:   true,
+			}
+			res, err := Apply(opts)
+			if err != nil {
+				t.Fatalf("Apply: %v", err)
+			}
+			if res.IncludeAdded {
+				t.Fatalf("Apply added a duplicate include: %q", readFile(t, config))
+			}
+			if got := readFile(t, config); got != rootText {
+				t.Fatalf("Apply changed the existing include form:\n got %q\nwant %q", got, rootText)
+			}
+			if tc.nested && readFile(t, nestedPath) != nestedText {
+				t.Fatal("Apply changed the nested include")
+			}
+
+			if err := Remove(opts); err != nil {
+				t.Fatalf("Remove: %v", err)
+			}
+			if tc.nested {
+				if got := readFile(t, nestedPath); got != "" {
+					t.Fatalf("Remove left nested include config: %q", got)
+				}
+			} else if got, want := readFile(t, config), "input {}"+nl; got != want {
+				t.Fatalf("Remove changed remaining config bytes:\n got %q\nwant %q", got, want)
+			}
+			paths := []string{config}
+			if tc.nested {
+				paths = append(paths, nestedPath)
+			}
+			for _, path := range paths {
+				for _, target := range includeTargets(readFile(t, path)) {
+					resolved := filepath.Clean(resolveInclude(filepath.Dir(path), target))
+					if resolved == filepath.Clean(sidecar) {
+						t.Errorf("Remove left %s including the sidecar", path)
+					}
+				}
+			}
+			if _, err := os.Stat(sidecar); !os.IsNotExist(err) {
+				t.Fatalf("sidecar still exists after Remove: %v", err)
+			}
+			if tc.symlink {
+				if _, err := os.Stat(symlinkTarget); err != nil {
+					t.Fatalf("Remove deleted the symlink target: %v", err)
+				}
+			}
+			if tc.nested {
+				if got := readFile(t, nestedPath+".sysc.bak"); got != nestedText {
+					t.Fatalf("nested include backup = %q, want %q", got, nestedText)
+				}
+			}
+		})
+	}
+}
+
+func TestRemoveLeavesCommentedSidecarInclude(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, "config.kdl")
+	original := "// include \"./sysc.kdl\"\ninput {}\n"
+	write(t, config, original)
+	opts := Options{
+		ConfigPath:  config,
+		SidecarPath: filepath.Join(dir, "sysc.kdl"),
+		StateDir:    filepath.Join(dir, "state"),
+		Binds:       DefaultBinds,
+		Now:         time.Unix(1000, 0),
+		KeepSpawn:   true,
+	}
+	if res, err := Apply(opts); err != nil || !res.IncludeAdded {
+		t.Fatalf("Apply = (%+v, %v), want a live include beside the comment", res, err)
+	}
+	if err := Remove(opts); err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+	if got := readFile(t, config); got != original {
+		t.Fatalf("Remove changed the user's commented include:\n got %q\nwant %q", got, original)
 	}
 }
 

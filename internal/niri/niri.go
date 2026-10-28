@@ -58,7 +58,6 @@ type Result struct {
 }
 
 var (
-	includeRe  = regexp.MustCompile(`(?m)^\s*include\s+"sysc\.kdl"[ \t]*(?://[^\n]*)?[ \t]*\r?\n?`)
 	spawnRe    = regexp.MustCompile(`(?m)^([ \t]*)spawn-at-startup[ \t]+"sysc-shell"`)
 	spawnOffRe = regexp.MustCompile(`(?m)^([ \t]*)// (spawn-at-startup[ \t]+"sysc-shell")`)
 )
@@ -82,7 +81,11 @@ func Apply(opts Options) (Result, error) {
 		text = commented
 	}
 
-	if !includeRe.MatchString(text) {
+	files, err := IncludeTree(opts)
+	if err != nil {
+		return res, err
+	}
+	if !hasSidecarInclude(files, opts.SidecarPath) {
 		nl := "\n"
 		if strings.Contains(text, "\r\n") {
 			nl = "\r\n"
@@ -232,6 +235,51 @@ func resolveInclude(baseDir, p string) string {
 	}
 }
 
+func hasSidecarInclude(files []File, sidecarPath string) bool {
+	for _, file := range files {
+		for _, target := range includeTargets(file.Text) {
+			path := resolveInclude(filepath.Dir(file.Path), target)
+			if samePath(path, sidecarPath) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func stripSidecarIncludes(text, filePath, sidecarPath string) string {
+	var out strings.Builder
+	for _, line := range strings.SplitAfter(text, "\n") {
+		remove := false
+		for _, target := range includeTargets(line) {
+			path := resolveInclude(filepath.Dir(filePath), target)
+			if samePath(path, sidecarPath) {
+				remove = true
+				break
+			}
+		}
+		if !remove {
+			out.WriteString(line)
+		}
+	}
+	return out.String()
+}
+
+func samePath(a, b string) bool {
+	if a == "" || b == "" {
+		return false
+	}
+	return canonicalPath(a) == canonicalPath(b)
+}
+
+func canonicalPath(path string) string {
+	clean := filepath.Clean(path)
+	if resolved, err := filepath.EvalSymlinks(clean); err == nil {
+		return resolved
+	}
+	return clean
+}
+
 // unescapeKDL drops the escape backslashes of a quoted KDL string.
 func unescapeKDL(s string) string {
 	if !strings.Contains(s, "\\") {
@@ -250,19 +298,29 @@ func unescapeKDL(s string) string {
 // Remove deletes the sidecar and the include line, and re-enables the
 // sysc-shell autostart lines Apply commented out.
 func Remove(opts Options) error {
-	if data, err := os.ReadFile(opts.ConfigPath); err == nil {
-		text := includeRe.ReplaceAllString(string(data), "")
-		// ponytail: a line the user commented themselves before install is
-		// indistinguishable from ours and also returns; track per-line
-		// provenance in the stamp if that ever bites.
-		text = spawnOffRe.ReplaceAllString(text, "$1$2")
-		if text != string(data) {
-			if err := writeAtomic(opts.ConfigPath, []byte(text)); err != nil {
+	files, err := IncludeTree(opts)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err == nil {
+		for _, file := range files {
+			text := stripSidecarIncludes(file.Text, file.Path, opts.SidecarPath)
+			if file.Path == filepath.Clean(opts.ConfigPath) {
+				// ponytail: a line the user commented themselves before install is
+				// indistinguishable from ours and also returns; track per-line
+				// provenance in the stamp if that ever bites.
+				text = spawnOffRe.ReplaceAllString(text, "$1$2")
+			}
+			if text == file.Text {
+				continue
+			}
+			if _, err := backup.FirstBak(file.Path); err != nil {
+				return err
+			}
+			if err := writeAtomic(file.Path, []byte(text)); err != nil {
 				return err
 			}
 		}
-	} else if !os.IsNotExist(err) {
-		return err
 	}
 	if err := os.Remove(opts.SidecarPath); err != nil && !os.IsNotExist(err) {
 		return err

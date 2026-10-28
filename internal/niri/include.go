@@ -33,20 +33,13 @@ func IncludeTree(opts Options) ([]File, error) {
 	}
 	root := File{Path: filepath.Clean(opts.ConfigPath), Text: string(data)}
 
-	sidecar := filepath.Clean(opts.SidecarPath)
-	sidecarResolved := sidecar
-	if r, err := filepath.EvalSymlinks(sidecar); err == nil {
-		sidecarResolved = r
-	}
+	sidecar := canonicalPath(opts.SidecarPath)
 
 	// ponytail: 32-file cap; raise it if a real config nests deeper.
 	const maxIncludeFiles = 32
 	files := []File{root}
 	queue := []File{root}
-	visited := map[string]bool{}
-	if p, err := filepath.EvalSymlinks(opts.ConfigPath); err == nil {
-		visited[p] = true
-	}
+	visited := map[string]bool{canonicalPath(opts.ConfigPath): true}
 	seen := 1
 	for len(queue) > 0 && seen < maxIncludeFiles {
 		f := queue[0]
@@ -57,14 +50,8 @@ func IncludeTree(opts Options) ([]File, error) {
 				continue
 			}
 			clean := filepath.Clean(inc)
-			if clean == sidecar {
-				continue
-			}
-			resolved := clean
-			if r, err := filepath.EvalSymlinks(clean); err == nil {
-				resolved = r
-			}
-			if resolved == sidecarResolved || visited[resolved] {
+			resolved := canonicalPath(clean)
+			if resolved == sidecar || visited[resolved] {
 				continue
 			}
 			visited[resolved] = true
