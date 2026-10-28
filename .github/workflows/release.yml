@@ -19,6 +19,8 @@ jobs:
             asset: sysc-linux-arm64
     steps:
       - uses: actions/checkout@v7
+      - name: Check release pin
+        run: jq -e --arg tag "$GITHUB_REF_NAME" '.release == $tag' internal/pin/pin.json
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
