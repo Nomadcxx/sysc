@@ -113,7 +113,7 @@ install -m 755 "$download_dir/sysc-linux-amd64" "$HOME/.local/bin/sysc" &&
 ```
 
 Continue only if the checksum reports `sysc-linux-amd64: OK`. Replace
-`latest/download` with `download/v0.1.4` to pin a release. The commands below
+`latest/download` with `download/v0.1.5` to pin a release. The commands below
 use `~/.local/bin/sysc`.
 
 ### Manual source checkout
@@ -189,7 +189,7 @@ Config, state, and data paths follow absolute `XDG_CONFIG_HOME`,
 ## What the installer installs
 
 The [suite pin](internal/pin/pin.json) records component versions
-and checksums. The released `v0.1.4` installer includes the components below:
+and checksums. The `v0.1.5` installer includes the component-pin update that missed the v0.1.4 tag:
 
 | Component | Version | Role |
 |---|---|---|

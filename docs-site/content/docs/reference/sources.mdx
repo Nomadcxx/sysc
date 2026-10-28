@@ -1,18 +1,18 @@
 ---
 title: Source record
-description: Current component source revisions and the exact releases installed by SYSC v0.1.4.
+description: Current component source revisions and the exact releases installed by SYSC v0.1.5.
 ---
 
 
-Use the current default-branch commit for behavior guidance. Use the release tag for the version that SYSC v0.1.4 installs. A branch can move ahead of the suite pin. SYSC does not install projects that its manifest does not pin.
+Use the current default-branch commit for behavior guidance. Use the release tag for the version that SYSC v0.1.5 installs. A branch can move ahead of the suite pin. SYSC does not install projects that its manifest does not pin.
 
-The v0.1.4 installer installs sysc-terminal v0.3.1 as a wallpaper executable that the shell manages, seeds tray presentation in a new config when sysc-tray installs, and removes plugin selections that did not install executables. These changes also apply to source builds.
+The v0.1.5 installer installs sysc-terminal v0.3.1 as a wallpaper executable that the shell manages, seeds tray presentation in a new config when sysc-tray installs, and removes plugin selections that did not install executables. These changes also apply to source builds.
 
-We checked these default branch heads on 2026-10-15. Each source link opens a full commit. The pin column reflects installer v0.1.4. When behavior changes, update the affected article and this record together. These commits show which source the docs used; component development continues independently.
+We checked these default branch heads on 2026-10-15. Each source link opens a full commit. The pin column reflects installer v0.1.5. When behavior changes, update the affected article and this record together. These commits show which source the docs used; component development continues independently.
 
-| Project | Current source and SYSC v0.1.4 pin or status |
+| Project | Current source and SYSC v0.1.5 pin or status |
 |---|---|
-| [sysc](/docs/components/sysc) | [main · f5424a872064](https://github.com/Nomadcxx/sysc/commit/f5424a872064e3d4539ebc12b56a11f64cfcc193) · installer v0.1.4 |
+| [sysc](/docs/components/sysc) | [main · f5424a872064](https://github.com/Nomadcxx/sysc/commit/f5424a872064e3d4539ebc12b56a11f64cfcc193) · installer v0.1.5 |
 | [sysc-greet](/docs/components/sysc-greet) | [master · 4c98abc5bddd](https://github.com/Nomadcxx/sysc-greet/commit/4c98abc5bdddbf6c84d2a55d71b9120cbfccad0f) · not installed by the suite |
 | [sysc-lock](/docs/components/sysc-lock) | [master · df54457a1f63](https://github.com/Nomadcxx/sysc-lock/commit/df54457a1f6359c4379cd59aa35ad7ef12b737aa) · sysc-lock v0.1.4 |
 | [sysc-shell](/docs/components/sysc-shell) | [main · fd2961e8318c](https://github.com/Nomadcxx/sysc-shell/commit/fd2961e8318c269279e8bacb28b74522fd4e5392) · sysc-shell v0.2.0 |
@@ -32,7 +32,7 @@ At the documented sysc-terminal source commit, go.mod pins sysc-Go v1.0.7. The s
 
 ## Shell module versions
 
-The sysc-shell v0.2.0 source in the SYSC v0.1.2 suite declares the Go module versions below. These can differ from separately installed service binaries and current default branches. The [tagged go.mod](https://github.com/Nomadcxx/sysc-shell/blob/v0.2.0/go.mod) is the source for this table.
+The sysc-shell v0.2.0 source declares the Go module versions below. These can differ from separately installed service binaries and current default branches. The [tagged go.mod](https://github.com/Nomadcxx/sysc-shell/blob/v0.2.0/go.mod) is the source for this table.
 
 | Module | Version in sysc-shell v0.2.0 |
 |---|---|
@@ -45,10 +45,10 @@ The sysc-shell v0.2.0 source in the SYSC v0.1.2 suite declares the Go module ver
 | sysc-terminal | `v0.2.0` |
 | sysc-Go | `v1.0.7` (indirect) |
 
-The sysc-shell module graph includes sysc-terminal v0.2.0; the installer also ships the sysc-terminal v0.2.0 executable, which the shell manages and which needs no user unit.
+The sysc-shell module graph includes sysc-terminal v0.2.0. The v0.1.5 installer ships the separate sysc-terminal v0.3.1 executable, which the shell manages and which needs no user unit.
 
 ## Plugin SDK version
 
 At the recorded [`sysc-plugins` revision](https://github.com/Nomadcxx/sysc-plugins/blob/6a8130a47fbd27ca93ccd3ecc62b78d0814587f2/go.mod), Go selects sysc-shell v0.2.0, the same release this suite installs. That module supplies `plugin/v1` and `plugin/lint`, so plugin tests and the installed shell use matching public types and constants.
 
-The v0.1.3 manifest lists the suite pins. The installer workflow publishes installer binaries; each component publishes its own assets. Check the component release before inferring availability from the installer's architecture matrix. Component articles will link the relevant source files and call out behavior differences from the suite pin.
+The v0.1.5 manifest lists the suite pins. The installer workflow publishes installer binaries; each component publishes its own assets. Check the component release before inferring availability from the installer's architecture matrix. Component articles will link the relevant source files and call out behavior differences from the suite pin.

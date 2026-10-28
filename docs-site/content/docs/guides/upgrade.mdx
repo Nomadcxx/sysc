@@ -7,7 +7,7 @@ description: Upgrade SYSC by running the installer release whose component pin y
 
 SYSC does not update components from floating branches. Each installer binary carries one suite pin. Choose the installer release whose pinned component set you want, verify its checksum, then run it as the same normal user who owns the current install.
 
-Use the release steps on [Install SYSC](/docs/start/install). If you select a version other than v0.1.3, use that version in both release URLs. A source build instead follows the pin currently committed to sysc main.
+Use the release steps on [Install SYSC](/docs/start/install). If you select a version other than v0.1.5, use that version in both release URLs. A source build instead follows the pin currently committed to sysc main.
 
 The installer downloads and verifies all pinned component binaries before swapping them into ~/.local/bin. It stops active suite units before replacing binaries, writes the install stamp as soon as the swap can be undone, updates user units, and starts them when the graphical-session.target is active. It leaves a pre-existing sysc-shell config in place.
 
