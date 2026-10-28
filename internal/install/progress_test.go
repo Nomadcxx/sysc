@@ -2,12 +2,74 @@ package install
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/Nomadcxx/sysc/internal/fetch"
 )
+
+func TestProgressStartsBeforeDownloadsAndRetainsFailure(t *testing.T) {
+	o := safetyOptions(t)
+	var latest []Task
+	o.Progress = func(tasks []Task) { latest = tasks }
+	download := o.Download
+	count := 0
+	o.Download = func(ctx context.Context, dir string, assets []fetch.Asset) error {
+		count++
+		if len(latest) != len(o.Pin.Components) {
+			t.Fatalf("download began without visible component list: %+v", latest)
+		}
+		if latest[count-1].Status != Status("downloading") {
+			t.Fatalf("current component not shown downloading: %+v", latest)
+		}
+		if count == 2 {
+			if latest[0].Status != Status("verified") {
+				t.Fatalf("completed download has no verification tick: %+v", latest[0])
+			}
+			return errors.New("download interrupted")
+		}
+		return download(ctx, dir, assets)
+	}
+	res, err := Run(context.Background(), o)
+	if err == nil || count != 2 {
+		t.Fatalf("want second download failure, count=%d err=%v", count, err)
+	}
+	if len(res.Tasks) != len(o.Pin.Components) || res.Tasks[1].Status != Failed || res.Tasks[1].Reason != "sysc-clipboard: download interrupted" {
+		t.Fatalf("failure screen lost component progress: %+v", res.Tasks)
+	}
+}
+
+func TestProgressReportsServiceAndDesktopSetup(t *testing.T) {
+	o := safetyOptions(t)
+	var latest []Task
+	o.Progress = func(tasks []Task) { latest = tasks }
+	o.Systemctl = func(args ...string) error {
+		if args[0] == "enable" {
+			for _, row := range latest {
+				if row.Name == args[1] && row.Status == Status("running") {
+					return nil
+				}
+			}
+			t.Fatalf("service setup hidden from progress: %v, %+v", args, latest)
+		}
+		return noopSystemctl(args...)
+	}
+	res, err := Run(context.Background(), o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, row := range res.Tasks {
+		if row.Name == "desktop-config" && row.Status == Done {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("desktop configuration has no completed row: %+v", res.Tasks)
+	}
+}
 
 func TestRunReportsDetachedProgress(t *testing.T) {
 	home := setupHome(t)

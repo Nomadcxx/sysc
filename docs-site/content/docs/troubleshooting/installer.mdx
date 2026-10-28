@@ -7,6 +7,14 @@ description: Tell a failed SYSC download from a partial install and recover safe
 
 Run SYSC as the user who owns the suite. Do not prefix the installer or `systemctl --user` with `sudo`. The optional gSlapper package step can request administrator authentication.
 
+Source builds show each component and version before downloading. Watch the spinner for the current step and ticks for verified downloads, installed binaries and user-service setup. On a small terminal, the view follows the active step; use PgUp/PgDn to review earlier results.
+
+## Existing user services
+
+Source builds upgrade existing user services and preserve their drop-ins. If you changed a tracked binary or unit outside the installer, SYSC saves a copy beside it as `<filename>.sysc.<sha256>.bak` before replacing it. It reports those paths in the result and `installer.log`, and keeps the first uninstall backup. It also saves unrecognized `.bak` rollback copies before reusing that path.
+
+The published v0.1.5 installer stops with `changed since SYSC installed it` instead. Keep your changed files and `installed.json`; use a source build for the preservation behavior above. A damaged recorded backup or a non-regular file still needs attention before an upgrade.
+
 ## Download/swap errors
 
 SYSC downloads and checks every enabled component before it replaces any installed binary. A download or checksum error leaves the current component binaries in place. Fix the network or storage problem, then retry the same release.

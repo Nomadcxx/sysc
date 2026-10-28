@@ -28,16 +28,21 @@ import (
 type Status string
 
 const (
-	Done    Status = "done"
-	Skipped Status = "skipped"
-	Failed  Status = "failed"
+	Downloading Status = "downloading"
+	Verified    Status = "verified"
+	Installing  Status = "installing"
+	Running     Status = "running"
+	Done        Status = "done"
+	Skipped     Status = "skipped"
+	Failed      Status = "failed"
 )
 
 // Task is one row of the install task list.
 type Task struct {
-	Name   string
-	Status Status
-	Reason string
+	Name    string
+	Version string
+	Status  Status
+	Reason  string
 }
 
 // Options carries the answers and the injectable system seams.
@@ -61,8 +66,7 @@ type Options struct {
 	CheckOwnership func(home string, components []pin.Component) error
 
 	// Progress receives a detached snapshot of the task list every time it
-	// changes: pending/skipped rows after download, done after swap, the
-	// gSlapper row, and the final list. Nil disables progress reporting.
+	// changes, starting before downloads. Nil disables progress reporting.
 	Progress func(tasks []Task)
 
 	// Arch overrides the host architecture check (empty = runtime.GOARCH).
@@ -343,14 +347,55 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 	// Download and verify everything first, then swap once: a late download
 	// failure must never leave earlier components already swapped (AUD-10).
 	// Rows keep component order; enabled rows flip to done only after swap.
-	rows := make([]Task, 0, len(opts.Pin.Components))
+	res.Tasks = make([]Task, 0, len(opts.Pin.Components))
+	emit := func() {
+		if opts.Progress != nil {
+			opts.Progress(append([]Task(nil), res.Tasks...))
+		}
+	}
+	beginTask := func(name string) int {
+		res.Tasks = append(res.Tasks, Task{Name: name, Status: Running})
+		emit()
+		return len(res.Tasks) - 1
+	}
+	// Keep progress available to callers even if a later phase fails.
+	defer func() {
+		if err == nil {
+			return
+		}
+		failed := false
+		for i := range res.Tasks {
+			switch res.Tasks[i].Status {
+			case Downloading, Installing, Running:
+				res.Tasks[i].Status, res.Tasks[i].Reason = Failed, err.Error()
+				failed = true
+			}
+		}
+		if !failed {
+			res.Tasks = append(res.Tasks, Task{Name: "installation", Status: Failed, Reason: err.Error()})
+		}
+		emit()
+	}()
+	preserved := func(path string) {
+		if path != "" {
+			res.Warnings = append(res.Warnings, fmt.Sprintf(i18n.T(loc, "install.preserved"), path))
+		}
+	}
 	var allNames []string
 	for _, c := range opts.Pin.Components {
 		if c.Disabled {
-			rows = append(rows, Task{Name: c.ID, Status: Skipped, Reason: c.Reason})
+			res.Tasks = append(res.Tasks, Task{Name: c.ID, Version: c.Tag, Status: Skipped, Reason: c.Reason})
 			continue
 		}
-		rows = append(rows, Task{Name: c.ID})
+		res.Tasks = append(res.Tasks, Task{Name: c.ID, Version: c.Tag})
+	}
+	emit()
+	for i, c := range opts.Pin.Components {
+		if c.Disabled {
+			continue
+		}
+		res.Tasks[i].Status = Downloading
+		emit()
 		var assets []fetch.Asset
 		for _, b := range c.Binaries {
 			a, ok := b.Assets["amd64"]
@@ -363,13 +408,9 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		if err := download(ctx, staging, assets); err != nil {
 			return res, fmt.Errorf("%s: %w", c.ID, err)
 		}
+		res.Tasks[i].Status = Verified
+		emit()
 	}
-	emit := func(tasks []Task) {
-		if opts.Progress != nil {
-			opts.Progress(append([]Task(nil), tasks...))
-		}
-	}
-	emit(rows)
 	if opts.CheckRuntime != nil {
 		warnings, err := opts.CheckRuntime(staging, allNames)
 		if err != nil {
@@ -432,9 +473,11 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		if err != nil {
 			return res, err
 		}
-		if err := planFile(&st, filepath.Join(opts.unitDir(), u.Name), data, u.Name, systemctl); err != nil {
+		backup, err := planFile(&st, filepath.Join(opts.unitDir(), u.Name), data, u.Name, systemctl)
+		if err != nil {
 			return res, err
 		}
+		preserved(backup)
 		unitNames = append(unitNames, u.Name)
 	}
 	for _, name := range allNames {
@@ -454,7 +497,11 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 					trusted = trusted || (f.Path == path && f.RollbackSHA256 == fileHash(bak))
 				}
 				if !trusted {
-					return res, fmt.Errorf("preserving existing rollback backup %s.bak; move it aside before rerunning", path)
+					backup, err := preserveFile(path+".bak", bak)
+					if err != nil {
+						return res, err
+					}
+					preserved(backup)
 				}
 				if err := os.Remove(path + ".bak"); err != nil {
 					return res, err
@@ -463,9 +510,11 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 				return res, bakErr
 			}
 		}
-		if err := planFile(&st, path, data, "", systemctl); err != nil {
+		backup, err := planFile(&st, path, data, "", systemctl)
+		if err != nil {
 			return res, err
 		}
+		preserved(backup)
 	}
 	// A cancelled ctx (Ctrl+C in the installer) unwinds at each phase boundary
 	// below, so the deferred restart of previously active units runs before Run
@@ -474,6 +523,12 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		return res, err
 	}
 	if len(allNames) > 0 {
+		for i := range res.Tasks {
+			if res.Tasks[i].Status == Verified {
+				res.Tasks[i].Status = Installing
+			}
+		}
+		emit()
 		wasActive = units.ActiveUnits(systemctl, unitNames...)
 		if err := units.StopUnits(systemctl, wasActive); err != nil {
 			return res, err
@@ -498,17 +553,16 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 				}
 			}
 		}
-		for i := range rows {
-			if rows[i].Status == "" {
-				rows[i].Status = Done
+		for i := range res.Tasks {
+			if res.Tasks[i].Status == Installing {
+				res.Tasks[i].Status = Done
 			}
 		}
 	}
 	if err := persist(); err != nil {
 		return res, err
 	}
-	res.Tasks = append(res.Tasks, rows...)
-	emit(res.Tasks)
+	emit()
 
 	if gslapperOnPath {
 		reason := "already on PATH"
@@ -519,16 +573,19 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 	} else if opts.InstallPkg == nil {
 		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped,
 			Reason: fmt.Sprintf("no package installer configured for gSlapper (package %q)", opts.Pin.GSlapper.Package)})
-	} else if err := opts.InstallPkg(opts.Pin.GSlapper.Package); err != nil {
-		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Skipped, Reason: err.Error()})
 	} else {
-		st.GSlapperInstalled = true
-		if err := persist(); err != nil {
-			return res, err
+		i := beginTask("gslapper")
+		if err := opts.InstallPkg(opts.Pin.GSlapper.Package); err != nil {
+			res.Tasks[i].Status, res.Tasks[i].Reason = Skipped, err.Error()
+		} else {
+			st.GSlapperInstalled = true
+			if err := persist(); err != nil {
+				return res, err
+			}
+			res.Tasks[i].Status = Done
 		}
-		res.Tasks = append(res.Tasks, Task{Name: "gslapper", Status: Done})
 	}
-	emit(res.Tasks)
+	emit()
 
 	if err := ctx.Err(); err != nil {
 		return res, err
@@ -540,6 +597,7 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 			continue
 		}
 		u, _ := unitFor(c)
+		i := beginTask(u.Name)
 		if err := units.Write(opts.unitDir(), u); err != nil {
 			return res, err
 		}
@@ -558,6 +616,8 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 			return res, fmt.Errorf("enable %s: %w", u.Name, err)
 		}
 		startNames = append(startNames, u.Name)
+		res.Tasks[i].Status = Done
+		emit()
 	}
 	if len(enabled) > 0 {
 		if err := persist(); err != nil {
@@ -565,6 +625,7 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		}
 	}
 
+	configTask := beginTask("desktop-config")
 	if err := seed.Write(opts.configPath(), opts.Answers); err != nil {
 		return res, err
 	}
@@ -599,11 +660,14 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 	if err := persist(); err != nil {
 		return res, err
 	}
+	res.Tasks[configTask].Status = Done
+	emit()
 	if err := ctx.Err(); err != nil {
 		return res, err
 	}
 
 	for _, f := range opts.Findings {
+		i := beginTask("conflict:" + f.Name)
 		row := Task{Name: "conflict:" + f.Name}
 		switch opts.Conflicts[f.Name] {
 		case conflict.HandOver:
@@ -625,15 +689,17 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 				res.Warnings = append(res.Warnings, fmt.Sprintf(i18n.T(loc, "warn.conflict_kept"), f.Name))
 			}
 		}
-		res.Tasks = append(res.Tasks, row)
+		res.Tasks[i] = row
+		emit()
 	}
-	emit(res.Tasks)
+	emit()
 	if err := ctx.Err(); err != nil {
 		return res, err
 	}
 
 	if !skipComponent[conflict.KindNotifications.Component()] &&
 		componentEnabled(enabled, conflict.KindNotifications.Component()) {
+		i := beginTask("notification-activation")
 		act, aerr := dbusact.Plan(opts.xdgData())
 		if aerr == nil && st.Activation != nil && st.Activation.BackupSHA256 != "" &&
 			(st.Activation.Backup != act.Backup || st.Activation.BackupSHA256 != act.BackupSHA256) {
@@ -648,7 +714,11 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		}
 		if aerr != nil {
 			res.Warnings = append(res.Warnings, fmt.Sprintf(i18n.T(loc, "conflicts.dbus_failed"), dbusact.Path(opts.xdgData()))+": "+aerr.Error())
+			res.Tasks[i].Status, res.Tasks[i].Reason = Skipped, aerr.Error()
+		} else {
+			res.Tasks[i].Status = Done
 		}
+		emit()
 	}
 	if err := ctx.Err(); err != nil {
 		return res, err
@@ -656,6 +726,7 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 
 	started := false
 	restarted = true
+	startTask := beginTask("start-services")
 	if sessionUp {
 		if err := units.StartUnits(systemctl, startNames); err != nil {
 			// The stamp from the swap already makes this recoverable (AUD-03).
@@ -666,11 +737,16 @@ func Run(ctx context.Context, opts Options) (res Result, err error) {
 		}
 		started = true
 	}
+	res.Tasks[startTask].Status = Done
+	if !sessionUp {
+		res.Tasks[startTask].Status = Skipped
+		res.Tasks[startTask].Reason = i18n.T(loc, "install.next_session")
+	}
 	st.Started = started
 	if err := persist(); err != nil {
 		return res, err
 	}
-	emit(res.Tasks)
+	emit()
 	if err := ctx.Err(); err != nil {
 		return res, err
 	}

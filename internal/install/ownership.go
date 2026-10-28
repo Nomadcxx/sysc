@@ -86,9 +86,50 @@ func regularData(path string) ([]byte, error) {
 	return os.ReadFile(path)
 }
 
-// planFile keeps the original foreign backup across upgrades. A prior owned
-// file must still match the stamp before the installer replaces it.
-func planFile(st *stamp.Stamp, path string, data []byte, unit string, systemctl func(...string) error) error {
+// saveBackup publishes a complete, permission-preserving copy without replacing
+// an existing recovery file. Retries accept only identical bytes.
+func saveBackup(path, backup string, data []byte) error {
+	if saved, err := regularData(backup); err == nil {
+		if fileHash(saved) != fileHash(data) {
+			return fmt.Errorf("existing backup differs from %s; preserving %s", path, backup)
+		}
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".sysc-backup-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	writeErr := tmp.Chmod(fi.Mode().Perm())
+	if writeErr == nil {
+		_, writeErr = tmp.Write(data)
+	}
+	if writeErr == nil {
+		writeErr = tmp.Sync()
+	}
+	if err := errors.Join(writeErr, tmp.Close()); err != nil {
+		return err
+	}
+	if err := os.Link(tmp.Name(), backup); err != nil {
+		return err
+	}
+	return nil
+}
+
+func preserveFile(path string, data []byte) (string, error) {
+	backup := path + ".sysc." + fileHash(data) + ".bak"
+	return backup, saveBackup(path, backup, data)
+}
+
+// planFile keeps the first uninstall backup across upgrades and preserves
+// local modifications separately before replacing a managed file.
+func planFile(st *stamp.Stamp, path string, data []byte, unit string, systemctl func(...string) error) (preserved string, err error) {
 	for i := range st.Files {
 		f := &st.Files[i]
 		if f.Path != path {
@@ -97,18 +138,21 @@ func planFile(st *stamp.Stamp, path string, data []byte, unit string, systemctl 
 		if f.Backup != "" {
 			saved, err := regularData(f.Backup)
 			if err != nil {
-				return err
+				return "", err
 			}
 			if f.BackupSHA256 != "" && fileHash(saved) != f.BackupSHA256 {
-				return fmt.Errorf("preserving modified backup %s; recover the original backup before retrying", f.Backup)
+				return "", fmt.Errorf("preserving modified backup %s; recover the original backup before retrying", f.Backup)
 			}
 			f.BackupSHA256 = fileHash(saved)
 		}
 		old, err := regularData(path)
 		if err == nil && fileHash(old) != f.SHA256 && fileHash(old) != f.PreviousSHA256 {
-			return fmt.Errorf("%s changed since SYSC installed it; preserve your changes before rerunning", path)
+			preserved, err = preserveFile(path, old)
+			if err != nil {
+				return "", err
+			}
 		} else if err != nil && !os.IsNotExist(err) {
-			return err
+			return "", err
 		}
 		f.PreviousSHA256 = ""
 		if err == nil {
@@ -118,53 +162,28 @@ func planFile(st *stamp.Stamp, path string, data []byte, unit string, systemctl 
 			}
 		}
 		f.SHA256 = fileHash(data)
-		return nil
+		return preserved, nil
 	}
 	f := stamp.File{Path: path, SHA256: fileHash(data), Unit: unit}
 	if original, err := regularData(path); err == nil {
-		fi, err := os.Stat(path)
-		if err != nil {
-			return err
-		}
 		f.Backup = path + ".sysc.bak"
-		// Exclusive creation preserves the first backup and its permissions,
-		// including while its bytes are being written.
-		bak, err := os.OpenFile(f.Backup, os.O_WRONLY|os.O_CREATE|os.O_EXCL, fi.Mode().Perm())
-		if err == nil {
-			if err := bak.Chmod(fi.Mode().Perm()); err != nil {
-				bak.Close()
-				os.Remove(f.Backup)
-				return err
-			}
-			_, writeErr := bak.Write(original)
-			if err := errors.Join(writeErr, bak.Close()); err != nil {
-				os.Remove(f.Backup)
-				return err
-			}
-		} else if !os.IsExist(err) {
-			return err
-		}
-		saved, err := regularData(f.Backup)
-		if err != nil {
-			return err
-		}
-		if fileHash(original) != fileHash(saved) {
-			return fmt.Errorf("existing backup differs from %s; preserve both files before rerunning", path)
+		if err := saveBackup(path, f.Backup, original); err != nil {
+			return "", err
 		}
 		f.PreviousSHA256 = fileHash(original)
 		if unit == "" {
 			f.RollbackSHA256 = fileHash(original)
 		}
-		f.BackupSHA256 = fileHash(saved)
+		f.BackupSHA256 = fileHash(original)
 		if unit != "" {
 			f.WasEnabled = systemctl("is-enabled", "--quiet", unit) == nil
 			f.WasActive = systemctl("is-active", "--quiet", unit) == nil
 		}
 	} else if !os.IsNotExist(err) {
-		return err
+		return "", err
 	}
 	st.Files = append(st.Files, f)
-	return nil
+	return "", nil
 }
 
 // legacyFiles upgrades the old component-only record without claiming files
@@ -188,7 +207,7 @@ func legacyFiles(o Options, st stamp.Stamp, upgrading bool) ([]stamp.File, error
 				// Old stamps have no file hashes. Preserve current bytes as the
 				// upgrade baseline rather than claiming an unverifiable binary.
 				inventory := stamp.Stamp{Files: files}
-				if err := planFile(&inventory, path, data, "", o.systemctl()); err != nil {
+				if _, err := planFile(&inventory, path, data, "", o.systemctl()); err != nil {
 					return nil, err
 				}
 				files = inventory.Files
@@ -236,7 +255,7 @@ func legacyFiles(o Options, st stamp.Stamp, upgrading bool) ([]stamp.File, error
 			}
 			if upgrading && string(data) != string(expected) {
 				inventory := stamp.Stamp{Files: files}
-				if err := planFile(&inventory, path, data, u.Name, o.systemctl()); err != nil {
+				if _, err := planFile(&inventory, path, data, u.Name, o.systemctl()); err != nil {
 					return nil, err
 				}
 				files = inventory.Files
