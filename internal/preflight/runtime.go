@@ -24,7 +24,7 @@ type runtimeEnv struct {
 }
 
 // CheckRuntime checks verified downloads before the installer replaces binaries.
-// Warnings cover prerequisites that can only be checked at the next login.
+// Warnings identify runtime prerequisites or session conditions that may limit an enabled component.
 func CheckRuntime(staging string, names []string) ([]string, error) {
 	home, _ := os.UserHomeDir()
 	dataHome := os.Getenv("XDG_DATA_HOME")
@@ -56,17 +56,25 @@ func checkRuntime(staging string, names []string, env runtimeEnv) ([]string, err
 	if slices.Contains(names, "sysc-shell") && !hasFont(env) {
 		return nil, errors.New("sysc-shell needs a usable font; install noto-fonts with pacman, then retry")
 	}
+	var warnings []string
+	if slices.Contains(names, "sysc-walls-daemon") {
+		if _, err := exec.LookPath("kitty"); err != nil {
+			warnings = append(warnings, "Walls screensaver needs Kitty for its animations; install the kitty package with pacman before using it.")
+		}
+	}
 	if slices.Contains(names, "sysc-clipboard") {
 		if !env.graphical {
-			return []string{"Clipboard history stays in memory unless Secret Service is unlocked at login or --key-file is configured in the clipboard unit. Keyring readiness will be checked in your desktop session."}, nil
+			warnings = append(warnings, "Clipboard history stays in memory unless Secret Service is unlocked at login or --key-file is configured in the clipboard unit. Keyring readiness will be checked in your desktop session.")
+			return warnings, nil
 		}
-		warnings, err := checkSecretService(env)
+		clipboardWarnings, err := checkSecretService(env)
 		if err != nil {
-			return []string{"Clipboard can run with history in memory: " + err.Error() + ". For persistent history, unlock a Secret Service keyring or configure --key-file in the clipboard unit."}, nil
+			warnings = append(warnings, "Clipboard can run with history in memory: "+err.Error()+". For persistent history, unlock a Secret Service keyring or configure --key-file in the clipboard unit.")
+		} else {
+			warnings = append(warnings, clipboardWarnings...)
 		}
-		return warnings, nil
 	}
-	return nil, nil
+	return warnings, nil
 }
 
 // multiarchLibraryDirs adds Debian-style GNU triplet directories beneath each
