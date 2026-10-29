@@ -112,7 +112,10 @@ func applyUpdate(o options, in io.Reader, out, errOut io.Writer, home string, ru
 		return 1
 	}
 	osr, _ := os.ReadFile("/etc/os-release")
-	res, err := run(context.Background(), installOptions(home, p, answers, true, loc, osr, runPackage))
+	opts := installOptions(home, p, answers, true, loc, osr, runPackage)
+	opts.InNiriSession = liveNiriSession(os.Getenv("WAYLAND_DISPLAY"), os.Getenv("NIRI_SOCKET"))
+	// Updates don't rerun interactive conflict detection or provider handover.
+	res, err := run(context.Background(), opts)
 	printTasks(out, res)
 	if err != nil {
 		fmt.Fprintln(errOut, err)

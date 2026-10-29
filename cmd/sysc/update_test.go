@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/Nomadcxx/sysc/internal/fetch"
 	"github.com/Nomadcxx/sysc/internal/install"
 	"github.com/Nomadcxx/sysc/internal/pin"
 	"github.com/Nomadcxx/sysc/internal/stamp"
@@ -110,6 +113,8 @@ func TestUpdateRefusesWhenTheSuiteIsAlreadyAtThePin(t *testing.T) {
 
 func TestUpdatePrintsTheDeltaAndRunsTheSamePipeline(t *testing.T) {
 	stateDir, home := updateEnv(t)
+	t.Setenv("WAYLAND_DISPLAY", "wayland-test")
+	t.Setenv("NIRI_SOCKET", "/run/user/1000/niri-test.sock")
 	p, err := pin.Load()
 	if err != nil {
 		t.Fatal(err)
@@ -143,6 +148,80 @@ func TestUpdatePrintsTheDeltaAndRunsTheSamePipeline(t *testing.T) {
 	}
 	if got.Answers.Latitude != 51.5 || got.Answers.Location != "London" {
 		t.Fatalf("the pipeline got answers %+v, want the ones recovered from the config", got.Answers)
+	}
+	if !got.InNiriSession {
+		t.Fatal("the update pipeline did not receive the live Niri session")
+	}
+}
+
+func TestApplyUpdateDoesNotAssumeNiriWithoutWaylandEnvironment(t *testing.T) {
+	stateDir, home := updateEnv(t)
+	t.Setenv("WAYLAND_DISPLAY", "")
+	t.Setenv("NIRI_SOCKET", "")
+	writeStamp(t, stateDir, stamp.Stamp{Release: "v0.0.1", Components: map[string]string{"sysc-shell": "v0.0.1"}})
+	var out, errOut bytes.Buffer
+	var got install.Options
+	code := applyUpdate(options{Yes: true}, strings.NewReader(""), &out, &errOut, home,
+		func(_ context.Context, opts install.Options) (install.Result, error) {
+			got = opts
+			return install.Result{}, nil
+		})
+	if code != 0 {
+		t.Fatalf("applyUpdate = %d, want 0 (stderr: %s)", code, errOut.String())
+	}
+	if got.InNiriSession {
+		t.Fatal("the update pipeline marked a no-Wayland invocation as a Niri session")
+	}
+}
+
+func TestApplyUpdateKeepsPlainNiriAutostart(t *testing.T) {
+	stateDir, home := updateEnv(t)
+	t.Setenv("WAYLAND_DISPLAY", "wayland-test")
+	t.Setenv("NIRI_SOCKET", "/run/user/1000/niri-test.sock")
+	writeStamp(t, stateDir, stamp.Stamp{Release: "v0.0.1", Components: map[string]string{"sysc-shell": "v0.0.1"}})
+	config := filepath.Join(home, ".config", "niri", "config.kdl")
+	if err := os.MkdirAll(filepath.Dir(config), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(config, []byte("spawn-at-startup \"sysc-shell\"\ninput {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errOut bytes.Buffer
+	sawSessionProbe := false
+	code := applyUpdate(options{Yes: true}, strings.NewReader(""), &out, &errOut, home,
+		func(ctx context.Context, opts install.Options) (install.Result, error) {
+			opts.Download = func(context.Context, string, []fetch.Asset) error { return nil }
+			opts.Swap = func(string, string, []string) error { return nil }
+			opts.LookPath = func(string) (string, error) { return "", os.ErrNotExist }
+			opts.InstallPkg = func(string) error { return nil }
+			opts.CheckRuntime = func(string, []string) ([]string, error) { return nil, nil }
+			opts.CheckOwnership = func(string, []pin.Component) error { return nil }
+			opts.Systemctl = func(args ...string) error {
+				if len(args) > 0 && args[0] == "is-active" {
+					if args[len(args)-1] == "graphical-session.target" {
+						sawSessionProbe = true
+					}
+					return errors.New("inactive")
+				}
+				return nil
+			}
+			opts.Now = time.Unix(1000, 0)
+			return install.Run(ctx, opts)
+		})
+	if code != 0 {
+		t.Fatalf("applyUpdate = %d, want 0 (stderr: %s; stdout: %s)", code, errOut.String(), out.String())
+	}
+	if !sawSessionProbe {
+		t.Fatal("update did not check whether graphical-session.target was active")
+	}
+	data, err := os.ReadFile(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(data)
+	if strings.Contains(text, `// spawn-at-startup "sysc-shell"`) || !strings.Contains(text, `spawn-at-startup "sysc-shell"`) {
+		t.Fatalf("update changed the plain-Niri autostart:\n%s", text)
 	}
 }
 
