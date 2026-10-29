@@ -92,6 +92,64 @@ func TestRuntimeFontRequiredOnlyForShell(t *testing.T) {
 	}
 }
 
+func TestRuntimeKittyWarningOnlyWhenWallsSelected(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		names       []string
+		kitty       bool
+		wantWarning bool
+	}{
+		{name: "missing for walls", names: []string{"sysc-walls-daemon"}, wantWarning: true},
+		{name: "walls not selected", names: []string{"sysc-lock"}},
+		{name: "kitty available", names: []string{"sysc-walls-daemon"}, kitty: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			staging := t.TempDir()
+			writeELF(t, filepath.Join(staging, "sysc-lock"))
+			writeELF(t, filepath.Join(staging, "sysc-walls-daemon"))
+			binDir := filepath.Join(staging, "bin")
+			if err := os.Mkdir(binDir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if tc.kitty {
+				if err := os.WriteFile(filepath.Join(binDir, "kitty"), []byte("#!/bin/sh\n"), 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			t.Setenv("PATH", binDir)
+
+			warnings, err := checkRuntime(staging, tc.names, runtimeEnv{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			gotWarning := strings.Contains(strings.Join(warnings, "\n"), "Kitty")
+			if gotWarning != tc.wantWarning {
+				t.Fatalf("Kitty warning = %v, want %v; warnings: %v", gotWarning, tc.wantWarning, warnings)
+			}
+		})
+	}
+}
+
+func TestRuntimeKittyWarningPreservesClipboardWarning(t *testing.T) {
+	staging := t.TempDir()
+	writeELF(t, filepath.Join(staging, "sysc-walls-daemon"))
+	writeELF(t, filepath.Join(staging, "sysc-clipboard"))
+	binDir := filepath.Join(staging, "bin")
+	if err := os.Mkdir(binDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir)
+
+	warnings, err := checkRuntime(staging, []string{"sysc-walls-daemon", "sysc-clipboard"}, runtimeEnv{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(warnings, "\n")
+	if !strings.Contains(joined, "Kitty") || !strings.Contains(joined, "Clipboard history stays in memory") {
+		t.Fatalf("runtime warnings lost: %v", warnings)
+	}
+}
+
 func TestRuntimeClipboardSession(t *testing.T) {
 	dir := t.TempDir()
 	writeELF(t, filepath.Join(dir, "sysc-clipboard"))
