@@ -27,6 +27,7 @@ func updateEnv(t *testing.T) (stateDir, home string) {
 	home = filepath.Join(root, "home")
 	t.Setenv("XDG_STATE_HOME", stateDir)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, ".local", "share"))
 	if err := os.MkdirAll(filepath.Join(home, ".config", "sysc-shell"), 0o755); err != nil {
 		t.Fatal(err)
 	}
