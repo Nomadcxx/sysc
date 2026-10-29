@@ -24,7 +24,7 @@ type runtimeEnv struct {
 }
 
 // CheckRuntime checks verified downloads before the installer replaces binaries.
-// Warnings cover prerequisites that can only be checked at the next login.
+// Warnings identify runtime prerequisites or session conditions that may limit an enabled component.
 func CheckRuntime(staging string, names []string) ([]string, error) {
 	home, _ := os.UserHomeDir()
 	dataHome := os.Getenv("XDG_DATA_HOME")
