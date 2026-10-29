@@ -44,11 +44,12 @@ func CheckRuntime(staging string, names []string) ([]string, error) {
 }
 
 func checkRuntime(staging string, names []string, env runtimeEnv) ([]string, error) {
+	libraryDirs := multiarchLibraryDirs(env.libraryDirs)
 	for _, name := range names {
 		if name == "" || name == "." || name == ".." || filepath.Base(name) != name {
 			return nil, fmt.Errorf("invalid staged binary name %q", name)
 		}
-		if err := checkELF(filepath.Join(staging, name), env.libraryDirs, map[string]bool{}); err != nil {
+		if err := checkELF(filepath.Join(staging, name), libraryDirs, map[string]bool{}); err != nil {
 			return nil, fmt.Errorf("%s runtime: %w", name, err)
 		}
 	}
@@ -66,6 +67,19 @@ func checkRuntime(staging string, names []string, env runtimeEnv) ([]string, err
 		return warnings, nil
 	}
 	return nil, nil
+}
+
+// multiarchLibraryDirs adds Debian-style GNU triplet directories beneath each
+// standard library root.
+func multiarchLibraryDirs(dirs []string) []string {
+	search := slices.Clone(dirs)
+	for _, dir := range dirs {
+		matches, err := filepath.Glob(filepath.Join(dir, "*-linux-gnu"))
+		if err == nil {
+			search = append(search, matches...)
+		}
+	}
+	return search
 }
 
 func checkELF(path string, dirs []string, seen map[string]bool) error {

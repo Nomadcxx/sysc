@@ -26,6 +26,25 @@ func TestRuntimeLibrariesBeforeSwap(t *testing.T) {
 	}
 }
 
+func TestRuntimeLibrariesInMultiarchDirectories(t *testing.T) {
+	for _, base := range []string{"usr/lib", "lib"} {
+		t.Run(base, func(t *testing.T) {
+			root := t.TempDir()
+			baseDir := filepath.Join(root, filepath.FromSlash(base))
+			multiarch := filepath.Join(baseDir, "x86_64-linux-gnu")
+			if err := os.MkdirAll(multiarch, 0755); err != nil {
+				t.Fatal(err)
+			}
+			writeELF(t, filepath.Join(root, "sysc-lock"), "libpam.so.0")
+			writeELF(t, filepath.Join(multiarch, "libpam.so.0"), "libaudit.so.1")
+			writeELF(t, filepath.Join(multiarch, "libaudit.so.1"))
+			if _, err := checkRuntime(root, []string{"sysc-lock"}, runtimeEnv{libraryDirs: []string{baseDir}}); err != nil {
+				t.Fatalf("multiarch runtime check: %v", err)
+			}
+		})
+	}
+}
+
 func TestRuntimeRejectsInvalidStagedBinary(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "sysc-lock"), []byte("not an executable"), 0600); err != nil {
