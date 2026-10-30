@@ -225,14 +225,6 @@ func (w Wizard) Help() string {
 	if w.Page == PageTheme {
 		key = "help.preset." + w.Preset
 	}
-	if w.Page == PagePlugins && len(w.AvailablePlugins) > 0 {
-		switch w.AvailablePlugins[w.PluginRow] {
-		case "org.sysc.weather":
-			key = "help.plugin.weather"
-		case "org.sysc.media":
-			key = "help.plugin.media"
-		}
-	}
 	if w.Page == PageConflicts && len(w.Findings) > 0 {
 		return i18n.T(w.Locale, consequenceKey(w.choiceFor(w.Findings[w.ConflictRow].Name)))
 	}
@@ -273,7 +265,7 @@ func (w Wizard) BodyWidth(width int) string {
 			if slices.Contains(w.Plugins, id) {
 				marker = "[x]"
 			}
-			rows = append(rows, cursor+" "+marker+" "+w.pluginName(id))
+			rows = append(rows, cursor+" "+marker+" "+id)
 		}
 		if len(rows) == 0 {
 			rows = []string{i18n.T(w.Locale, "plugin.none")}
@@ -397,18 +389,7 @@ func (w Wizard) pluginsLabel() string {
 	}
 	names := make([]string, 0, len(w.Plugins))
 	for _, id := range w.Plugins {
-		names = append(names, w.pluginName(id))
+		names = append(names, id)
 	}
 	return strings.Join(names, ", ")
-}
-
-func (w Wizard) pluginName(id string) string {
-	switch id {
-	case "org.sysc.weather":
-		return i18n.T(w.Locale, "plugin.weather")
-	case "org.sysc.media":
-		return i18n.T(w.Locale, "plugin.media")
-	default:
-		return id
-	}
 }

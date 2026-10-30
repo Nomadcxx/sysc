@@ -96,8 +96,6 @@
   "help.preset.expressive": "Expressivo adiciona detalhe visual. ←→ muda o modo do desktop; o papel de parede fornece suas cores.",
   "help.wallpaper": "Digite um diretório e pressione Enter. ~/ se expande para seu home. As ferramentas de papel de parede existentes continuam instaladas.",
   "help.plugins": "↑↓ move o foco; Espaço alterna um plugin. Essas escolhas configuram a primeira execução.",
-  "help.plugin.weather": "Plugin de clima: detalhes do clima no shell. Espaço o alterna; o widget de clima integrado ainda precisa de uma cidade.",
-  "help.plugin.media": "Plugin de mídia: informações e controles de reprodução. Espaço o alterna independentemente do clima.",
   "help.weather": "A consulta automática usa seu IP público. Digite uma cidade para substituí-la; Enter com o campo vazio aceita o local selecionado.",
   "help.conflicts": "↑↓ escolhe um provedor; ←→ escolhe a ação. As transferências são registradas para que a desinstalação possa restaurá-las.",
   "help.confirm": "sysc-shell e seus companheiros são instalados juntos. Enter inicia a instalação. Apenas o pacote opcional gSlapper pode pedir sudo.",
@@ -105,8 +103,6 @@
   "help.install": "Os downloads são verificados por checksum. Use o pedido de sudo normal do gerenciador de pacotes; o SYSC continua quando ele encerrar.",
   "help.done": "Revise tarefas puladas e avisos com PgUp/PgDn. O log registra os resultados da instalação. Enter fecha o instalador.",
   "help.failed": "Role até o erro e o caminho do log. Corrija a causa informada e execute o instalador novamente. Enter fecha esta tela.",
-  "plugin.weather": "Clima",
-  "plugin.media": "Mídia",
   "weather.invalid": "O serviço de local devolveu um nome de local inválido. Tente uma pesquisa por cidade.",
   "refuse.stamp": "Nenhum carimbo de instalação do SYSC encontrado em %s. Execute sysc para instalar o conjunto.",
   "update.current": "Já em %s."
