@@ -13,7 +13,7 @@ import (
 )
 
 func TestWizardOrder(t *testing.T) {
-	w := NewWizard(i18n.EN, []string{"org.sysc.weather"})
+	w := NewWizard(i18n.EN, []string{"org.example.plugin"})
 	if w.Page != PageTheme {
 		t.Fatalf("start page = %v", w.Page)
 	}

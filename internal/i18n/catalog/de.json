@@ -96,8 +96,6 @@
   "help.preset.expressive": "Expressiv bietet mehr visuelle Details. ←→ ändert den Modus; Farben kommen vom Hintergrundbild.",
   "help.wallpaper": "Ordner eingeben, dann Enter. ~/ steht für den eigenen Home-Ordner. Vorhandene Hintergrundtools bleiben.",
   "help.plugins": "↑↓ bewegt den Fokus; Leertaste schaltet ein Plugin um. Die Auswahl gilt für die Ersteinrichtung.",
-  "help.plugin.weather": "Wetter-Plugin: Wetterdetails in der Shell. Leertaste schaltet es um; das Wetterwidget benötigt einen Ort.",
-  "help.plugin.media": "Medien-Plugin: Wiedergabeinfos und Steuerung. Leertaste schaltet es unabhängig vom Wetter um.",
   "help.weather": "Automatische Suche nutzt die öffentliche IP. Stadt zum Ändern eingeben; Enter im leeren Feld bestätigt den Ort.",
   "help.conflicts": "↑↓ wählt den Anbieter; ←→ die Aktion. Übergaben werden zur Wiederherstellung bei Deinstallation erfasst.",
   "help.confirm": "sysc-shell und seine Begleitprogramme werden zusammen installiert. Enter startet die Installation. Nur das optionale gSlapper-Paket kann sudo anfordern.",
@@ -105,8 +103,6 @@
   "help.install": "Downloads werden per Prüfsumme geprüft. Den normalen sudo-Dialog des Paketmanagers nutzen; danach setzt SYSC fort.",
   "help.done": "PgUp/PgDn zeigt übersprungene Aufgaben und Warnungen. Ergebnisse stehen im Log. Enter schließt den Installer.",
   "help.failed": "Zum Fehler und Logpfad scrollen. Ursache beheben, dann erneut starten. Enter schließt diese Ansicht.",
-  "plugin.weather": "Wetter",
-  "plugin.media": "Medien",
   "weather.invalid": "Der Ortsdienst lieferte einen ungültigen Namen. Bitte eine Stadt suchen.",
   "refuse.stamp": "Kein SYSC-Installationsstempel unter %s gefunden. Führen Sie sysc aus, um die Suite zu installieren.",
   "update.current": "Bereits %s."

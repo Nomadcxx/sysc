@@ -96,8 +96,6 @@
   "help.preset.expressive": "Expresivo añade detalle visual. ←→ cambia el modo del escritorio; el fondo aporta sus colores.",
   "help.wallpaper": "Escribe un directorio y pulsa Enter. ~/ se expande a tu home. Las herramientas de fondos existentes siguen instaladas.",
   "help.plugins": "↑↓ mueve el foco; Espacio alterna un complemento. Estas opciones configuran la primera ejecución.",
-  "help.plugin.weather": "Complemento de clima: detalles del clima en el shell. Espacio lo alterna; el widget de clima integrado aún necesita una ciudad.",
-  "help.plugin.media": "Complemento de medios: información y controles de reproducción. Espacio lo alterna de forma independiente del clima.",
   "help.weather": "La búsqueda automática usa tu IP pública. Escribe una ciudad para cambiarla; Enter con el campo vacío acepta el lugar seleccionado.",
   "help.conflicts": "↑↓ elige un proveedor; ←→ elige su acción. Los traspasos se registran para que la desinstalación pueda restaurarlos.",
   "help.confirm": "sysc-shell y sus compañeros se instalan juntos. Enter inicia la instalación. Solo el paquete opcional gSlapper puede pedir sudo.",
@@ -105,8 +103,6 @@
   "help.install": "Las descargas se verifican con suma de comprobación. Usa el aviso de sudo normal del gestor de paquetes; SYSC continúa cuando este termine.",
   "help.done": "Revisa las tareas omitidas y las advertencias con PgUp/PgDn. El registro guarda los resultados de la instalación. Enter cierra el instalador.",
   "help.failed": "Desplázate hasta el error y la ruta del registro. Corrige la causa informada y vuelve a ejecutar el instalador. Enter cierra esta pantalla.",
-  "plugin.weather": "Clima",
-  "plugin.media": "Medios",
   "weather.invalid": "El servicio de ubicación devolvió un nombre de lugar no válido. Prueba una búsqueda por ciudad.",
   "refuse.stamp": "No se encontró un sello de instalación de SYSC en %s. Ejecuta sysc para instalar la suite.",
   "update.current": "Ya en %s."
