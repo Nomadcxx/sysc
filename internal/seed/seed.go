@@ -32,8 +32,9 @@ type Answers struct {
 	Location     string
 }
 
-// defaultRight is the right bar section from sysc-shell config.Default(),
-// which has no weather item because weather requires configured coordinates.
+// defaultRight is the right bar section from sysc-shell v0.2.3
+// config.Default(), which has no weather item because weather requires
+// configured coordinates. Notifications stays last, as the shell keeps it.
 var defaultRight = []any{
 	map[string]any{"id": "running-apps"},
 	map[string]any{"id": "group", "items": []any{
@@ -43,6 +44,8 @@ var defaultRight = []any{
 		map[string]any{"id": "gpu", "display": "radial", "interval": "2s"},
 	}},
 	map[string]any{"id": "clipboard"},
+	map[string]any{"id": "volume"},
+	map[string]any{"id": "privacy"},
 	map[string]any{"id": "notifications"},
 }
 
@@ -78,7 +81,11 @@ func ConfigJSON(a Answers) ([]byte, error) {
 		a.Mode = "dark"
 	}
 
-	right := append(append([]any{}, defaultRight...), map[string]any{"id": "weather"})
+	// Weather goes just before the bell, where the shell's own onboarding
+	// places it.
+	bell := len(defaultRight) - 1
+	right := append(append(append([]any{}, defaultRight[:bell]...),
+		map[string]any{"id": "weather"}), defaultRight[bell:]...)
 	out := map[string]any{
 		"theme":     map[string]any{"preset": a.Preset},
 		"theme-gen": map[string]any{"source": "wallpaper", "mode": a.Mode},
