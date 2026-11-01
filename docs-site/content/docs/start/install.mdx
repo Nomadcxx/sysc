@@ -11,14 +11,14 @@ Full Debian and Fedora suite support is planned. Check the [requirements](/docs/
 
 Run this release as your normal user. Do not prefix the installer with sudo. It writes suite programs and systemd user units in your home directory. The optional gSlapper package step may ask the package manager for administrator authentication.
 
-The commands below select the reviewed v0.1.5 release. They verify the amd64 installer against the checksum file before placing it in ~/.local/bin.
+The commands below select the reviewed v0.1.6 release. They verify the amd64 installer against the checksum file before placing it in ~/.local/bin.
 
 ```sh
 set -eu
 download_dir=$(mktemp -d)
 trap 'rm -rf "$download_dir"' EXIT
 asset=sysc-linux-amd64
-base=https://github.com/Nomadcxx/sysc/releases/download/v0.1.5
+base=https://github.com/Nomadcxx/sysc/releases/download/v0.1.6
 curl -fsSL "$base/$asset" -o "$download_dir/$asset"
 curl -fsSL "$base/SHA256SUMS" -o "$download_dir/SHA256SUMS"
 (cd "$download_dir" && sha256sum --ignore-missing -c SHA256SUMS)

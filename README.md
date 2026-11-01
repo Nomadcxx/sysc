@@ -113,7 +113,7 @@ install -m 755 "$download_dir/sysc-linux-amd64" "$HOME/.local/bin/sysc" &&
 ```
 
 Continue only if the checksum reports `sysc-linux-amd64: OK`. Replace
-`latest/download` with `download/v0.1.5` to pin a release. The commands below
+`latest/download` with `download/v0.1.6` to pin a release. The commands below
 use `~/.local/bin/sysc`.
 
 ### Manual source checkout
