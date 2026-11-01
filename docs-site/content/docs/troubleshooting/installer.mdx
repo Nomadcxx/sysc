@@ -11,9 +11,9 @@ Source builds show each component and version before downloading. Watch the spin
 
 ## Existing user services
 
-Source builds upgrade existing user services and preserve their drop-ins. If you changed a tracked binary or unit outside the installer, SYSC saves a copy beside it as `<filename>.sysc.<sha256>.bak` before replacing it. It reports those paths in the result and `installer.log`, and keeps the first uninstall backup. It also saves unrecognized `.bak` rollback copies before reusing that path.
+Installers from v0.1.6 and source builds upgrade existing user services and preserve their drop-ins. If you changed a tracked binary or unit outside the installer, SYSC saves a copy beside it as `<filename>.sysc.<sha256>.bak` before replacing it. It reports those paths in the result and `installer.log`, and keeps the first uninstall backup. It also saves unrecognized `.bak` rollback copies before reusing that path.
 
-The published v0.1.5 installer stops with `changed since SYSC installed it` instead. Keep your changed files and `installed.json`; use a source build for the preservation behavior above. A damaged recorded backup or a non-regular file still needs attention before an upgrade.
+Installers before v0.1.6 stop with `changed since SYSC installed it` instead. Keep your changed files and `installed.json`; use v0.1.6 or a source build for the preservation behavior above. A damaged recorded backup or a non-regular file still needs attention before an upgrade.
 
 ## Download/swap errors
 
