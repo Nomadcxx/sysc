@@ -18,8 +18,8 @@ func TestEmbeddedPinIsPublishable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if p.Release != "v0.1.5" {
-		t.Errorf("release = %q, want v0.1.5", p.Release)
+	if p.Release != "v0.1.6" {
+		t.Errorf("release = %q, want v0.1.6", p.Release)
 	}
 	enabled := 0
 	for _, c := range p.Components {

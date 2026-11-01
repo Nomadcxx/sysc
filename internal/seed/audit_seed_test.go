@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -82,8 +83,12 @@ func TestAuditSeedValidatesAgainstShellKeys(t *testing.T) {
 		}
 	}
 	right := doc["bar"].(map[string]any)["items"].(map[string]any)["right"].([]any)
-	last := right[len(right)-1].(map[string]any)
-	if last["id"] != "weather" {
-		t.Errorf("weather item not appended to right section: %v", right)
+	ids := make([]any, len(right))
+	for i, raw := range right {
+		ids[i] = raw.(map[string]any)["id"]
+	}
+	want := []any{"running-apps", "group", "clipboard", "volume", "privacy", "weather", "notifications"}
+	if !slices.Equal(ids, want) {
+		t.Errorf("right section = %v, want %v", ids, want)
 	}
 }

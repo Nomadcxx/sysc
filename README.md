@@ -189,11 +189,11 @@ Config, state, and data paths follow absolute `XDG_CONFIG_HOME`,
 ## What the installer installs
 
 The [suite pin](internal/pin/pin.json) records component versions
-and checksums. The `v0.1.5` installer includes the component-pin update that missed the v0.1.4 tag:
+and checksums. The `v0.1.6` installer pin includes the components below:
 
 | Component | Version | Role |
 |---|---|---|
-| [sysc-shell](https://github.com/Nomadcxx/sysc-shell) | v0.2.0 | Desktop bar, panels, and plugins |
+| [sysc-shell](https://github.com/Nomadcxx/sysc-shell) | v0.2.3 | Desktop bar, panels, and plugins |
 | [sysc-clipboard](https://github.com/Nomadcxx/sysc-clipboard) | v0.1.4 | Clipboard history |
 | [sysc-walls](https://github.com/Nomadcxx/sysc-walls) | v1.4.1 | Idle screensaver |
 | [sysc-notify](https://github.com/Nomadcxx/sysc-notify) | v0.1.2 | Notifications |

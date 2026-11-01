@@ -1,17 +1,17 @@
 {
-  "release": "v0.1.5",
+  "release": "v0.1.6",
   "components": [
     {
       "id": "sysc-shell",
-      "tag": "v0.2.0",
+      "tag": "v0.2.3",
       "unit": "sysc-shell.service",
       "binaries": [
         {
           "name": "sysc-shell",
           "assets": {
             "amd64": {
-              "url": "https://github.com/Nomadcxx/sysc-shell/releases/download/v0.2.0/sysc-shell",
-              "sha256": "769f1fe51a436ad9ee6e24e680e6210e475fe46e4721fcc0375a37d52d5f150a"
+              "url": "https://github.com/Nomadcxx/sysc-shell/releases/download/v0.2.3/sysc-shell",
+              "sha256": "09a0d84daef679b858cf08dd4c1d67b2387980617aa491a7e540828ff878af31"
             }
           }
         }
