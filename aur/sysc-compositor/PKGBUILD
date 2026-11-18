@@ -15,7 +15,7 @@ optdepends=('xwayland-satellite: X11 applications'
             'sysc-shell: bar, launcher and the rest of the sysc desktop')
 install="${pkgname}.install"
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/Nomadcxx/sysc-compositor/archive/refs/tags/v${pkgver}.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('de0abf038f625e024bce9498f27c8a9b2e8d52dbca3e98b1904af66d56c2f4c1')
 
 build() {
   cd "${srcdir}/${pkgname}-${pkgver}"
