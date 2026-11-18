@@ -1,6 +1,6 @@
 # Maintainer: Nomadcxx <noovie@gmail.com>
 pkgname=sysc-compositor-git
-pkgver=r526.d1cfdfe
+pkgver=0.1.0.r0.g8fb0ee8
 pkgrel=1
 pkgdesc="A scrollable-tiling Wayland compositor built in Go (development version)"
 arch=('x86_64' 'aarch64')

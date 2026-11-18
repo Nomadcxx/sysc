@@ -29,9 +29,9 @@ A change to `PKGBUILD` needs `.SRCINFO` regenerated with
 
 ## Releasing `sysc-compositor`
 
-Until the tag exists the stable recipe carries `sha256sums=('SKIP')`. After
-tagging `v${pkgver}`:
+For each new `v${pkgver}` tag:
 
-1. Replace `SKIP` with the tag tarball's checksum (`updpkgsums`).
+1. Set `pkgver`, reset `pkgrel=1`, and update the checksum from the tag
+   tarball (`updpkgsums`).
 2. Regenerate `.SRCINFO`, build, and run the checker.
-3. Push the package to the AUR (an owner step).
+3. Push the package to the AUR.
