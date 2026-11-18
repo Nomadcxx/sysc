@@ -58,13 +58,15 @@ for package in packages:
         assert binary.is_file() and binary.stat().st_mode & 0o111, binary
     print(f'{name}: archive, metadata, hook and layout OK')
 
-if not any(package.name == 'sysc-shell' for package in packages):
+checked = {package.name for package in packages}
+if 'sysc-notify' in checked:
+    assert 'Type=dbus\nBusName=org.freedesktop.Notifications' in units['sysc-notify.service']
+if 'sysc-shell' not in checked:
     sys.exit(0)
 shell = units['sysc-shell.service']
 for name in ['sysc-notify.service', 'sysc-tray.service', 'sysc-clipboard.service', 'sysc-lock-session.service']:
     assert name in next(line for line in shell.splitlines() if line.startswith('Wants='))
     assert name in next(line for line in shell.splitlines() if line.startswith('After=sysc-'))
-assert 'Type=dbus\nBusName=org.freedesktop.Notifications' in units['sysc-notify.service']
 
 # Execute the packaged first-run commands in an isolated config directory.
 sample = root / 'sysc-shell/config.example.json'
