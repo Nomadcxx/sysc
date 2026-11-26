@@ -18,6 +18,17 @@ import (
 
 const seedConfig = `{"weather":{"latitude":51.5,"longitude":-0.12,"location":"London"}}`
 
+const archOSRelease = "ID=arch\n"
+
+// useOSRelease stubs the /etc/os-release reader so update tests are not
+// coupled to the distribution running them.
+func useOSRelease(t *testing.T, content string) {
+	t.Helper()
+	prev := readOSRelease
+	readOSRelease = func() []byte { return []byte(content) }
+	t.Cleanup(func() { readOSRelease = prev })
+}
+
 // updateEnv points the stamp, the shell config and the staging tree at temp
 // directories, so a test never reads or writes the owner's real install.
 func updateEnv(t *testing.T) (stateDir, home string) {
@@ -28,6 +39,7 @@ func updateEnv(t *testing.T) (stateDir, home string) {
 	t.Setenv("XDG_STATE_HOME", stateDir)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 	t.Setenv("XDG_DATA_HOME", filepath.Join(home, ".local", "share"))
+	useOSRelease(t, archOSRelease)
 	if err := os.MkdirAll(filepath.Join(home, ".config", "sysc-shell"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +174,7 @@ func TestApplyUpdateDoesNotAssumeNiriWithoutWaylandEnvironment(t *testing.T) {
 	writeStamp(t, stateDir, stamp.Stamp{Release: "v0.0.1", Components: map[string]string{"sysc-shell": "v0.0.1"}})
 	var out, errOut bytes.Buffer
 	var got install.Options
-	code := applyUpdate(options{Yes: true}, strings.NewReader(""), &out, &errOut, home,
+	code := applyUpdate(options{Yes: true}, strings.NewReader(""), &out, &errOut, home, []byte(archOSRelease),
 		func(_ context.Context, opts install.Options) (install.Result, error) {
 			got = opts
 			return install.Result{}, nil
@@ -190,7 +202,7 @@ func TestApplyUpdateKeepsPlainNiriAutostart(t *testing.T) {
 
 	var out, errOut bytes.Buffer
 	sawSessionProbe := false
-	code := applyUpdate(options{Yes: true}, strings.NewReader(""), &out, &errOut, home,
+	code := applyUpdate(options{Yes: true}, strings.NewReader(""), &out, &errOut, home, []byte(archOSRelease),
 		func(ctx context.Context, opts install.Options) (install.Result, error) {
 			opts.Download = func(context.Context, string, []fetch.Asset) error { return nil }
 			opts.Swap = func(string, string, []string) error { return nil }
@@ -260,5 +272,49 @@ func TestUpdateReportsAFailedTask(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "sysc-shell: failed (no asset)") {
 		t.Fatalf("runUpdate did not print the task row:\n%s", out.String())
+	}
+}
+
+// #92: --apply is reachable from the fetched binary on its own, so it must
+// repeat the distro gate rather than trusting the parent that fetched it.
+func TestApplyUpdateRefusesANonArchHost(t *testing.T) {
+	stateDir, home := updateEnv(t)
+	writeStamp(t, stateDir, stamp.Stamp{Release: "v0.0.1", Components: map[string]string{"sysc-shell": "v0.0.1"}})
+	var out, errOut bytes.Buffer
+	called := false
+	code := applyUpdate(options{Yes: true}, strings.NewReader(""), &out, &errOut, home,
+		[]byte("ID=fedora\nID_LIKE=\"fedora\"\n"),
+		func(context.Context, install.Options) (install.Result, error) {
+			called = true
+			return install.Result{}, nil
+		})
+	if code != 1 {
+		t.Fatalf("applyUpdate on Fedora = %d, want 1", code)
+	}
+	if called {
+		t.Fatal("applyUpdate ran the pipeline on a host a fresh install refuses")
+	}
+	if !strings.Contains(errOut.String(), "Arch-family") {
+		t.Fatalf("applyUpdate printed %q, want the distro refusal", errOut.String())
+	}
+}
+
+// The fetch half is reached through runUpdate, which reads /etc/os-release
+// itself: prove the same refusal there before any stamp or network work.
+func TestUpdateFetchRefusesANonArchHost(t *testing.T) {
+	stateDir, _ := updateEnv(t)
+	writeStamp(t, stateDir, stamp.Stamp{Release: "v0.0.1"})
+	useOSRelease(t, "ID=fedora\n")
+	var out, errOut bytes.Buffer
+	got := runUpdate(nil, strings.NewReader(""), &out, &errOut, os.Getenv("HOME"),
+		func(context.Context, install.Options) (install.Result, error) {
+			t.Fatal("the pipeline ran on a refused host")
+			return install.Result{}, nil
+		})
+	if got != 1 {
+		t.Fatalf("runUpdate fetch on Fedora = %d, want 1", got)
+	}
+	if !strings.Contains(errOut.String(), "Arch-family") {
+		t.Fatalf("runUpdate printed %q, want the distro refusal", errOut.String())
 	}
 }

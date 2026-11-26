@@ -23,12 +23,19 @@ func Check(env Env) error {
 	if env.EUID == 0 {
 		return errors.New(i18n.T(env.Locale, "refuse.root"))
 	}
-	id, idLike := distro.ParseOSRelease(env.OSRelease)
-	if err := distro.Family(id, idLike); err != nil {
+	if err := CheckDistro(env.OSRelease); err != nil {
 		return errors.New(i18n.T(env.Locale, "refuse.distro"))
 	}
 	if env.WaylandDisplay != "" && env.NiriSocket == "" {
 		return errors.New(i18n.T(env.Locale, "refuse.niri"))
 	}
 	return nil
+}
+
+// CheckDistro gates on the Arch family alone. Install and both halves of
+// update share it so a stamped install cannot move to another distribution
+// and keep updating past the gate a fresh install enforces.
+func CheckDistro(osRelease []byte) error {
+	id, idLike := distro.ParseOSRelease(osRelease)
+	return distro.Family(id, idLike)
 }
