@@ -63,7 +63,16 @@ func StateCopy(stateDir, name, src string, now time.Time) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(stateDir, 0o755); err != nil {
+	mode, err := FileMode(src)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(stateDir, 0o700); err != nil {
+		return "", err
+	}
+	// MkdirAll does not tighten an existing directory, and the v0.1.0 stamp
+	// writer created the state tree with 0755.
+	if err := os.Chmod(stateDir, 0o700); err != nil {
 		return "", err
 	}
 	stamp := now.UTC().Format("20060102T150405Z")
@@ -74,7 +83,7 @@ func StateCopy(stateDir, name, src string, now time.Time) (string, error) {
 		}
 		dst = filepath.Join(stateDir, fmt.Sprintf("%s.%s.%d", name, stamp, i))
 	}
-	if err := os.WriteFile(dst, data, 0o644); err != nil {
+	if err := os.WriteFile(dst, data, mode); err != nil {
 		return "", err
 	}
 	rotate(stateDir, name, dst)

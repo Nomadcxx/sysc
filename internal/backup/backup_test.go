@@ -168,3 +168,36 @@ func TestFileModeReturnsUnexpectedStatErrors(t *testing.T) {
 		t.Fatal("FileMode on a non-directory parent returned no error")
 	}
 }
+
+// #93: a private Niri config must not become world-readable through the
+// timestamped snapshots, even when the state directory already exists with
+// the permissive mode the v0.1.0 stamp writer used.
+func TestStateCopyPreservesSourceModeAndTightensStateDir(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.kdl")
+	if err := os.WriteFile(path, []byte("private"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := filepath.Join(dir, "state", "sysc", "backups")
+	if err := os.MkdirAll(state, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dst, err := StateCopy(state, "niri-config.kdl", path, time.Unix(1000, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Errorf("snapshot mode = %04o, want 0600", got)
+	}
+	dirInfo, err := os.Stat(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := dirInfo.Mode().Perm(); got != 0o700 {
+		t.Errorf("state dir mode = %04o, want 0700", got)
+	}
+}
