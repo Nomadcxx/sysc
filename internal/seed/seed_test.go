@@ -210,3 +210,49 @@ func TestSeedFreshConfigCarriesIdleLock(t *testing.T) {
 		t.Fatalf("zero IdleLock wrote an idle section: %s", data)
 	}
 }
+
+// #91: a config symlinked into a dotfiles checkout must be updated in place,
+// not replaced by a regular file that detaches the checkout.
+func TestSeedActivateLockerWritesThroughSymlink(t *testing.T) {
+	dir := t.TempDir()
+	realDir := filepath.Join(dir, "dotfiles")
+	if err := os.MkdirAll(realDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(realDir, "sysc-shell.json")
+	if err := os.WriteFile(target, []byte(`{"theme":{"preset":"expressive"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	linkDir := filepath.Join(dir, "config", "sysc-shell")
+	if err := os.MkdirAll(linkDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(linkDir, "config.json")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	if err := Write(link, Answers{Locker: "sysc-lock", Latitude: 1, Longitude: 2, Location: "X"}); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Lstat(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("the config symlink was replaced by a regular file")
+	}
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]map[string]any
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["session"]["locker"] != "sysc-lock" {
+		t.Fatalf("locker not written through the link: %s", data)
+	}
+	if got["theme"]["preset"] != "expressive" {
+		t.Fatalf("existing keys changed: %s", data)
+	}
+}

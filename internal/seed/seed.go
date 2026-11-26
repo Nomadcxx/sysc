@@ -122,7 +122,13 @@ func Write(path string, a Answers) error {
 		if fi.IsDir() {
 			return fmt.Errorf("seed %s: path exists and is a directory", path)
 		}
-		return activateLocker(path, fi.Mode().Perm(), a)
+		// Write through the link instead of renaming over it: a config that
+		// lives in a dotfiles checkout must keep receiving edits there.
+		target, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return err
+		}
+		return activateLocker(target, fi.Mode().Perm(), a)
 	} else if !os.IsNotExist(err) {
 		return err
 	}
