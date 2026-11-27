@@ -14,6 +14,8 @@ import (
 
 var errChecksum = errors.New("checksum mismatch for sysc-linux-amd64: got a want b")
 
+const archOSRelease = "ID=arch\n"
+
 const goodSum = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 // fetchEnv builds a stamped install whose Download seam only ever writes bytes,
@@ -47,7 +49,7 @@ func TestFetchRefusesWithoutAStamp(t *testing.T) {
 	var out, errOut strings.Builder
 	downloaded := false
 	got := Fetch(context.Background(), Options{
-		StateDir: stateDir, Arch: "amd64", Out: &out, ErrOut: &errOut,
+		StateDir: stateDir, Arch: "amd64", OSRelease: []byte(archOSRelease), Out: &out, ErrOut: &errOut,
 		RefuseNoStamp: "No SYSC install stamp at %s.",
 		Download: func(context.Context, string, string, string, string) error {
 			downloaded = true
@@ -72,7 +74,7 @@ func TestFetchRefusesANonAmd64Host(t *testing.T) {
 	var out, errOut strings.Builder
 	downloaded := false
 	got := Fetch(context.Background(), Options{
-		StateDir: stateDir, Arch: "arm64", Out: &out, ErrOut: &errOut,
+		StateDir: stateDir, Arch: "arm64", OSRelease: []byte(archOSRelease), Out: &out, ErrOut: &errOut,
 		RefuseDistro: "Arch-family distributions only.",
 		Download: func(context.Context, string, string, string, string) error {
 			downloaded = true
@@ -96,7 +98,7 @@ func TestFetchRefusesAFailedInstallerDownload(t *testing.T) {
 	started := false
 	stagingDir := ""
 	got := Fetch(context.Background(), Options{
-		StateDir: stateDir, Arch: "amd64", Out: &out, ErrOut: &errOut,
+		StateDir: stateDir, Arch: "amd64", OSRelease: []byte(archOSRelease), Out: &out, ErrOut: &errOut,
 		RefuseNoStamp: "No SYSC install stamp at %s.",
 		Download: func(_ context.Context, dir, _, name, _ string) error {
 			stagingDir = filepath.Dir(dir)
@@ -132,7 +134,7 @@ func TestFetchHandsTheFetchedInstallerTheWork(t *testing.T) {
 	var gotArgs []string
 	downloaded := map[string]string{}
 	got := Fetch(context.Background(), Options{
-		StateDir: stateDir, Arch: "amd64", Yes: true, Out: &out, ErrOut: &errOut,
+		StateDir: stateDir, Arch: "amd64", OSRelease: []byte(archOSRelease), Yes: true, Out: &out, ErrOut: &errOut,
 		Base:          "https://example.invalid/dl",
 		RefuseNoStamp: "No SYSC install stamp at %s.",
 		Download: func(_ context.Context, dir, url, name, sha string) error {
@@ -172,7 +174,7 @@ func TestFetchRunsWithoutYes(t *testing.T) {
 	var out, errOut strings.Builder
 	var gotArgs []string
 	Fetch(context.Background(), Options{
-		StateDir: stateDir, Arch: "amd64", Out: &out, ErrOut: &errOut,
+		StateDir: stateDir, Arch: "amd64", OSRelease: []byte(archOSRelease), Out: &out, ErrOut: &errOut,
 		RefuseNoStamp: "No SYSC install stamp at %s.",
 		Download:      writeDownload(t, goodSum+"  sysc-linux-amd64\n", "installer"),
 		Run: func(_ context.Context, _ string, args ...string) int {
@@ -191,6 +193,7 @@ func TestFetchChecksTheStampBeforeTheArch(t *testing.T) {
 	got := Fetch(context.Background(), Options{
 		StateDir:      stateDir,
 		Arch:          "arm64",
+		OSRelease:     []byte(archOSRelease),
 		Out:           &out,
 		ErrOut:        &errOut,
 		RefuseDistro:  "Arch-family distributions only.",
@@ -217,7 +220,7 @@ func TestFetchSweepsAStaleStagingDir(t *testing.T) {
 	}
 	var out, errOut strings.Builder
 	got := Fetch(context.Background(), Options{
-		StateDir: stateDir, Arch: "amd64", Out: &out, ErrOut: &errOut,
+		StateDir: stateDir, Arch: "amd64", OSRelease: []byte(archOSRelease), Out: &out, ErrOut: &errOut,
 		RefuseNoStamp: "No SYSC install stamp at %s.",
 		Download:      writeDownload(t, goodSum+"  sysc-linux-amd64\n", "installer"),
 		Run:           func(context.Context, string, ...string) int { return 0 },
@@ -227,5 +230,33 @@ func TestFetchSweepsAStaleStagingDir(t *testing.T) {
 	}
 	if _, err := os.Stat(stale); err == nil {
 		t.Fatal("a stale staging dir survived the next run")
+	}
+}
+
+// #92: update is dispatched before main's install preflight, so Fetch must
+// enforce the same Arch-family gate before it downloads or runs anything.
+func TestFetchRefusesANonArchHost(t *testing.T) {
+	stateDir, _ := fetchEnv(t)
+	var out, errOut strings.Builder
+	downloaded := false
+	got := Fetch(context.Background(), Options{
+		StateDir: stateDir, Arch: "amd64", OSRelease: []byte("ID=fedora\nID_LIKE=\"fedora\"\n"),
+		Out: &out, ErrOut: &errOut,
+		RefuseDistro:  "Arch-family distributions only.",
+		RefuseNoStamp: "No SYSC install stamp at %s.",
+		Download: func(context.Context, string, string, string, string) error {
+			downloaded = true
+			return nil
+		},
+		Run: func(context.Context, string, ...string) int { return 0 },
+	})
+	if got != 1 {
+		t.Fatalf("Fetch on Fedora = %d, want 1", got)
+	}
+	if downloaded {
+		t.Fatal("Fetch downloaded on a host the install path refuses")
+	}
+	if errOut.String() != "Arch-family distributions only.\n" {
+		t.Fatalf("Fetch printed %q, want the named refusal", errOut.String())
 	}
 }

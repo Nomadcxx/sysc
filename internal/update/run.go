@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Nomadcxx/sysc/internal/fetch"
+	"github.com/Nomadcxx/sysc/internal/preflight"
 	"github.com/Nomadcxx/sysc/internal/stamp"
 )
 
@@ -32,6 +33,9 @@ type Options struct {
 	StateDir string
 	// Arch is the machine name, naming the release asset to fetch.
 	Arch string
+	// OSRelease is /etc/os-release content. Fetch refuses a host the install
+	// path would refuse before downloading anything.
+	OSRelease []byte
 	// Base is the release asset base URL; DefaultBase when empty.
 	Base string
 	// Yes hands --yes to the fetched installer.
@@ -80,6 +84,10 @@ func Fetch(ctx context.Context, o Options) int {
 		return 1
 	}
 	if o.Arch != "amd64" {
+		fmt.Fprintln(o.ErrOut, o.RefuseDistro)
+		return 1
+	}
+	if preflight.CheckDistro(o.OSRelease) != nil {
 		fmt.Fprintln(o.ErrOut, o.RefuseDistro)
 		return 1
 	}
